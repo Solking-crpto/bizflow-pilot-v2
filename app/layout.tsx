@@ -6,7 +6,7 @@ import { NetworkBanner } from "@/components/layout/NetworkBadge";
 import { Footer } from "@/components/layout/Footer";
 
 export const metadata: Metadata = {
-  title: "BizFlow Pilot — Policy-Approved USDC Settlement on Arc",
+  title: "BizFlow Pilot V2 — Policy-Approved USDC Settlement on Arc",
   description:
     "Turns verified business activity into policy-approved USDC payments on Arc, with tamper-evident audit anchoring.",
 };

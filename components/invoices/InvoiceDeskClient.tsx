@@ -15,6 +15,9 @@ import {
   XCircle,
   AlertTriangle,
   FileCheck,
+  Calendar,
+  Percent,
+  Clock,
 } from "lucide-react";
 import { StatusChip, HashView } from "@/components/ui/StatusChip";
 import { ThreeWayDiffViewer } from "./ThreeWayDiffViewer";
@@ -39,6 +42,10 @@ export interface SerializedInvoice {
   duplicateScore: number;
   isInjectionSuspect: boolean;
   suspicionNotes?: string | null;
+  dueDate?: string | null;
+  earlyPayDiscountPct?: number | null;
+  earlyPayDays?: number | null;
+  isDemo?: boolean;
   fileHash: string;
   rawContent?: string | null;
   createdAt: string;
@@ -133,14 +140,21 @@ export function InvoiceDeskClient({ invoices }: { invoices: SerializedInvoice[] 
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs font-bold text-ink">{inv.invoiceNumber}</span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-mono text-xs font-bold text-ink truncate">{inv.invoiceNumber}</span>
+                      {inv.isDemo && (
+                        <span className="text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200 px-1 rounded">
+                          DEMO
+                        </span>
+                      )}
+                    </div>
                     <span className="font-mono text-xs font-bold text-ink tabular-nums">{inv.amountFormatted}</span>
                   </div>
 
                   <div className="mt-1 text-xs text-ink-muted truncate">{inv.vendorName}</div>
 
                   <div className="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <StatusChip status={inv.status} size="sm" />
                       {inv.isInjectionSuspect && (
                         <span className="text-[10px] bg-danger-light text-danger border border-danger-border px-1.5 py-0.5 rounded font-mono font-bold">
@@ -152,6 +166,12 @@ export function InvoiceDeskClient({ invoices }: { invoices: SerializedInvoice[] 
                           Dup {inv.duplicateScore}%
                         </span>
                       )}
+                      {inv.earlyPayDiscountPct ? (
+                        <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded font-mono font-medium flex items-center gap-0.5">
+                          <Percent className="w-2.5 h-2.5" />
+                          {inv.earlyPayDiscountPct}% ({inv.earlyPayDays}d)
+                        </span>
+                      ) : null}
                     </div>
                     <span className="text-[11px] text-ink-muted font-mono">{inv.poNumber}</span>
                   </div>
@@ -182,6 +202,41 @@ export function InvoiceDeskClient({ invoices }: { invoices: SerializedInvoice[] 
                 isInjectionSuspect={selectedInvoice.isInjectionSuspect}
                 suspicionNotes={selectedInvoice.suspicionNotes}
               />
+
+              {/* Payment Timing Intelligence */}
+              {(selectedInvoice.dueDate || selectedInvoice.earlyPayDiscountPct) && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between border-b border-emerald-200/60 pb-2">
+                    <span className="text-xs font-semibold text-emerald-950 flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-emerald-600" />
+                      <span>Payment Timing Intelligence</span>
+                    </span>
+                    <span className="text-[11px] font-mono text-emerald-800">
+                      {selectedInvoice.dueDate
+                        ? `Due ${new Date(selectedInvoice.dueDate).toLocaleDateString()}`
+                        : "No due date specified"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className="text-emerald-900/70 font-medium block">Early-Payment Discount:</span>
+                      <span className="font-semibold text-emerald-900">
+                        {selectedInvoice.earlyPayDiscountPct
+                          ? `${selectedInvoice.earlyPayDiscountPct}% discount if paid within ${selectedInvoice.earlyPayDays} days`
+                          : "Standard terms (No early discount)"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-emerald-900/70 font-medium block">Autonomous Strategy:</span>
+                      <span className="font-semibold text-emerald-900">
+                        {selectedInvoice.earlyPayDiscountPct
+                          ? "Pay now to capture discount (yield > reserve opportunity cost)"
+                          : "Schedule payment closer to due date"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Cryptographic Hash & Untrusted Payload Inspection */}
               <div className="rounded-xl border border-border bg-surface p-5 shadow-xs space-y-3">

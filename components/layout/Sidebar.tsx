@@ -16,6 +16,7 @@ import {
   ExternalLink,
   ShieldCheck,
   Award,
+  CheckCircle2,
 } from "lucide-react";
 import { Logo } from "../ui/Logo";
 
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { name: "Inventory & POs", href: "/inventory", icon: Boxes },
   { name: "Invoice Desk", href: "/invoices", icon: ReceiptText },
   { name: "AI Finance Agent", href: "/agent", icon: Bot },
+  { name: "Agent Decisions", href: "/agent/decisions", icon: CheckCircle2 },
   { name: "Payment Desk", href: "/payments", icon: CreditCard },
   { name: "Trust & Audit Ledger", href: "/audit", icon: FileCheck2 },
   { name: "Policy Simulator", href: "/simulator", icon: SlidersHorizontal },

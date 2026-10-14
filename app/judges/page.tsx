@@ -27,9 +27,9 @@ import { formatUsdc, usdcAtomic } from "@/lib/money";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Judge Guide — 5-Minute Evaluation Path | BizFlow Pilot",
+  title: "Judge Guide — 5-Minute Evaluation Path | BizFlow Pilot V2",
   description:
-    "Comprehensive Arc Microgrants evaluation guide for judges: real mainnet transactions, audit contracts, compliance matrix, and 5-minute review walkthrough.",
+    "Comprehensive Tameion Agents Hackathon evaluation guide for judges: autonomous execution, real mainnet transactions, audit contracts, compliance matrix, and pilot organizations.",
 };
 
 export default async function JudgesPage() {
@@ -54,10 +54,10 @@ export default async function JudgesPage() {
     "0x2b18fe9d3a63710da242092571744520ea8effe0";
 
   const repoUrl =
-    process.env.NEXT_PUBLIC_REPO_URL || "https://github.com/iamoracle/bizflow-pilot";
+    process.env.NEXT_PUBLIC_REPO_URL || "https://github.com/Solking-crpto/bizflow-pilot-v2";
 
   const builderProfileUrl =
-    process.env.NEXT_PUBLIC_BUILDER_PROFILE_URL || "https://github.com/iamoracle";
+    process.env.NEXT_PUBLIC_BUILDER_PROFILE_URL || "https://github.com/Solking-crpto";
 
   const paymentTxHash = confirmedPayment?.txHash || "0x9f5a7d65b758269d6c42939b4cb0e7e17eaec596b42b6559d2824dfb5dbd0e82";
   const anchorTxHash = confirmedPayment?.anchorTxHash || confirmedPayment?.anchor?.anchorTxHash || "0x600e31431faba6022dbc5d259961ddc4fbd89e7c2867b1e590ca76f8d74b83e4";
@@ -94,7 +94,7 @@ export default async function JudgesPage() {
             Executive Summary
           </h2>
           <p className="text-sm text-ink leading-relaxed font-sans">
-            <strong>BizFlow Pilot</strong> is an autonomous financial operations layer for enterprise treasury that bridges real-world procurement to native USDC settlement on <strong>Arc Mainnet</strong>. By decoupling untrusted LLM extraction from a deterministic 10-point policy engine, it prevents prompt-injection fraud, duplicate billing, and quantity discrepancies before triggering idempotent on-chain payments and anchoring immutable SHA-256 audit proofs to <code>AuditAnchor.sol</code>.
+            <strong>BizFlow Pilot V2</strong> is an autonomous financial operations layer for enterprise treasury that bridges real-world procurement to native USDC settlement on <strong>Arc Mainnet</strong>. By decoupling untrusted LLM extraction from a deterministic 10-point policy engine, it prevents prompt-injection fraud, duplicate billing, and quantity discrepancies before triggering idempotent on-chain payments and anchoring immutable SHA-256 audit proofs to <code>AuditAnchor.sol</code>.
           </p>
         </div>
       </div>

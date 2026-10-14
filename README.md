@@ -1,10 +1,20 @@
-# BizFlow Pilot
+# BizFlow Pilot V2
 
 > **The autonomous financial operations engine that turns real enterprise activity into policy-approved USDC payments on Arc Mainnet.**  
 > Built with an air-gapped architecture where AI proposes, deterministic code decides, and keys are never touched by LLMs.  
 > Every settlement anchors an immutable SHA-256 cryptographic audit trail to `AuditAnchor.sol` on Arc.
 
-Built for the **Arc Microgrants (DoraHacks)** — October 2026.
+Built for the **Tameion Agents Hackathon (Canteen x Circle x Arc)** — October 2026.  
+Upgraded from the original [BizFlow Pilot (Arc Microgrants edition)](https://github.com/iamoracle/bizflow-pilot).
+
+### What V2 Adds:
+1. **Autonomous Agent Loop**: Configurable autonomous mode with strict spend caps (`AUTO_APPROVE_LIMIT_USDC`, `MAX_DAILY_AUTONOMOUS_USDC`), daily cron execution, and real-time safety gating.
+2. **Agent Decisions Log & Real Metrics**: Full audit trail of AI agent choices (`pay_now`, `schedule`, `hold`, `escalate`), model versioning, snapshot hashes, and honest metrics.
+3. **Escalation Queue & Human Agreement Rate**: Transparent review flow where owner approvals feed into measurable human-agent agreement metrics.
+4. **Payment Timing Intelligence**: Dynamic evaluation of early-pay discounts (e.g. 2/10 net 30) against cash reserves and obligations.
+5. **Pilot Organizations & Consent Registry**: Multi-tenant pilot business support with verified proof links, builder-operated treasury declarations, and public consent.
+6. **Circle Wallets & Sandbox Integration**: Dual deployment modes with testnet sandbox powered by Circle Developer-Controlled Wallets (`ARC-TESTNET`).
+7. **Arc App Kit Send & Paris EVM PolicyVault**: Extensible settlement providers and on-chain budget contracts.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue.svg)](https://www.typescriptlang.org/)
@@ -27,6 +37,19 @@ Built for the **Arc Microgrants (DoraHacks)** — October 2026.
   - **Address:** [`0x2b18fe9d3a63710da242092571744520ea8effe0`](https://explorer.arc.io/address/0x2b18fe9d3a63710da242092571744520ea8effe0)
   - **Anchor Tx:** [`0x600e31431faba6022dbc5d259961ddc4fbd89e7c2867b1e590ca76f8d74b83e4`](https://explorer.arc.io/tx/0x600e31431faba6022dbc5d259961ddc4fbd89e7c2867b1e590ca76f8d74b83e4)
   - **Block Height:** `25822380`
+
+---
+
+<!-- ADDRESSES_PROOF_START -->
+### Addresses and Proof
+
+| Entity / Contract | Address / Identifier | Network | Explorer Link |
+|---|---|---|---|
+| **Builder-Operated Treasury** | `0x061F5c70D68A246b654724C0f9595F3a14cF9b0B` | Arc Mainnet (`5042`) | [View Treasury on Arc Explorer](https://explorer.arc.io/address/0x061F5c70D68A246b654724C0f9595F3a14cF9b0B) |
+| **Audit Anchor Contract** | `0xf277e351656699c2a0e1a0d9e4ecb5e786916ba9` | Arc Mainnet (`5042`) | [View Audit Anchor Contract](https://explorer.arc.io/address/0xf277e351656699c2a0e1a0d9e4ecb5e786916ba9) |
+| **Native USDC System Contract** | `0x3600000000000000000000000000000000000000` | Arc Mainnet (`5042`) | [View USDC Contract](https://explorer.arc.io/address/0x3600000000000000000000000000000000000000) |
+| **Active Verified Vendor (Dangote Cement Distribution (demo))** | `0x70997970C51812dc3A010C7d01b50e0d17dc79C8` | Arc Mainnet (`5042`) | [View Vendor Wallet](https://explorer.arc.io/address/0x70997970C51812dc3A010C7d01b50e0d17dc79C8) |
+<!-- ADDRESSES_PROOF_END -->
 
 ---
 

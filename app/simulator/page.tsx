@@ -8,7 +8,7 @@ import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Policy Simulator — Governance & Guardrail Playground | BizFlow Pilot",
+  title: "Policy Simulator — Governance & Guardrail Playground | BizFlow Pilot V2",
   description: "Interactive simulator for policy thresholds, anomaly injection testing, and kill-switch verification.",
 };
 

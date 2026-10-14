@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "About & Trust Architecture | BizFlow Pilot",
+  title: "About & Trust Architecture | BizFlow Pilot V2",
   description: "Cryptographic trust model, decentralized settlement guarantees, and decoupled AI execution on Arc.",
 };
 
@@ -26,10 +26,10 @@ export default function AboutPage() {
       {/* Title */}
       <div className="space-y-2 border-b border-border pb-4">
         <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand-light text-brand-teal text-xs font-mono font-semibold">
-          Arc Microgrants 2026 Submission
+          Tameion Agents Hackathon 2026 Edition
         </div>
         <h1 className="text-3xl font-bold tracking-tight text-ink">
-          BizFlow Pilot — Architectural Trust Model
+          BizFlow Pilot V2 — Architectural Trust Model
         </h1>
         <p className="text-sm text-ink-muted max-w-2xl leading-relaxed">
           The autonomous AI finance agent that never holds the keys. Turning verified business activity

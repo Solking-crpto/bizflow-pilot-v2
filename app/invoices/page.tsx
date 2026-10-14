@@ -9,7 +9,7 @@ import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Invoice Desk & Match Queue | BizFlow Pilot",
+  title: "Invoice Desk & Match Queue | BizFlow Pilot V2",
   description: "Autonomous 3-way matching and policy gate verification for inbound invoices.",
 };
 
@@ -64,6 +64,12 @@ export default async function InvoiceDeskPage() {
     const gr = po?.goodsReceipts?.[0];
     const grLine = gr?.lines?.[0];
 
+    const isDemo =
+      inv.invoiceNumber.includes("DEMO") ||
+      inv.vendor?.name?.includes("demo") ||
+      inv.vendor?.name?.includes("DEMO") ||
+      inv.rawContent?.includes("DEMO DATA");
+
     return {
       id: inv.id,
       invoiceNumber: inv.invoiceNumber,
@@ -84,6 +90,10 @@ export default async function InvoiceDeskPage() {
       duplicateScore: inv.duplicateScore,
       isInjectionSuspect: inv.isInjectionSuspect,
       suspicionNotes: inv.suspicionNotes,
+      dueDate: inv.dueDate ? new Date(inv.dueDate).toISOString() : null,
+      earlyPayDiscountPct: inv.earlyPayDiscountPct ?? null,
+      earlyPayDays: inv.earlyPayDays ?? null,
+      isDemo: Boolean(isDemo),
       fileHash: inv.fileHash,
       rawContent: inv.rawContent,
       createdAt: (inv.createdAt instanceof Date ? inv.createdAt : new Date()).toISOString(),

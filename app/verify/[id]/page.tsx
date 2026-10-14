@@ -33,10 +33,10 @@ export async function generateMetadata({
   params: { id: string };
 }): Promise<Metadata> {
   return {
-    title: `Payment Passport ${params.id} — Cryptographic Proof | BizFlow Pilot`,
+    title: `Payment Passport ${params.id} — Cryptographic Proof | BizFlow Pilot V2`,
     description: `Public, tamper-evident cryptographic proof for payment ${params.id} settled in native USDC on Arc. Verified across 10 deterministic policy guardrails and anchored on-chain.`,
     openGraph: {
-      title: `BizFlow Pilot Payment Passport — ${params.id}`,
+      title: `BizFlow Pilot V2 Payment Passport — ${params.id}`,
       description: `Cryptographically verified corporate settlement on Arc with on-chain audit anchor.`,
       type: "website",
     },

@@ -29,6 +29,9 @@ export interface SerializedSettings {
   requireApprovalAbove: string;
   minReserveUsdc: string;
   dailyLimitUsdc: string;
+  agentMode?: string;
+  autoApproveLimitUsdc?: string;
+  maxDailyAutonomousUsdc?: string;
 }
 
 export function SettingsClient({
@@ -50,6 +53,15 @@ export function SettingsClient({
   );
   const [dailyLimitUsdc, setDailyLimitUsdc] = useState(
     (Number(BigInt(initialSettings.dailyLimitUsdc)) / 1_000_000).toString()
+  );
+  const [agentMode, setAgentMode] = useState<"assisted" | "autonomous">(
+    (initialSettings.agentMode as "assisted" | "autonomous") || "assisted"
+  );
+  const [autoApproveLimitUsdc, setAutoApproveLimitUsdc] = useState(
+    (Number(BigInt(initialSettings.autoApproveLimitUsdc || "500000")) / 1_000_000).toString()
+  );
+  const [maxDailyAutonomousUsdc, setMaxDailyAutonomousUsdc] = useState(
+    (Number(BigInt(initialSettings.maxDailyAutonomousUsdc || "1000000")) / 1_000_000).toString()
   );
 
   const [saving, setSaving] = useState(false);
@@ -100,6 +112,9 @@ export function SettingsClient({
           requireApprovalAbove: (BigInt(Math.round(Number(requireApprovalAbove) * 1_000_000))).toString(),
           minReserveUsdc: (BigInt(Math.round(Number(minReserveUsdc) * 1_000_000))).toString(),
           dailyLimitUsdc: (BigInt(Math.round(Number(dailyLimitUsdc) * 1_000_000))).toString(),
+          agentMode,
+          autoApproveLimitUsdc: (BigInt(Math.round(Number(autoApproveLimitUsdc) * 1_000_000))).toString(),
+          maxDailyAutonomousUsdc: (BigInt(Math.round(Number(maxDailyAutonomousUsdc) * 1_000_000))).toString(),
           killSwitchActive,
           passcode: passcode.trim() || undefined,
         }),
@@ -318,6 +333,73 @@ export function SettingsClient({
                   <span className="font-mono text-ink-muted">USDC</span>
                 </div>
                 <p className="text-[11px] text-ink-muted">Maximum cumulative settlements permitted per 24h rolling period.</p>
+              </div>
+
+              {/* Tameion V2 Autonomous Agency Controls */}
+              <div className="p-4 rounded-lg bg-canvas-subtle border border-brand-teal/30 space-y-3 sm:col-span-2">
+                <div className="flex items-center justify-between border-b border-border/70 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-brand-teal animate-pulse" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-navy">
+                      Autonomous Agency Controls (Tameion Edition)
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-brand-light text-brand-teal font-semibold">
+                    Tier 1 Agency
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Agent Mode */}
+                  <div className="space-y-1">
+                    <label className="text-ink-muted block font-medium">Agent Operating Mode</label>
+                    <select
+                      value={agentMode}
+                      onChange={(e) => setAgentMode(e.target.value as "assisted" | "autonomous")}
+                      className="w-full px-2 py-1.5 rounded border border-border bg-surface font-semibold text-ink text-xs focus:ring-1 focus:ring-brand-teal"
+                    >
+                      <option value="assisted">Assisted (Propose Only)</option>
+                      <option value="autonomous">Autonomous (Auto-Execute)</option>
+                    </select>
+                    <p className="text-[10px] text-ink-muted">
+                      {agentMode === "autonomous"
+                        ? "Autonomous: Auto-settles invoices within budget caps."
+                        : "Assisted: Proposes settlements; human must authorize."}
+                    </p>
+                  </div>
+
+                  {/* Auto Approve Limit */}
+                  <div className="space-y-1">
+                    <label className="text-ink-muted block font-medium">Auto-Approve Limit (USDC)</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={autoApproveLimitUsdc}
+                        onChange={(e) => setAutoApproveLimitUsdc(e.target.value)}
+                        className="w-full px-2 py-1 rounded border border-border bg-surface font-mono font-bold text-ink text-xs"
+                      />
+                      <span className="font-mono text-ink-muted text-xs">USDC</span>
+                    </div>
+                    <p className="text-[10px] text-ink-muted">Single invoice limit for autonomous execution (Default: 0.50 USDC).</p>
+                  </div>
+
+                  {/* Max Daily Autonomous Volume */}
+                  <div className="space-y-1">
+                    <label className="text-ink-muted block font-medium">Daily Autonomous Cap</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={maxDailyAutonomousUsdc}
+                        onChange={(e) => setMaxDailyAutonomousUsdc(e.target.value)}
+                        className="w-full px-2 py-1 rounded border border-border bg-surface font-mono font-bold text-ink text-xs"
+                      />
+                      <span className="font-mono text-ink-muted text-xs">USDC</span>
+                    </div>
+                    <p className="text-[10px] text-ink-muted">Max 24h autonomous volume before auto-escalating to human (Default: 1.00 USDC).</p>
+                  </div>
+                </div>
               </div>
 
               {/* Owner Passcode field for Mainnet */}

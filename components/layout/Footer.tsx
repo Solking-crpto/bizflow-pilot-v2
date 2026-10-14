@@ -17,7 +17,7 @@ export function Footer({ networkMode = "testnet" }: FooterProps) {
     "0x2b18fe9d3a63710da242092571744520ea8effe0";
 
   const repoUrl =
-    process.env.NEXT_PUBLIC_REPO_URL || "https://github.com/iamoracle/bizflow-pilot";
+    process.env.NEXT_PUBLIC_REPO_URL || "https://github.com/Solking-crpto/bizflow-pilot-v2";
 
   const explorerUrl =
     networkMode === "mainnet"
@@ -35,12 +35,12 @@ export function Footer({ networkMode = "testnet" }: FooterProps) {
       <div className="max-w-[1280px] w-full mx-auto px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-3">
         {/* Left: Built for Arc + Demo scale note */}
         <div className="flex flex-wrap items-center gap-2 text-ink-muted">
-          <span className="font-semibold text-navy">BizFlow Pilot</span>
+          <span className="font-semibold text-navy">BizFlow Pilot V2</span>
           <span>•</span>
-          <span className="text-brand-teal font-medium">Built for Arc Microgrants</span>
+          <span className="text-brand-teal font-medium">Tameion edition</span>
           <span>•</span>
           <span className="font-mono text-[11px] bg-canvas px-1.5 py-0.5 rounded border border-border">
-            v1.0.0
+            v2.0.0
           </span>
           <span>•</span>
           <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/70 font-medium">

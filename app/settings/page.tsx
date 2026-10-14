@@ -9,7 +9,7 @@ import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Rules & Settings — Governance & Security Controls | BizFlow Pilot",
+  title: "Rules & Settings — Governance & Security Controls | BizFlow Pilot V2",
   description: "Configure policy limits, corporate approval thresholds, approved vendors, and emergency halts.",
 };
 
@@ -55,6 +55,9 @@ export default async function SettingsPage() {
     requireApprovalAbove: (rawSettings.requireApprovalAbove || 5000000000n).toString(),
     minReserveUsdc: (rawSettings.minReserveUsdc || 2000000000n).toString(),
     dailyLimitUsdc: (rawSettings.dailyLimitUsdc || 20000000000n).toString(),
+    agentMode: rawSettings.agentMode || "assisted",
+    autoApproveLimitUsdc: (rawSettings.autoApproveLimitUsdc || 500000n).toString(),
+    maxDailyAutonomousUsdc: (rawSettings.maxDailyAutonomousUsdc || 1000000n).toString(),
   };
 
   const serializedVendors: SerializedVendor[] = rawVendors.map((v: any) => ({

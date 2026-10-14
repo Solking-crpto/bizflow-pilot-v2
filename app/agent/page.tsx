@@ -11,7 +11,7 @@ import { getTreasuryBalances } from "@/lib/balances";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "AI Finance Agent — Autonomous Treasury Advisory | BizFlow Pilot",
+  title: "AI Finance Agent — Autonomous Treasury Advisory | BizFlow Pilot V2",
   description: "AI Agent proposal engine decoupled from deterministic policy execution.",
 };
 

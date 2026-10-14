@@ -45,6 +45,16 @@ export async function POST(req: NextRequest) {
         updateData.dailyLimitUsdc = BigInt(body.dailyLimitUsdc);
       }
 
+      if (body.agentMode !== undefined) {
+        updateData.agentMode = body.agentMode === "autonomous" ? "autonomous" : "assisted";
+      }
+      if (body.autoApproveLimitUsdc !== undefined) {
+        updateData.autoApproveLimitUsdc = BigInt(body.autoApproveLimitUsdc);
+      }
+      if (body.maxDailyAutonomousUsdc !== undefined) {
+        updateData.maxDailyAutonomousUsdc = BigInt(body.maxDailyAutonomousUsdc);
+      }
+
       const updated = await withDbTimeout(
         () =>
           prisma.setting.update({
@@ -61,6 +71,8 @@ export async function POST(req: NextRequest) {
           requireApprovalAbove: updated.requireApprovalAbove.toString(),
           minReserveUsdc: updated.minReserveUsdc.toString(),
           dailyLimitUsdc: updated.dailyLimitUsdc.toString(),
+          autoApproveLimitUsdc: updated.autoApproveLimitUsdc?.toString(),
+          maxDailyAutonomousUsdc: updated.maxDailyAutonomousUsdc?.toString(),
         },
       });
     }

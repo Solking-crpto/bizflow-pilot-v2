@@ -10,7 +10,7 @@ import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Inventory & POs | BizFlow Pilot",
+  title: "Inventory & POs | BizFlow Pilot V2",
   description: "Enterprise purchase orders, goods receipt notes, and verified inventory ledger.",
 };
 

@@ -47,3 +47,4 @@ video/cache/
 video/assets/
 video-out/
 
+.env*

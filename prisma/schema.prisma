@@ -14,6 +14,12 @@ model Organization {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  isPilot        Boolean      @default(false)
+  websiteUrl     String?
+  xUrl           String?
+  linkedinUrl    String?
+  publicConsent  Boolean      @default(false)
+
   members        Member[]
   vendors        Vendor[]
   items          Item[]
@@ -23,6 +29,7 @@ model Organization {
   payments       Payment[]
   auditEvents    AuditEvent[]
   settings       Setting[]
+  agentDecisions AgentDecision[]
 }
 
 model Member {
@@ -154,6 +161,8 @@ model Invoice {
   isInjectionSuspect Boolean    @default(false)
   suspicionNotes   String?
   dueDate          DateTime?
+  earlyPayDiscountPct Float?
+  earlyPayDays        Int?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
@@ -163,6 +172,7 @@ model Invoice {
   agentRuns        AgentRun[]
   policyEvaluations PolicyEvaluation[]
   payments         Payment[]
+  agentDecisions   AgentDecision[]
 }
 
 model AgentRun {
@@ -263,8 +273,41 @@ model Setting {
   requireApprovalAbove  BigInt       @default(5000000000) // 5,000 USDC default threshold
   minReserveUsdc        BigInt       @default(2000000000) // 2,000 USDC liquidity buffer
   dailyLimitUsdc        BigInt       @default(20000000000) // 20,000 USDC daily cap
+  agentMode             String       @default("assisted") // "assisted" | "autonomous"
+  autoApproveLimitUsdc  BigInt       @default(500000) // default 0.50 USDC (500,000 atomic)
+  maxDailyAutonomousUsdc BigInt      @default(1000000) // default 1.00 USDC (1,000,000 atomic)
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
 
   organization          Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 }
+
+model AgentDecision {
+  id                    String       @id @default(cuid())
+  orgId                 String
+  invoiceId             String
+  timestamp             DateTime     @default(now())
+  observationHash       String
+  cashPosition          String       // JSON: available, reserve, free cash
+  choice                String       // pay_now, schedule, hold, escalate
+  reasoning             String
+  source                String       // llm, fallback
+  model                 String
+  promptVersion         String       @default("v2.0")
+  escalated             Boolean      @default(false)
+  outcome               String       // executed, scheduled, held, escalated, rejected
+  humanResponse         String?      // approved, rejected
+  txHash                String?
+  conflictWithPolicy    Boolean      @default(false)
+  policyConflictReason  String?
+  scheduledFor          DateTime?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  organization          Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  invoice               Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, timestamp])
+  @@index([invoiceId])
+}
+

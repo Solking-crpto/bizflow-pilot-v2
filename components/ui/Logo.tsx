@@ -20,7 +20,7 @@ export function Logo({ className = "w-8 h-8", textClassName = "text-lg" }: { cla
       </div>
       <div className="flex flex-col">
         <span className={`font-semibold tracking-tight text-ink leading-tight flex items-center gap-1.5 ${textClassName}`}>
-          BizFlow <span className="text-brand-teal font-bold">Pilot</span>
+          BizFlow <span className="text-brand-teal font-bold">Pilot V2</span>
         </span>
         <span className="text-[10px] uppercase font-mono tracking-wider text-ink-muted">
           Autonomous Settlement

@@ -24,7 +24,7 @@ import { LiveProofCard } from "@/components/common/LiveProofCard";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Command Center | BizFlow Pilot",
+  title: "Command Center | BizFlow Pilot V2",
   description: "Real-time corporate treasury overview, policy guardrails, and Arc settlement activity.",
 };
 
@@ -83,6 +83,60 @@ export default async function CommandCenterPage() {
 
       {/* Live Proof Card (Real On-Chain Settlement) */}
       <LiveProofCard payment={latestConfirmedPayment} explorerUrl={network.explorerUrl} />
+
+      {/* Autonomous Agency & Decision Metrics (Tameion V2 Real Rows) */}
+      <div className="rounded-xl border border-border bg-surface p-4 shadow-card space-y-3">
+        <div className="flex items-center justify-between border-b border-border pb-2">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-brand-teal animate-pulse" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-navy">
+              Autonomous Agency & Decision Metrics
+            </h2>
+          </div>
+          <Link
+            href="/agent/decisions"
+            className="text-[11px] font-semibold text-brand-teal hover:underline flex items-center gap-1"
+          >
+            <span>View Full Decision Log</span>
+            <ArrowUpRight className="w-3 h-3" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5 text-xs">
+          <div className="p-2.5 rounded-lg bg-canvas border border-border">
+            <span className="text-[10px] text-ink-muted uppercase font-semibold block">Invoices Processed</span>
+            <span className="text-base font-bold font-mono text-ink block mt-0.5">{data.decisionMetrics?.invoicesProcessed ?? "n/a"}</span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-canvas border border-border">
+            <span className="text-[10px] text-ink-muted uppercase font-semibold block">Settled Volume</span>
+            <span className="text-base font-bold font-mono text-navy block mt-0.5">{data.decisionMetrics?.paymentVolumeUsdc ?? "n/a"}</span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-canvas border border-border">
+            <span className="text-[10px] text-ink-muted uppercase font-semibold block">Duplicates Caught</span>
+            <span className="text-base font-bold font-mono text-amber-700 block mt-0.5">{data.decisionMetrics?.duplicatesCaught ?? "0"}</span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-canvas border border-border">
+            <span className="text-[10px] text-ink-muted uppercase font-semibold block">Injections Blocked</span>
+            <span className="text-base font-bold font-mono text-danger block mt-0.5">{data.decisionMetrics?.injectionAttemptsBlocked ?? "0"}</span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-canvas border border-border">
+            <span className="text-[10px] text-ink-muted uppercase font-semibold block">Decisions Made</span>
+            <span className="text-base font-bold font-mono text-ink block mt-0.5">{data.decisionMetrics?.decisionsMade ?? "n/a"}</span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-canvas border border-border">
+            <span className="text-[10px] text-ink-muted uppercase font-semibold block">Auto-Executed</span>
+            <span className="text-base font-bold font-mono text-success block mt-0.5">{data.decisionMetrics?.autoExecuted ?? "n/a"}</span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-canvas border border-border">
+            <span className="text-[10px] text-ink-muted uppercase font-semibold block">Escalated</span>
+            <span className="text-base font-bold font-mono text-brand-teal block mt-0.5">{data.decisionMetrics?.escalated ?? "n/a"}</span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-canvas border border-border">
+            <span className="text-[10px] text-ink-muted uppercase font-semibold block">Agreement Rate</span>
+            <span className="text-base font-bold font-mono text-purple-700 block mt-0.5">{data.decisionMetrics?.humanAgreementRate ?? "n/a"}</span>
+          </div>
+        </div>
+      </div>
 
       {/* KPI Overview Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

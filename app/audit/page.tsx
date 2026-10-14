@@ -8,7 +8,7 @@ import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Trust & Audit Ledger — Cryptographic Hash Chain | BizFlow Pilot",
+  title: "Trust & Audit Ledger — Cryptographic Hash Chain | BizFlow Pilot V2",
   description: "Tamper-evident SHA-256 hash chains linking procurement, AI reasoning, policy approval, and Arc settlement.",
 };
 

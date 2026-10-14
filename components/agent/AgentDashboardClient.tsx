@@ -44,6 +44,12 @@ export function AgentDashboardClient({
 }) {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>(invoices[0]?.id || "");
   const [isRunning, setIsRunning] = useState(false);
+  const [showRunModal, setShowRunModal] = useState(false);
+  const [passcode, setPasscode] = useState("");
+  const [dryRun, setDryRun] = useState(false);
+  const [isExecutingRun, setIsExecutingRun] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
+  const [runResult, setRunResult] = useState<any | null>(null);
 
   const selected = invoices.find((i) => i.id === selectedInvoiceId) || invoices[0];
   const rec = selected?.recommendation;
@@ -55,6 +61,34 @@ export function AgentDashboardClient({
     }, 600);
   };
 
+  const handleRunAgentNow = async () => {
+    setIsExecutingRun(true);
+    setRunError(null);
+    setRunResult(null);
+
+    try {
+      const res = await fetch("/api/agent/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          passcode: passcode.trim() || undefined,
+          dryRun,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setRunError(data.error || "Agent execution failed.");
+      } else {
+        setRunResult(data.result);
+      }
+    } catch (err: any) {
+      setRunError(err.message || "Network error contacting agent run endpoint.");
+    } finally {
+      setIsExecutingRun(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -63,14 +97,35 @@ export function AgentDashboardClient({
           <h1 className="text-2xl font-bold tracking-tight text-ink flex items-center gap-2">
             <span>AI Finance Agent</span>
             <span className="text-xs font-mono font-medium bg-brand-light text-brand-teal px-2 py-0.5 rounded-full border border-brand-teal/20">
-              Propose Only
+              Autonomous Loop
             </span>
           </h1>
           <p className="text-sm text-ink-muted mt-0.5">
-            Analyzes cash-flow commitments, ranks payables, and prepares policy proposals without holding keys.
+            Analyzes cash-flow commitments, ranks payables, and executes policy-compliant settlements within budget limits.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Run Agent Now Button */}
+          <button
+            onClick={() => {
+              setShowRunModal(true);
+              setRunError(null);
+              setRunResult(null);
+            }}
+            className="px-3.5 py-1.5 rounded-md bg-brand-teal text-white text-xs font-semibold hover:bg-brand-teal/90 transition-all shadow-xs flex items-center gap-1.5"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Run agent now</span>
+          </button>
+
+          <Link
+            href="/agent/decisions"
+            className="px-3.5 py-1.5 rounded-md bg-white border border-border text-navy text-xs font-semibold hover:bg-canvas transition-colors shadow-2xs flex items-center gap-1.5"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 text-brand-teal" />
+            <span>Agent Decisions</span>
+          </Link>
+
           <Link
             href="/simulator"
             className="px-3.5 py-1.5 rounded-md bg-white border border-border text-navy text-xs font-semibold hover:bg-canvas transition-colors shadow-2xs flex items-center gap-1.5"
@@ -82,11 +137,108 @@ export function AgentDashboardClient({
             href="/payments"
             className="px-3.5 py-1.5 rounded-md bg-navy text-white text-xs font-semibold hover:bg-navy-light transition-colors shadow-xs flex items-center gap-1.5"
           >
-            <span>Proceed to Payment Desk</span>
+            <span>Payment Desk</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       </div>
+
+      {/* Run Agent Modal */}
+      {showRunModal && (
+        <div className="fixed inset-0 bg-navy/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-surface border border-border rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <Bot className="w-5 h-5 text-brand-teal" />
+                <h3 className="font-bold text-sm text-ink">Run Autonomous Agent Loop</h3>
+              </div>
+              <button
+                onClick={() => setShowRunModal(false)}
+                className="text-ink-muted hover:text-ink text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-ink-muted leading-relaxed">
+              Triggers the autonomous agent loop across all open invoices. Invoices meeting deterministic policy, 3-way match, and autonomous budget caps will be evaluated and settled automatically.
+            </p>
+
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-ink block">Owner Passcode</label>
+                <input
+                  type="password"
+                  value={passcode}
+                  onChange={(e) => setPasscode(e.target.value)}
+                  placeholder="Enter OWNER_PASSCODE"
+                  className="w-full px-3 py-1.5 text-xs rounded border border-border bg-canvas font-mono text-ink focus:outline-none focus:ring-1 focus:ring-brand-teal"
+                />
+                <span className="text-[10px] text-ink-muted">Required on Arc Mainnet. Optional if CRON_SECRET is set.</span>
+              </div>
+
+              <label className="flex items-center gap-2 text-xs text-ink cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={dryRun}
+                  onChange={(e) => setDryRun(e.target.checked)}
+                  className="rounded border-border text-brand-teal focus:ring-brand-teal"
+                />
+                <span>Simulation / DRY_RUN mode (Estimate gas, do not broadcast)</span>
+              </label>
+
+              {runError && (
+                <div className="p-2.5 rounded bg-danger/10 border border-danger/20 text-danger text-xs">
+                  {runError}
+                </div>
+              )}
+
+              {runResult && (
+                <div className="p-3 rounded bg-success/10 border border-success/30 text-ink text-xs space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-bold text-success">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Run Completed Successfully ({runResult.mode} mode)</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                    <div>Invoices Evaluated: <strong>{runResult.invoicesEvaluated}</strong></div>
+                    <div>Auto-Executed: <strong>{runResult.autoExecutedCount}</strong></div>
+                    <div>Scheduled: <strong>{runResult.scheduledCount}</strong></div>
+                    <div>Escalated: <strong>{runResult.escalatedCount}</strong></div>
+                    <div className="col-span-2 text-navy font-mono font-bold">
+                      Settled: {runResult.totalVolumeExecutedUsdc} USDC
+                    </div>
+                  </div>
+                  <Link
+                    href="/agent/decisions"
+                    className="mt-2 block text-center px-3 py-1.5 rounded bg-navy text-white text-xs font-semibold hover:bg-navy-light transition-colors"
+                  >
+                    View Decisions Log →
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+              <button
+                onClick={() => setShowRunModal(false)}
+                className="px-3 py-1.5 text-xs text-ink-muted hover:text-ink font-medium"
+              >
+                Close
+              </button>
+              {!runResult && (
+                <button
+                  onClick={handleRunAgentNow}
+                  disabled={isExecutingRun}
+                  className="px-4 py-1.5 rounded bg-brand-teal text-white text-xs font-semibold hover:bg-brand-teal/90 transition-colors shadow-xs flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{isExecutingRun ? "Running Loop..." : "Execute Run"}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Trust & Boundary Guardrail Callout */}
       <div className="p-4 rounded-xl border border-navy/20 bg-surface shadow-xs flex items-center gap-3">

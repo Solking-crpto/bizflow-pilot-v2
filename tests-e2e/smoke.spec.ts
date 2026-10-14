@@ -12,6 +12,7 @@ const ROUTES = [
   { path: "/settings", name: "Rules & Settings" },
   { path: "/about", name: "About Architecture" },
   { path: "/verify/demo", name: "Public Passport" },
+  { path: "/agent/decisions", name: "Agent Decisions" },
 ];
 
 test.describe("P0-A Playwright Navigation & Interactive Smoke Suite", () => {
@@ -134,5 +135,38 @@ test.describe("P0-A Playwright Navigation & Interactive Smoke Suite", () => {
     expect([200, 503]).toContain(healthRes.status());
     const healthData = await healthRes.json();
     expect(["healthy", "degraded"]).toContain(healthData.status);
+  });
+
+  test("tests Agent Decisions log page and filter controls", async ({ page }) => {
+    await page.goto("/agent/decisions", { waitUntil: "domcontentloaded" });
+
+    // Header and metrics banner check
+    await expect(page.locator("h1", { hasText: "Agent Decisions" })).toBeVisible();
+    await expect(page.locator("text=Autonomous Governance Metrics")).toBeVisible();
+
+    // Filter controls
+    await page.getByRole("button", { name: /All Decisions/i }).click();
+    await page.getByRole("button", { name: /Auto-Executed/i }).click();
+    await page.getByRole("button", { name: /Escalated/i }).click();
+    await page.getByRole("button", { name: /Scheduled/i }).click();
+    await page.getByRole("button", { name: /Holds \/ Rejections/i }).click();
+    await page.getByRole("button", { name: /All Decisions/i }).click();
+  });
+
+  test("tests Run Agent Now button on Agent Dashboard", async ({ page }) => {
+    await page.goto("/agent", { waitUntil: "domcontentloaded" });
+
+    const runAgentBtn = page.getByRole("button", { name: /Run Agent Now/i });
+    await expect(runAgentBtn).toBeVisible({ timeout: 15000 });
+    await runAgentBtn.click();
+
+    // Verify modal appears
+    await expect(page.locator("text=Trigger Autonomous Agent Run")).toBeVisible({ timeout: 5000 });
+    
+    // Close modal
+    const cancelBtn = page.getByRole("button", { name: /Cancel/i });
+    if (await cancelBtn.isVisible()) {
+      await cancelBtn.click();
+    }
   });
 });
