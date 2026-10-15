@@ -11,9 +11,12 @@ model Organization {
   id          String   @id @default(cuid())
   name        String
   currency    String   @default("USDC")
+  walletAddress String? @unique // Primary owner / payer EVM wallet address
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  country        String?
+  contactEmail   String?
   isPilot        Boolean      @default(false)
   websiteUrl     String?
   xUrl           String?
@@ -30,12 +33,14 @@ model Organization {
   auditEvents    AuditEvent[]
   settings       Setting[]
   agentDecisions AgentDecision[]
+  paymentIntents PaymentIntent[]
 }
 
 model Member {
   id             String       @id @default(cuid())
   orgId          String
-  email          String
+  email          String?
+  walletAddress  String?
   role           String       @default("owner") // owner, finance_officer, auditor
   createdAt      DateTime     @default(now())
 
@@ -58,6 +63,7 @@ model Vendor {
   purchaseOrders PurchaseOrder[]
   invoices       Invoice[]
   payments       Payment[]
+  paymentIntents PaymentIntent[]
 }
 
 model Item {
@@ -173,6 +179,7 @@ model Invoice {
   policyEvaluations PolicyEvaluation[]
   payments         Payment[]
   agentDecisions   AgentDecision[]
+  paymentIntents   PaymentIntent[]
 }
 
 model AgentRun {
@@ -310,4 +317,39 @@ model AgentDecision {
   @@index([orgId, timestamp])
   @@index([invoiceId])
 }
+
+model AuthNonce {
+  id        String   @id @default(cuid())
+  nonce     String   @unique
+  address   String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([nonce])
+}
+
+model PaymentIntent {
+  id               String       @id @default(cuid())
+  orgId            String
+  invoiceId        String
+  vendorId         String
+  payerAddress     String
+  recipientAddress String
+  amountAtomic     BigInt
+  tokenAddress     String
+  chainId          Int
+  expiresAt        DateTime
+  status           String       @default("pending") // pending, completed, expired, cancelled
+  txHash           String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  organization     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  invoice          Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  vendor           Vendor       @relation(fields: [vendorId], references: [id])
+
+  @@index([orgId, status])
+  @@index([invoiceId])
+}
+
 

@@ -12,13 +12,13 @@ Started: 15 Oct 2026
 - [x] 1.5 Phase 1 verification and local commit
 
 ### Phase 2 — Wallet Sign-In and Multi-User Isolation
-- [ ] 2.1 Nonce-based Sign-In With Ethereum (EIP-191) authentication: `GET /api/auth/nonce`, `POST /api/auth/verify`, `POST /api/auth/logout`, `GET /api/auth/me`
-- [ ] 2.2 Secure httpOnly SameSite=Lax signed session cookies with viem `verifyMessage` and one-time nonces
-- [ ] 2.3 Client-side wallet connection component using `window.ethereum` with viem (wrong network detection, Arc chain switch / add via `lib/networks.ts`, account switch / disconnect)
-- [ ] 2.4 Organization ownership mapped to connected wallet address; scope all queries and mutations to the session's organization
-- [ ] 2.5 Admin guard for builder-operated features (`ADMIN_WALLET_ADDRESS` or owner passcode); public orgs strictly isolated
-- [ ] 2.6 IDOR matrix and session security tests (cross-org data isolation, expired sessions, replayed nonces, wrong signers)
-- [ ] 2.7 Phase 2 verification and local commit
+- [x] 2.1 Nonce-based Sign-In With Ethereum (EIP-191) authentication: `GET /api/auth/nonce`, `POST /api/auth/verify`, `POST /api/auth/logout`, `GET /api/auth/me`
+- [x] 2.2 Secure httpOnly SameSite=Lax signed session cookies with viem `verifyMessage` and one-time nonces
+- [x] 2.3 Client-side wallet connection component using `window.ethereum` with viem (wrong network detection, Arc chain switch / add via `lib/networks.ts`, account switch / disconnect)
+- [x] 2.4 Organization ownership mapped to connected wallet address; scope all queries and mutations to the session's organization
+- [x] 2.5 Admin guard for builder-operated features (`ADMIN_WALLET_ADDRESS` or owner passcode); public orgs strictly isolated
+- [x] 2.6 IDOR matrix and session security tests (cross-org data isolation, expired sessions, replayed nonces, wrong signers)
+- [x] 2.7 Phase 2 verification and local commit
 
 ### Phase 3 — Onboarding and Data Entry (Zod Validated)
 - [ ] 3.1 Onboarding wizard for new sign-ins: business name, country, optional website/X/LinkedIn, contact email, user governance settings (limits, tolerance, reserve) with beta hard cap `APP_MAX_PAYMENT_USDC`

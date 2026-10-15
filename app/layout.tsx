@@ -6,6 +6,8 @@ import { NetworkBanner } from "@/components/layout/NetworkBadge";
 import { Footer } from "@/components/layout/Footer";
 import { assertValidSandboxMode } from "@/lib/networks";
 
+import { AppProviders } from "@/components/providers/AppProviders";
+
 export const metadata: Metadata = {
   title: "BizFlow Pilot V2 — Policy-Approved USDC Settlement on Arc",
   description:
@@ -25,17 +27,19 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-canvas text-ink flex flex-col font-sans">
-        <NetworkBanner mode={networkMode} isPublicSandbox={isPublicSandbox} />
-        <div className="flex flex-1 min-h-0">
-          <Sidebar />
-          <div className="flex-1 flex flex-col min-w-0">
-            <TopNav networkMode={networkMode} />
-            <main className="flex-1 p-6 md:p-8 max-w-[1280px] w-full mx-auto overflow-y-auto">
-              {children}
-            </main>
-            <Footer networkMode={networkMode} />
+        <AppProviders>
+          <NetworkBanner mode={networkMode} isPublicSandbox={isPublicSandbox} />
+          <div className="flex flex-1 min-h-0">
+            <Sidebar />
+            <div className="flex-1 flex flex-col min-w-0">
+              <TopNav networkMode={networkMode} />
+              <main className="flex-1 p-6 md:p-8 max-w-[1280px] w-full mx-auto overflow-y-auto">
+                {children}
+              </main>
+              <Footer networkMode={networkMode} />
+            </div>
           </div>
-        </div>
+        </AppProviders>
       </body>
     </html>
   );

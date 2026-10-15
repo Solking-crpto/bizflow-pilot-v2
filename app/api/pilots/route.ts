@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma, withDbTimeout } from "@/lib/db";
 import { verifyOwnerPasscodeWithRateLimit, getClientIp } from "@/lib/security/auth";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
+import { getSessionFromRequest, isAdminWallet } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +12,12 @@ export async function GET(req: NextRequest) {
     const showAll = searchParams.get("all") === "true";
     const passcode = req.headers.get("x-owner-passcode") || searchParams.get("passcode") || "";
     const clientIp = getClientIp(req);
+    const session = getSessionFromRequest(req);
 
     let isAuthorizedAdmin = false;
-    if (showAll && passcode) {
+    if (session && isAdminWallet(session.address)) {
+      isAuthorizedAdmin = true;
+    } else if (showAll && passcode) {
       const authCheck = verifyOwnerPasscodeWithRateLimit(passcode, clientIp);
       if (authCheck.authorized) {
         isAuthorizedAdmin = true;
@@ -114,13 +118,17 @@ export async function POST(req: NextRequest) {
   try {
     const clientIp = getClientIp(req);
     const body = await req.json();
+    const session = getSessionFromRequest(req);
 
-    const authCheck = verifyOwnerPasscodeWithRateLimit(body.passcode, clientIp);
-    if (!authCheck.authorized) {
-      return NextResponse.json(
-        { success: false, error: authCheck.error },
-        { status: authCheck.status || 401 }
-      );
+    const isAuthorizedAdmin = session && isAdminWallet(session.address);
+    if (!isAuthorizedAdmin) {
+      const authCheck = verifyOwnerPasscodeWithRateLimit(body.passcode, clientIp);
+      if (!authCheck.authorized) {
+        return NextResponse.json(
+          { success: false, error: authCheck.error },
+          { status: authCheck.status || 401 }
+        );
+      }
     }
 
     if (!body.name || typeof body.name !== "string" || body.name.trim().length === 0) {
@@ -176,13 +184,17 @@ export async function PATCH(req: NextRequest) {
   try {
     const clientIp = getClientIp(req);
     const body = await req.json();
+    const session = getSessionFromRequest(req);
 
-    const authCheck = verifyOwnerPasscodeWithRateLimit(body.passcode, clientIp);
-    if (!authCheck.authorized) {
-      return NextResponse.json(
-        { success: false, error: authCheck.error },
-        { status: authCheck.status || 401 }
-      );
+    const isAuthorizedAdmin = session && isAdminWallet(session.address);
+    if (!isAuthorizedAdmin) {
+      const authCheck = verifyOwnerPasscodeWithRateLimit(body.passcode, clientIp);
+      if (!authCheck.authorized) {
+        return NextResponse.json(
+          { success: false, error: authCheck.error },
+          { status: authCheck.status || 401 }
+        );
+      }
     }
 
     if (!body.orgId) {

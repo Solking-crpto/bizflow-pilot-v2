@@ -63,25 +63,20 @@ describe("Acceptance Verification: Autonomous Agent Loop in DRY_RUN", () => {
   });
 
   it("verifies kill switch completely halts autonomous execution", async () => {
-    // Set kill switch active
-    const setting = await prisma.setting.findFirst();
-    if (setting) {
-      await prisma.setting.update({
-        where: { id: setting.id },
-        data: { killSwitchActive: true },
-      });
+    // Set kill switch active across all settings
+    await prisma.setting.updateMany({
+      data: { killSwitchActive: true },
+    });
 
-      try {
-        const killResult = await runAutonomousAgentLoop({ dryRun: true });
-        expect(killResult.autoExecutedCount).toBe(0);
-        expect(killResult.decisions.every((d) => d.outcome === "held")).toBe(true);
-      } finally {
-        // Disarm kill switch
-        await prisma.setting.update({
-          where: { id: setting.id },
-          data: { killSwitchActive: false },
-        });
-      }
+    try {
+      const killResult = await runAutonomousAgentLoop({ dryRun: true });
+      expect(killResult.autoExecutedCount).toBe(0);
+      expect(killResult.decisions.every((d) => d.outcome === "held")).toBe(true);
+    } finally {
+      // Disarm kill switch
+      await prisma.setting.updateMany({
+        data: { killSwitchActive: false },
+      });
     }
   });
 });
