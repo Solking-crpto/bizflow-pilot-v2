@@ -19,6 +19,7 @@ import {
   DollarSign,
   ShieldCheck,
   Award,
+  Sparkles,
 } from "lucide-react";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { HashView } from "@/components/ui/StatusChip";
@@ -78,7 +79,7 @@ export function AgentDecisionsClient({
 }) {
   const [decisions, setDecisions] = useState<DecisionRecord[]>(initialDecisions);
   const [metrics, setMetrics] = useState<DecisionMetrics>(initialMetrics);
-  const [activeTab, setActiveTab] = useState<"all" | "escalations" | "executed" | "scheduled" | "held">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "proposed" | "escalations" | "executed" | "scheduled" | "held">("all");
   
   // Escalation action state
   const [actingDecisionId, setActingDecisionId] = useState<string | null>(null);
@@ -87,6 +88,7 @@ export function AgentDecisionsClient({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredDecisions = decisions.filter((d) => {
+    if (activeTab === "proposed") return d.outcome === "proposed";
     if (activeTab === "escalations") return d.escalated;
     if (activeTab === "executed") return d.outcome === "executed";
     if (activeTab === "scheduled") return d.outcome === "scheduled";
@@ -204,6 +206,15 @@ export function AgentDecisionsClient({
           }`}
         >
           All Decisions ({decisions.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("proposed")}
+          className={`px-3 py-1.5 rounded-md font-semibold transition-colors flex items-center gap-1.5 ${
+            activeTab === "proposed" ? "bg-sky-700 text-white" : "text-sky-700 hover:bg-sky-50"
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Proposed ({decisions.filter((d) => d.outcome === "proposed").length})</span>
         </button>
         <button
           onClick={() => setActiveTab("escalations")}
@@ -343,20 +354,38 @@ export function AgentDecisionsClient({
 
                       <td className="py-3 px-4 whitespace-nowrap">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className={`text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded ${
-                                d.outcome === "executed"
-                                  ? "bg-success/10 text-success"
-                                  : d.outcome === "escalated"
-                                  ? "bg-amber-100 text-amber-800"
-                                  : d.outcome === "rejected"
-                                  ? "bg-danger/10 text-danger"
-                                  : "bg-canvas text-ink-muted border border-border"
-                              }`}
-                            >
-                              {d.outcome}
-                            </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {d.outcome === "proposed" ? (
+                              <div className="flex flex-col gap-1 items-start">
+                                <span className="bg-sky-50 text-sky-800 border border-sky-300 px-2 py-0.5 rounded font-medium text-[10px] inline-flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3 text-sky-600" />
+                                  Proposed by agent — awaiting user signature
+                                </span>
+                                {d.choice === "pay_now" && (
+                                  <Link
+                                    href="/payments"
+                                    className="text-[10px] font-semibold text-brand-teal hover:underline inline-flex items-center gap-0.5"
+                                  >
+                                    <span>Sign in Payment Desk</span>
+                                    <ArrowRight className="w-2.5 h-2.5" />
+                                  </Link>
+                                )}
+                              </div>
+                            ) : (
+                              <span
+                                className={`text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded ${
+                                  d.outcome === "executed"
+                                    ? "bg-success/10 text-success"
+                                    : d.outcome === "escalated"
+                                    ? "bg-amber-100 text-amber-800"
+                                    : d.outcome === "rejected"
+                                    ? "bg-danger/10 text-danger"
+                                    : "bg-canvas text-ink-muted border border-border"
+                                }`}
+                              >
+                                {d.outcome}
+                              </span>
+                            )}
 
                             {d.txHash && (
                               <a

@@ -5,52 +5,68 @@ import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { runAgentAnalysis } from "@/lib/agent/recommender";
 import { AgentDashboardClient } from "@/components/agent/AgentDashboardClient";
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
-import { getTreasuryBalances } from "@/lib/balances";
+import { getServerSession, getSessionOrg, isAdminWallet } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "AI Finance Agent — Autonomous Treasury Advisory | BizFlow Pilot V2",
-  description: "AI Agent proposal engine decoupled from deterministic policy execution.",
+  title: "AI Finance Agent — Advisory Treasury Copilot | BizFlow Pilot V2",
+  description: "Non-custodial AI Advisory proposing settlements with strict policy and budget bounds.",
 };
 
 export default async function AgentPage() {
-  const isMainnet = (process.env.NEXT_PUBLIC_NETWORK_MODE || process.env.NETWORK_MODE) === "mainnet";
-  const balances = await getTreasuryBalances();
+  const session = await getServerSession();
 
   let invoices: any[] = [];
   let dbError: string | null = null;
+  let runsToday = 0;
+  let orgName: string | null = null;
 
-  try {
-    invoices = await withDbTimeout(
-      () =>
-        prisma.invoice.findMany({
-          where: isMainnet ? { network: "mainnet" } : undefined,
-          include: { vendor: true, purchaseOrder: true },
-          orderBy: { createdAt: "desc" },
-        })
-    );
-  } catch (err: any) {
-    if (isMainnet) {
+  if (session) {
+    try {
+      const org = await getSessionOrg(session);
+      if (org) {
+        orgName = org.name;
+        const startOfDay = new Date();
+        startOfDay.setUTCHours(0, 0, 0, 0);
+
+        const [orgInvoices, decisionCount] = await withDbTimeout(() =>
+          Promise.all([
+            prisma.invoice.findMany({
+              where: {
+                orgId: org.id,
+                status: { in: ["verified", "review_required", "blocked"] },
+              },
+              include: { vendor: true, purchaseOrder: true },
+              orderBy: { createdAt: "desc" },
+            }),
+            prisma.agentDecision.count({
+              where: {
+                orgId: org.id,
+                timestamp: { gte: startOfDay },
+              },
+            }),
+          ])
+        );
+
+        invoices = orgInvoices;
+        runsToday = decisionCount;
+      }
+    } catch (err: any) {
       dbError = err.message || "Failed to load invoices from database.";
-    } else {
-      invoices = [];
     }
   }
 
-  if (isMainnet && dbError) {
+  if (dbError) {
     return (
       <DatabaseErrorState
         title="AI Agent Advisory Database Error"
-        message="Could not load live mainnet invoices from the database. Please verify connectivity and retry."
+        message="Could not load your organization's open invoices. Please verify connectivity and retry."
       />
     );
   }
 
-  const treasuryBalance = isMainnet ? balances.usdcAtomicValue : 100000000000n; // Live on mainnet
-  const minReserve = isMainnet ? 250000n : 2000000000n; // 0.25 USDC on mainnet demo scale
-  const freeCash = treasuryBalance > minReserve ? treasuryBalance - minReserve : 0n;
-
+  // Pre-analyze invoices for immediate display if any exist
   const analyzedInvoices = await Promise.all(
     invoices.map(async (inv) => {
       const { recommendation } = await runAgentAnalysis({
@@ -64,9 +80,9 @@ export default async function AgentPage() {
         isInjectionSuspect: inv.isInjectionSuspect,
         untrustedRawText: inv.rawContent,
         cashPosition: {
-          availableTreasury: formatUsdc(usdcAtomic(treasuryBalance)),
-          minimumReserve: formatUsdc(usdcAtomic(minReserve)),
-          netFreeCash: formatUsdc(usdcAtomic(freeCash)),
+          availableTreasury: "Pending Live Query",
+          minimumReserve: "2.00 USDC",
+          netFreeCash: "Pending Live Query",
         },
         obligationsQueue: {
           totalPendingAmount: formatUsdc(usdcAtomic(inv.totalUsdc)),
@@ -90,10 +106,11 @@ export default async function AgentPage() {
 
   return (
     <AgentDashboardClient
-      invoices={analyzedInvoices}
-      treasuryFormatted={formatUsdc(usdcAtomic(treasuryBalance))}
-      reserveFormatted={formatUsdc(usdcAtomic(minReserve))}
-      freeCashFormatted={formatUsdc(usdcAtomic(freeCash))}
+      initialInvoices={analyzedInvoices}
+      initialRunsToday={runsToday}
+      maxDailyRuns={20}
+      orgName={orgName}
+      isAdmin={isAdminWallet(session?.address)}
     />
   );
 }

@@ -6,6 +6,7 @@ import { prisma, withDbTimeout } from "@/lib/db";
 import { getActiveNetwork } from "@/lib/networks";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { AgentDecisionsClient, DecisionRecord, DecisionMetrics } from "@/components/agent/AgentDecisionsClient";
+import { getServerSession, getSessionOrg, isAdminWallet } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
   title: "Agent Decisions & Escalations | BizFlow Pilot V2",
@@ -14,40 +15,53 @@ export const metadata: Metadata = {
 
 export default async function AgentDecisionsPage() {
   const network = getActiveNetwork();
+  const session = await getServerSession();
 
   let decisions: any[] = [];
   let allDecisions: any[] = [];
   let confirmedPayments: any[] = [];
 
-  try {
-    decisions = await withDbTimeout(() =>
-      prisma.agentDecision.findMany({
-        include: {
-          invoice: {
-            include: {
-              vendor: true,
+  if (session) {
+    try {
+      const org = await getSessionOrg(session);
+      const isAdmin = isAdminWallet(session.address);
+      // For non-admin, strictly isolate to their own organization
+      const orgFilter = isAdmin ? {} : org ? { orgId: org.id } : { orgId: "unauthorized" };
+
+      decisions = await withDbTimeout(() =>
+        prisma.agentDecision.findMany({
+          where: orgFilter,
+          include: {
+            invoice: {
+              include: {
+                vendor: true,
+              },
             },
           },
-        },
-        orderBy: { timestamp: "desc" },
-        take: 100,
-      })
-    );
+          orderBy: { timestamp: "desc" },
+          take: 100,
+        })
+      );
 
-    allDecisions = await withDbTimeout(() =>
-      prisma.agentDecision.findMany({
-        include: { invoice: true },
-      })
-    );
+      allDecisions = await withDbTimeout(() =>
+        prisma.agentDecision.findMany({
+          where: orgFilter,
+          include: { invoice: true },
+        })
+      );
 
-    confirmedPayments = await withDbTimeout(() =>
-      prisma.payment.findMany({
-        where: { status: { in: ["confirmed", "anchored"] } },
-        select: { amountAtomic: true },
-      })
-    );
-  } catch (err) {
-    console.warn("DB query fallback in AgentDecisionsPage:", err);
+      confirmedPayments = await withDbTimeout(() =>
+        prisma.payment.findMany({
+          where: {
+            status: { in: ["confirmed", "anchored"] },
+            invoice: orgFilter,
+          },
+          select: { amountAtomic: true },
+        })
+      );
+    } catch (err) {
+      console.warn("DB query fallback in AgentDecisionsPage:", err);
+    }
   }
 
   // Compute metrics from real rows
@@ -97,19 +111,19 @@ export default async function AgentDecisionsPage() {
     orgId: d.orgId,
     invoiceId: d.invoiceId,
     timestamp: d.timestamp.toISOString(),
-    observationHash: d.observationHash,
-    cashPosition: d.cashPosition,
+    observationHash: d.observationSnapshotHash || d.observationHash || "",
+    cashPosition: d.cashPositionUsdc || d.cashPosition || "",
     choice: d.choice,
     reasoning: d.reasoning,
     source: d.source,
-    model: d.model,
+    model: d.modelName || d.model || "",
     promptVersion: d.promptVersion,
     escalated: d.escalated,
     outcome: d.outcome,
     humanResponse: d.humanResponse,
     txHash: d.txHash,
-    conflictWithPolicy: d.conflictWithPolicy,
-    policyConflictReason: d.policyConflictReason,
+    conflictWithPolicy: d.conflictWithPolicy || false,
+    policyConflictReason: d.policyConflictReason || null,
     scheduledFor: d.scheduledFor ? d.scheduledFor.toISOString() : null,
     invoice: d.invoice
       ? {
