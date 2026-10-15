@@ -20,6 +20,8 @@
     "seed:v2:mainnet": "dotenv -e .env.mainnet.local -- tsx scripts/seedV2.ts",
     "preflight:mainnet": "dotenv -e .env.mainnet.local -- tsx scripts/preflight-mainnet.ts",
     "deploy:anchor:mainnet": "dotenv -e .env.mainnet.local -- tsx scripts/deployAnchorMainnet.ts",
+    "deploy:vault": "dotenv -e .env.testnet.local -- tsx scripts/deployPolicyVault.ts",
+    "deploy:vault:mainnet": "dotenv -e .env.mainnet.local -- tsx scripts/deployPolicyVault.ts",
     "compile:contracts": "node scripts/compile-anchor.js",
     "postinstall": "prisma generate"
   },

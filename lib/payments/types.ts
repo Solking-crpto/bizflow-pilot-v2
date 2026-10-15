@@ -16,7 +16,7 @@ export interface TransferResult {
 }
 
 export interface PaymentProvider {
-  name: "circle" | "direct";
+  name: "circle" | "direct" | "appkit";
   network: "testnet" | "mainnet";
   getBalance(): Promise<{ usdcAtomic: UsdcAtomic; gasAtomic: NativeGasAtomic }>;
   transferUsdc(params: TransferParams): Promise<TransferResult>;

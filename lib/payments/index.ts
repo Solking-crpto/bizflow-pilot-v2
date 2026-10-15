@@ -3,6 +3,7 @@ import "server-only";
 import { PaymentProvider } from "./types";
 import { DirectEvmProvider } from "./directEvmProvider";
 import { CircleWalletsProvider } from "./circleProvider";
+import { AppKitSendProvider } from "./appKitProvider";
 
 /**
  * Returns the configured payment settlement provider
@@ -13,6 +14,10 @@ export function getPaymentProvider(): PaymentProvider {
 
   if (selectedProvider === "circle") {
     return new CircleWalletsProvider(networkMode);
+  }
+
+  if (selectedProvider === "appkit") {
+    return new AppKitSendProvider(networkMode);
   }
 
   return new DirectEvmProvider(networkMode);

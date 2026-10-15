@@ -1,0 +1,425 @@
+{
+  "contractName": "PolicyVault",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_operator",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_perTransactionLimit",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_dailyLimit",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "currentSpent",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "limit",
+          "type": "uint256"
+        }
+      ],
+      "name": "ExceedsDailyLimit",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "limit",
+          "type": "uint256"
+        }
+      ],
+      "name": "ExceedsPerTransactionLimit",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidZeroAddress",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidZeroAmount",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "TransferFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "UnauthorizedCaller",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "VaultIsPaused",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "vendor",
+          "type": "address"
+        }
+      ],
+      "name": "VendorNotApproved",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "FundsReceived",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "perTransactionLimit",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "dailyLimit",
+          "type": "uint256"
+        }
+      ],
+      "name": "LimitsUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOperator",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOperator",
+          "type": "address"
+        }
+      ],
+      "name": "OperatorUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "vendor",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "invoiceHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "PaymentDispatched",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "isPaused",
+          "type": "bool"
+        }
+      ],
+      "name": "VaultPaused",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "vendor",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "approved",
+          "type": "bool"
+        }
+      ],
+      "name": "VendorApprovalChanged",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "approvedVendors",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "currentDay",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "dailyLimit",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "dailySpent",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "operator",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "paused",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address payable",
+          "name": "vendor",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "invoiceHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "pay",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "perTransactionLimit",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_perTxLimit",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_dailyLimit",
+          "type": "uint256"
+        }
+      ],
+      "name": "setLimits",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_operator",
+          "type": "address"
+        }
+      ],
+      "name": "setOperator",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bool",
+          "name": "_paused",
+          "type": "bool"
+        }
+      ],
+      "name": "setPaused",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "vendor",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "approved",
+          "type": "bool"
+        }
+      ],
+      "name": "setVendorApproval",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "stateMutability": "payable",
+      "type": "receive"
+    }
+  ],
+  "bytecode": "0x608060405234801561001057600080fd5b50604051610a2a380380610a2a83398101604081905261002f916100a2565b6001600160a01b0383166100565760405163f6b2911f60e01b815260040160405180910390fd5b60008054336001600160a01b031991821617909155600180549091166001600160a01b0385161790556002829055600381905561009662015180426100e5565b60045550610107915050565b6000806000606084860312156100b757600080fd5b83516001600160a01b03811681146100ce57600080fd5b602085015160409095015190969495509392505050565b60008261010257634e487b7160e01b600052601260045260246000fd5b500490565b610914806101166000396000f3fe6080604052600436106100c65760003560e01c8063631e4b851161007f578063b3ab15fb11610059578063b3ab15fb1461023d578063c4590d3f1461025d578063e7f6376e1461027d578063ee2ec215146102ad57600080fd5b8063631e4b85146101f157806367eeba0c146102075780638da5cb5b1461021d57600080fd5b80630bc6b89c1461010757806316c38b3c14610130578063570ca735146101525780635c9302c91461018a5780635c975abb146101a05780635e5571ac146101d157600080fd5b366101025760405134815233907f8e47b87b0ef542cdfa1659c551d88bad38aa7f452d2bbb349ab7530dfec8be8f9060200160405180910390a2005b600080fd5b34801561011357600080fd5b5061011d60055481565b6040519081526020015b60405180910390f35b34801561013c57600080fd5b5061015061014b3660046107b2565b6102cd565b005b34801561015e57600080fd5b50600154610172906001600160a01b031681565b6040516001600160a01b039091168152602001610127565b34801561019657600080fd5b5061011d60045481565b3480156101ac57600080fd5b506001546101c190600160a01b900460ff1681565b6040519015158152602001610127565b3480156101dd57600080fd5b506101506101ec3660046107ec565b610357565b3480156101fd57600080fd5b5061011d60025481565b34801561021357600080fd5b5061011d60035481565b34801561022957600080fd5b50600054610172906001600160a01b031681565b34801561024957600080fd5b50610150610258366004610821565b6105d0565b34801561026957600080fd5b5061015061027836600461083e565b610676565b34801561028957600080fd5b506101c1610298366004610821565b60066020526000908152604090205460ff1681565b3480156102b957600080fd5b506101506102c8366004610860565b6106ea565b6000546001600160a01b031633146102ff5760405163d86ad9cf60e01b81523360048201526024015b60405180910390fd5b60018054821515600160a01b0260ff60a01b199091161790556040517f152cbfe4e8597a33181d2da9ed5162e734ca8b263b9eb6105f169287a39908f69061034c90831515815260200190565b60405180910390a150565b6001546001600160a01b0316331480159061037d57506000546001600160a01b03163314155b1561039d5760405163d86ad9cf60e01b81523360048201526024016102f6565b600154600160a01b900460ff16156103c8576040516336039cdb60e11b815260040160405180910390fd5b6001600160a01b0383166103ef5760405163f6b2911f60e01b815260040160405180910390fd5b8160000361041057604051630dd484e760e41b815260040160405180910390fd5b6001600160a01b03831660009081526006602052604090205460ff1661045457604051635d9e9c3960e01b81526001600160a01b03841660048201526024016102f6565b60025482111561048557600254604051633ad692e960e11b81526102f6918491600401918252602082015260400190565b60006104946201518042610895565b90506004548111156104ab57600481905560006005555b600354836005546104bc91906108b7565b11156104f15760055460035460405163cbb6a18160e01b815260048101869052602481019290925260448201526064016102f6565b826005600082825461050391906108b7565b90915550506040805184815242602082015283916001600160a01b038716917f53937d0c5999e1a5644095d9c55373565a64a5ad88d5104683d73dd8329bc805910160405180910390a38247106105ca576000846001600160a01b03168460405160006040518083038185875af1925050503d80600081146105a1576040519150601f19603f3d011682016040523d82523d6000602084013e6105a6565b606091505b50509050806105c8576040516312171d8360e31b815260040160405180910390fd5b505b50505050565b6000546001600160a01b031633146105fd5760405163d86ad9cf60e01b81523360048201526024016102f6565b6001600160a01b0381166106245760405163f6b2911f60e01b815260040160405180910390fd5b600180546001600160a01b038381166001600160a01b0319831681179093556040519116919082907ffbe5b6cbafb274f445d7fed869dc77a838d8243a22c460de156560e8857cad0390600090a35050565b6000546001600160a01b031633146106a35760405163d86ad9cf60e01b81523360048201526024016102f6565b6002829055600381905560408051838152602081018390527f4d4981437d0211f9e6843eb024d9ada1fa3a99514d4343d4aece106dd11524bb910160405180910390a15050565b6000546001600160a01b031633146107175760405163d86ad9cf60e01b81523360048201526024016102f6565b6001600160a01b03821661073e5760405163f6b2911f60e01b815260040160405180910390fd5b6001600160a01b038216600081815260066020908152604091829020805460ff191685151590811790915591519182527f27caa0e3acb07533813f8e6bbe70a4de419d24df3db05791b72a57d52f53b579910160405180910390a25050565b803580151581146107ad57600080fd5b919050565b6000602082840312156107c457600080fd5b6107cd8261079d565b9392505050565b6001600160a01b03811681146107e957600080fd5b50565b60008060006060848603121561080157600080fd5b833561080c816107d4565b95602085013595506040909401359392505050565b60006020828403121561083357600080fd5b81356107cd816107d4565b6000806040838503121561085157600080fd5b50508035926020909101359150565b6000806040838503121561087357600080fd5b823561087e816107d4565b915061088c6020840161079d565b90509250929050565b6000826108b257634e487b7160e01b600052601260045260246000fd5b500490565b808201808211156108d857634e487b7160e01b600052601160045260246000fd5b9291505056fea26469706673582212209550eeca30ccd3cd231b9f284d186da5375178734c25bcd16e9995aab29402ab64736f6c63430008250033"
+}

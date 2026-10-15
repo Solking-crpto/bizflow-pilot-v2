@@ -18,6 +18,7 @@ import {
   Calendar,
   Percent,
   Clock,
+  ShieldCheck,
 } from "lucide-react";
 import { StatusChip, HashView } from "@/components/ui/StatusChip";
 import { ThreeWayDiffViewer } from "./ThreeWayDiffViewer";
@@ -257,6 +258,22 @@ export function InvoiceDeskClient({ invoices }: { invoices: SerializedInvoice[] 
                     <span className="text-ink-muted font-medium">Remittance Wallet:</span>
                     <HashView hash={selectedInvoice.vendorWallet} truncate={false} />
                   </div>
+                </div>
+
+                {/* Vendor Address Screening Status (Honest Disclaimer) */}
+                <div className="p-2.5 rounded-lg bg-canvas border border-border text-[11px] space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-ink flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-brand-teal" />
+                      <span>Address Screening:</span>
+                    </span>
+                    <span className="font-mono text-[10px] text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">
+                      Sanctions list not loaded
+                    </span>
+                  </div>
+                  <p className="text-ink-muted leading-relaxed">
+                    Official sanctions feed is NOT loaded. Screening is restricted to local public test-wallet blocklists (Hardhat/Anvil default accounts). Regulatory sanctions screening is not currently performed.
+                  </p>
                 </div>
 
                 {/* Raw Untrusted Payload Preview */}

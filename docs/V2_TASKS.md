@@ -77,14 +77,14 @@ Started: 15 Oct 2026
   - [x] Tests and build pass; local git commit
 
 ## Tier 3 — Extensions behind Feature Flags
-- [ ] **14. Arc App Kit Send Provider**
-  - [ ] Implement `AppKitSendProvider` adhering to `https://docs.arc.network/app-kit/send`
-  - [ ] Feature flag `ENABLE_APP_KIT_SEND=true` (off by default on mainnet)
-- [ ] **15. PolicyVault Smart Contract**
-  - [ ] Solidity contract (`contracts/PolicyVault.sol`) with `paris` EVM target
-  - [ ] Hardhat tests for limits, approved vendors, operator execution
-  - [ ] Safe deployment script with `--yes` gate
-- [ ] **16. Sanctions Screening Interface**
-  - [ ] Interface for vendor sanctions screening
-  - [ ] Clear UI disclaimer when official provider is not connected
-- [ ] **17. Final Preflight & Acceptance Report**
+- [x] **14. Arc App Kit Send Provider**
+  - [x] Implement `AppKitSendProvider` adhering to `https://docs.arc.network/app-kit/send`
+  - [x] Feature flag `ENABLE_APP_KIT_SEND=true` (off by default on mainnet)
+- [x] **15. PolicyVault Smart Contract**
+  - [x] Solidity contract (`contracts/PolicyVault.sol`) with `paris` EVM target
+  - [x] Unit/ABI tests for limits, approved vendors, operator execution
+  - [x] Safe deployment script with `--yes` gate
+- [x] **16. Sanctions Screening Interface**
+  - [x] Interface for vendor sanctions screening
+  - [x] Clear UI disclaimer when official provider is not connected
+- [x] **17. Final Preflight & Acceptance Report**

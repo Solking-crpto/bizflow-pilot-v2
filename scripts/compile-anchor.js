@@ -2,12 +2,14 @@ const solc = require("solc");
 const fs = require("fs");
 const path = require("path");
 
-const source = fs.readFileSync(path.join(__dirname, "../contracts/AuditAnchor.sol"), "utf8");
+const anchorSource = fs.readFileSync(path.join(__dirname, "../contracts/AuditAnchor.sol"), "utf8");
+const vaultSource = fs.readFileSync(path.join(__dirname, "../contracts/PolicyVault.sol"), "utf8");
 
 const input = {
   language: "Solidity",
   sources: {
-    "AuditAnchor.sol": { content: source },
+    "AuditAnchor.sol": { content: anchorSource },
+    "PolicyVault.sol": { content: vaultSource },
   },
   settings: {
     optimizer: { enabled: true, runs: 200 },
@@ -23,22 +25,37 @@ const input = {
 const output = JSON.parse(solc.compile(JSON.stringify(input)));
 if (output.errors) {
   for (const err of output.errors) {
-    console.error(err.formattedMessage);
+    if (err.severity === "error") {
+      console.error(err.formattedMessage);
+    } else {
+      console.warn(err.formattedMessage);
+    }
   }
 }
 
-const contract = output.contracts["AuditAnchor.sol"]["AuditAnchor"];
-console.log("ABI items:", contract.abi.length);
-console.log("Bytecode length:", contract.evm.bytecode.object.length);
-
-// Save compiled artifact
 fs.mkdirSync(path.join(__dirname, "../artifacts/contracts"), { recursive: true });
+
+// 1. AuditAnchor
+const anchorContract = output.contracts["AuditAnchor.sol"]["AuditAnchor"];
 fs.writeFileSync(
   path.join(__dirname, "../artifacts/contracts/AuditAnchor.json"),
   JSON.stringify({
     contractName: "AuditAnchor",
-    abi: contract.abi,
-    bytecode: "0x" + contract.evm.bytecode.object,
+    abi: anchorContract.abi,
+    bytecode: "0x" + anchorContract.evm.bytecode.object,
   }, null, 2)
 );
-console.log("Saved compiled artifact to artifacts/contracts/AuditAnchor.json");
+console.log("Compiled AuditAnchor (Paris EVM):", anchorContract.abi.length, "ABI items");
+
+// 2. PolicyVault
+const vaultContract = output.contracts["PolicyVault.sol"]["PolicyVault"];
+fs.writeFileSync(
+  path.join(__dirname, "../artifacts/contracts/PolicyVault.json"),
+  JSON.stringify({
+    contractName: "PolicyVault",
+    abi: vaultContract.abi,
+    bytecode: "0x" + vaultContract.evm.bytecode.object,
+  }, null, 2)
+);
+console.log("Compiled PolicyVault (Paris EVM):", vaultContract.abi.length, "ABI items");
+
