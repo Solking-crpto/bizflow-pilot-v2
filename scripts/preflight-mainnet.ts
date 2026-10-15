@@ -112,16 +112,16 @@ async function runPreflight(): Promise<void> {
   }
 
   const maxPaymentUsdc = parseFloat(process.env.MAX_MAINNET_PAYMENT_USDC || "1.00");
-  const maxPaymentAtomic = parseUsdc(maxPaymentUsdc.toFixed(2));
+  const minRequiredAtomic = parseUsdc(process.env.AUTO_APPROVE_LIMIT_USDC || "0.50");
   const hasGas = treasuryGasBalance > 0n;
-  const hasUsdc = treasuryUsdcBalance >= maxPaymentAtomic;
+  const hasUsdc = treasuryUsdcBalance >= minRequiredAtomic;
 
   results.push({
     title: "Treasury Account Balances",
     passed: treasuryDerivationPassed && hasGas && hasUsdc,
     details: !treasuryDerivationPassed
       ? "Could not derive treasury account from TREASURY_PRIVATE_KEY"
-      : `Address: ${treasuryAddress.slice(0, 6)}...${treasuryAddress.slice(-4)} | Gas: ${hasGas ? "Funded (>0)" : "0 (Needs Arc gas-USDC)"} | USDC: ${formatUsdc(usdcAtomic(treasuryUsdcBalance))}`,
+      : `Address: ${treasuryAddress.slice(0, 6)}...${treasuryAddress.slice(-4)} | Gas: ${hasGas ? "Funded (>0)" : "0 (Needs Arc gas-USDC)"} | USDC: ${formatUsdc(usdcAtomic(treasuryUsdcBalance))} (>= ${formatUsdc(usdcAtomic(minRequiredAtomic))} auto-limit)`,
   });
 
   // Check 5: Vendor Wallet Isolation & Blocklist

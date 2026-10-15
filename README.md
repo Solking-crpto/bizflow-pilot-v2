@@ -48,7 +48,7 @@ Upgraded from the original [BizFlow Pilot (Arc Microgrants edition)](https://git
 | **Builder-Operated Treasury** | `0x061F5c70D68A246b654724C0f9595F3a14cF9b0B` | Arc Mainnet (`5042`) | [View Treasury on Arc Explorer](https://explorer.arc.io/address/0x061F5c70D68A246b654724C0f9595F3a14cF9b0B) |
 | **Audit Anchor Contract** | `0xf277e351656699c2a0e1a0d9e4ecb5e786916ba9` | Arc Mainnet (`5042`) | [View Audit Anchor Contract](https://explorer.arc.io/address/0xf277e351656699c2a0e1a0d9e4ecb5e786916ba9) |
 | **Native USDC System Contract** | `0x3600000000000000000000000000000000000000` | Arc Mainnet (`5042`) | [View USDC Contract](https://explorer.arc.io/address/0x3600000000000000000000000000000000000000) |
-| **Active Verified Vendor (Dangote Cement Distribution (demo))** | `0x70997970C51812dc3A010C7d01b50e0d17dc79C8` | Arc Mainnet (`5042`) | [View Vendor Wallet](https://explorer.arc.io/address/0x70997970C51812dc3A010C7d01b50e0d17dc79C8) |
+| **Active Verified Vendor (Northgate Cement Supply (demo vendor))** | `0x3B5D2009e6c2d05413AB77853158fE3f445A174d` | Arc Mainnet (`5042`) | [View Vendor Wallet](https://explorer.arc.io/address/0x3B5D2009e6c2d05413AB77853158fE3f445A174d) |
 <!-- ADDRESSES_PROOF_END -->
 
 ---

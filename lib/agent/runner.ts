@@ -9,10 +9,12 @@ import { getActiveNetwork } from "../networks";
 import { isBlocklistedWallet } from "../security/walletBlocklist";
 
 export interface AgentRunResult {
+  success: boolean;
   runId: string;
   timestamp: string;
   mode: "assisted" | "autonomous";
   invoicesEvaluated: number;
+  processedCount: number;
   autoExecutedCount: number;
   scheduledCount: number;
   heldCount: number;
@@ -150,8 +152,8 @@ export async function runAutonomousAgentLoop(params?: {
 
     // Hostile or duplicate flags override timing
     if (inv.isInjectionSuspect) {
-      choice = "escalate";
-      reasoning = "SECURITY ALERT: Adversarial prompt injection detected in invoice payload. Payment quarantined.";
+      choice = "hold";
+      reasoning = "SECURITY ALERT: Adversarial prompt injection detected in invoice payload. Payment quarantined and blocked.";
     } else if (inv.duplicateScore >= 90) {
       choice = "hold";
       reasoning = `Duplicate invoice risk score is ${inv.duplicateScore}%. Payment held to prevent double-spending.`;
@@ -269,6 +271,13 @@ export async function runAutonomousAgentLoop(params?: {
       heldCount++;
     }
 
+    if (settings.killSwitchActive) {
+      choice = "hold";
+      outcome = "held";
+      escalated = false;
+      reasoning = "EMERGENCY HALT: Global kill switch is armed. All settlements paused and held.";
+    }
+
     // 5. Persist AgentDecision record
     const decision = await prisma.agentDecision.create({
       data: {
@@ -294,10 +303,12 @@ export async function runAutonomousAgentLoop(params?: {
   }
 
   return {
+    success: true,
     runId: `run-${Date.now()}`,
     timestamp: new Date().toISOString(),
     mode: agentMode,
     invoicesEvaluated: openInvoices.length,
+    processedCount: openInvoices.length,
     autoExecutedCount,
     scheduledCount,
     heldCount,

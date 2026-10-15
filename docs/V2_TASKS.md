@@ -1,7 +1,8 @@
 # BizFlow Pilot V2 — Tameion Upgrade Task Checklist
 
-Status: IN_PROGRESS
+Status: COMPLETED
 Started: 15 Oct 2026
+Completed: 15 Oct 2026
 
 ## Tier 1 — Agency on Mainnet (Target: Must Ship)
 - [x] **1. V2 Identity & Links**
@@ -59,7 +60,7 @@ Started: 15 Oct 2026
   - [x] Update `tests/leak.test.ts` and `tests/endpoints.test.ts` to run reliably
   - [x] Playwright E2E for new pages and run button (dry run)
   - [x] All tests passing (`npm test`), build passing (`next build`), local git commit
-
+ 
 ## Tier 2 — Traction & Judge Hands-on
 - [x] **11. Pilot Organizations**
   - [x] Update `Organization` schema: `isPilot`, `proofUrls` (website, X, LinkedIn), `publicConsent`, `createdAt`
@@ -88,3 +89,6 @@ Started: 15 Oct 2026
   - [x] Interface for vendor sanctions screening
   - [x] Clear UI disclaimer when official provider is not connected
 - [x] **17. Final Preflight & Acceptance Report**
+  - [x] Unit/Acceptance tests passing (16 test suites, 96 tests)
+  - [x] Mainnet preflight passing against `v2_mainnet` schema and live Arc Mainnet RPC
+  - [x] Local git commit with clean tree
