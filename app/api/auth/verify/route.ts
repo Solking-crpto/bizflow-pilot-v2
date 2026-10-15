@@ -8,9 +8,17 @@ import {
   SESSION_COOKIE_NAME,
 } from "@/lib/auth/session";
 
+import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
+
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  const rl = checkRateLimit(`auth:verify:${ip}`, 20, 60_000);
+  if (!rl.allowed) {
+    return rateLimitExceededResponse(rl.retryAfterSeconds);
+  }
+
   try {
     const body = await req.json();
     const { message, signature, address } = body || {};

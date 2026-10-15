@@ -12,12 +12,21 @@ const CreateIntentSchema = z.object({
   invoiceId: z.string().min(1, "Invoice ID is required"),
 });
 
+import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
+
 export async function POST(req: NextRequest) {
   try {
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized: Please connect your wallet" }, { status: 401 });
     }
+
+    const ip = getClientIp(req);
+    const rlIp = checkRateLimit(`payment:intent:ip:${ip}`, 30, 60_000);
+    if (!rlIp.allowed) return rateLimitExceededResponse(rlIp.retryAfterSeconds);
+
+    const rlWallet = checkRateLimit(`payment:intent:wallet:${session.address}`, 20, 60_000);
+    if (!rlWallet.allowed) return rateLimitExceededResponse(rlWallet.retryAfterSeconds);
 
     const org = await getSessionOrg(session);
     if (!org) {

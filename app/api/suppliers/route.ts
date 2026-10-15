@@ -57,12 +57,18 @@ export async function GET(req: NextRequest) {
   }
 }
 
+import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
+
 export async function POST(req: NextRequest) {
   try {
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized: Please sign in" }, { status: 401 });
     }
+
+    const ip = getClientIp(req);
+    const rlIp = checkRateLimit(`supplier:create:ip:${ip}`, 30, 60_000);
+    if (!rlIp.allowed) return rateLimitExceededResponse(rlIp.retryAfterSeconds);
 
     const org = await getSessionOrg(session);
     if (!org) {

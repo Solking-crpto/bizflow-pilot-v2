@@ -12,12 +12,21 @@ export const dynamic = "force-dynamic";
 const APP_DAILY_LLM_LIMIT = parseInt(process.env.LLM_DAILY_CALL_LIMIT || "100", 10);
 const ORG_DAILY_LLM_LIMIT = 20;
 
+import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
+
 export async function POST(req: NextRequest) {
   try {
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized: Please connect your wallet" }, { status: 401 });
     }
+
+    const ip = getClientIp(req);
+    const rlIp = checkRateLimit(`agent:analyze:ip:${ip}`, 30, 60_000);
+    if (!rlIp.allowed) return rateLimitExceededResponse(rlIp.retryAfterSeconds);
+
+    const rlWallet = checkRateLimit(`agent:analyze:wallet:${session.address}`, 20, 60_000);
+    if (!rlWallet.allowed) return rateLimitExceededResponse(rlWallet.retryAfterSeconds);
 
     const org = await getSessionOrg(session);
     if (!org) {
