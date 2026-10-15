@@ -8,6 +8,8 @@ import { PaymentDeskClient, PayableInvoiceItem } from "@/components/payments/Pay
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 import { getTreasuryBalances } from "@/lib/balances";
 
+import { getServerSession, getSessionOrg } from "@/lib/auth/session";
+
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
@@ -21,27 +23,35 @@ export default async function PaymentsPage() {
   const isDryRun = process.env.DRY_RUN === "true" || process.env.NEXT_PUBLIC_DRY_RUN === "true";
   const treasuryBalances = await getTreasuryBalances();
 
+  const session = await getServerSession();
   let invoices: any[] = [];
   let dbError: string | null = null;
 
-  try {
-    invoices = await withDbTimeout(
-      () =>
-        prisma.invoice.findMany({
-          where: isMainnet ? { network: "mainnet" } : undefined,
-          include: {
-            vendor: true,
-            payments: { orderBy: { initiatedAt: "desc" }, take: 1 },
-            organization: { include: { settings: true } },
-          },
-          orderBy: { createdAt: "desc" },
-        })
-    );
-  } catch (err: any) {
-    if (isMainnet) {
-      dbError = err.message || "Failed to load payment queue from database.";
-    } else {
-      invoices = [];
+  if (session) {
+    try {
+      const org = await getSessionOrg(session);
+      if (org) {
+        invoices = await withDbTimeout(() =>
+          prisma.invoice.findMany({
+            where: {
+              orgId: org.id,
+              ...(isMainnet ? { network: "mainnet" } : {}),
+            },
+            include: {
+              vendor: true,
+              payments: { orderBy: { initiatedAt: "desc" }, take: 1 },
+              organization: { include: { settings: true } },
+            },
+            orderBy: { createdAt: "desc" },
+          })
+        );
+      }
+    } catch (err: any) {
+      if (isMainnet) {
+        dbError = err.message || "Failed to load payment queue from database.";
+      } else {
+        invoices = [];
+      }
     }
   }
 

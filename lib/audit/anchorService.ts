@@ -7,10 +7,8 @@ import { getActiveNetwork } from "../networks";
 import { recordAuditEvent } from "./ledger";
 import { sha256Bytes32, sha256 } from "../crypto";
 
-const ANCHOR_ABI = parseAbi([
-  "function anchor(bytes32 invoiceHash, bytes32 decisionHash, bytes32 paymentRef) external",
-  "event Anchored(bytes32 indexed invoiceHash, bytes32 indexed decisionHash, bytes32 indexed paymentRef, address sender, uint256 timestamp)",
-]);
+import { ANCHOR_ABI } from "../contracts/auditAnchorAbi";
+export { ANCHOR_ABI };
 
 export async function executeAnchorProof(params: {
   paymentId: string;

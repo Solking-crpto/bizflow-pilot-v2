@@ -18,6 +18,9 @@ import {
 import { StatusChip, HashView } from "@/components/ui/StatusChip";
 import { truncateHash } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useWallet } from "@/components/auth/WalletContext";
+import { NonCustodialPaymentModal } from "./NonCustodialPaymentModal";
+import { useRouter } from "next/navigation";
 
 export interface PayableInvoiceItem {
   id: string;
@@ -56,9 +59,12 @@ export function PaymentDeskClient({
   isDryRun?: boolean;
   isPublicSandbox?: boolean;
 }) {
+  const router = useRouter();
+  const { isAdmin } = useWallet();
   const [selectedId, setSelectedId] = useState<string>(items[0]?.id || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMainnetModalOpen, setIsMainnetModalOpen] = useState(false);
+  const [isNonCustodialModalOpen, setIsNonCustodialModalOpen] = useState(false);
   const [passcode, setPasscode] = useState("");
   const [passcodeError, setPasscodeError] = useState<string | null>(null);
   const [executionResult, setExecutionResult] = useState<any>(null);
@@ -144,16 +150,16 @@ export function PaymentDeskClient({
         )}
       </div>
 
-      {/* Builder-Operated Treasury Notice */}
+      {/* Non-Custodial Architecture Notice */}
       <div className="p-3 rounded-lg bg-surface border border-border text-xs text-ink flex items-center justify-between gap-2 shadow-2xs">
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-brand-teal shrink-0" />
           <span>
-            <strong>Builder-operated treasury, funded by the business.</strong> Settlements execute directly via the single server treasury on Arc. No external private keys stored.
+            <strong>Non-Custodial Architecture.</strong> Settlements execute directly from your connected EVM wallet on Arc. BizFlow never requests, receives, or holds your private keys.
           </span>
         </div>
         <span className="text-[10px] bg-canvas text-ink-muted border border-border px-1.5 py-0.5 rounded font-mono shrink-0">
-          verifiable escrow
+          non-custodial
         </span>
       </div>
 
@@ -368,34 +374,60 @@ export function PaymentDeskClient({
                   Idempotency: PAY-{selected.id}-{networkMode}
                 </span>
 
-                <button
-                  onClick={() => handleExecutePayment(false)}
-                  disabled={
-                    isSubmitting ||
-                    selected.policyDecision === "block" ||
-                    selected.status === "paid" ||
-                    !!selected.paymentRecord
-                  }
-                  className={`px-5 py-2.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-2 transition-all ${
-                    selected.status === "paid" || selected.paymentRecord
-                      ? "bg-canvas text-ink-muted cursor-not-allowed border border-border"
-                      : selected.policyDecision === "block"
-                      ? "bg-slate-200 text-slate-500 cursor-not-allowed"
-                      : "bg-brand-teal text-white hover:bg-brand-hover shadow-card"
-                  }`}
-                >
-                  <CreditCard className="w-4 h-4" />
-                  <span>
-                    {isSubmitting
-                      ? "Settling on Arc..."
-                      : selected.status === "paid" || selected.paymentRecord
-                      ? "Already Settled"
-                      : selected.policyDecision === "block"
-                      ? "Settlement Blocked"
-                      : `Execute ${selected.amountFormatted} Settlement`}
-                  </span>
-                </button>
+                <div className="flex items-center gap-2">
+                  {isAdmin && (
+                    <button
+                      onClick={() => handleExecutePayment(false)}
+                      disabled={
+                        isSubmitting ||
+                        selected.policyDecision === "block" ||
+                        selected.status === "paid" ||
+                        !!selected.paymentRecord
+                      }
+                      className="px-3 py-2 rounded-lg text-xs font-semibold bg-white border border-border text-ink hover:bg-canvas disabled:opacity-50 transition-all shadow-xs"
+                      title="Builder-operated admin treasury route"
+                    >
+                      <span>Server Treasury</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => setIsNonCustodialModalOpen(true)}
+                    disabled={
+                      selected.policyDecision === "block" ||
+                      selected.status === "paid" ||
+                      !!selected.paymentRecord
+                    }
+                    className={`px-5 py-2.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-2 transition-all ${
+                      selected.status === "paid" || selected.paymentRecord
+                        ? "bg-canvas text-ink-muted cursor-not-allowed border border-border"
+                        : selected.policyDecision === "block"
+                        ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                        : "bg-navy text-white hover:bg-navy-light shadow-card"
+                    }`}
+                  >
+                    <CreditCard className="w-4 h-4 text-brand-teal" />
+                    <span>
+                      {selected.status === "paid" || selected.paymentRecord
+                        ? "Already Settled"
+                        : selected.policyDecision === "block"
+                        ? "Settlement Blocked"
+                        : `Pay ${selected.amountFormatted} with Wallet`}
+                    </span>
+                  </button>
+                </div>
               </div>
+
+              <NonCustodialPaymentModal
+                isOpen={isNonCustodialModalOpen}
+                invoiceId={selected.id}
+                onClose={() => setIsNonCustodialModalOpen(false)}
+                onSuccess={(payment) => {
+                  setExecutionResult(payment);
+                  setIsNonCustodialModalOpen(false);
+                  router.refresh();
+                }}
+              />
             </div>
           ) : (
             <div className="p-8 text-center text-ink-muted border rounded-xl bg-surface">

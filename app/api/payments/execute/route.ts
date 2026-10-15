@@ -6,6 +6,9 @@ import { verifyOwnerPasscodeWithRateLimit, getClientIp } from "@/lib/security/au
 import { executePaymentTransaction } from "@/lib/payments/executor";
 import { getActiveNetwork } from "@/lib/networks";
 
+import { getSessionFromRequest, isAdminWallet } from "@/lib/auth/session";
+import { prisma, withDbTimeout } from "@/lib/db";
+
 const ExecutePaymentSchema = z.object({
   invoiceId: z.string(),
   hasOwnerConfirmation: z.boolean().optional(),
@@ -22,6 +25,34 @@ export async function POST(req: NextRequest) {
     }
 
     const { invoiceId, hasOwnerConfirmation, passcode } = parsed.data;
+
+    // Strict Non-Custodial Guard:
+    // Public organizations must NEVER use the server treasury private key.
+    const session = getSessionFromRequest(req);
+    if (session && !isAdminWallet(session.address)) {
+      return NextResponse.json(
+        { error: "Public organizations must sign payments with their own wallet." },
+        { status: 403 }
+      );
+    }
+
+    const invoice = await withDbTimeout(() =>
+      prisma.invoice.findUnique({
+        where: { id: invoiceId },
+        include: { organization: true },
+      })
+    );
+
+    if (!invoice) {
+      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+    }
+
+    if (invoice.organization?.walletAddress && !isAdminWallet(invoice.organization.walletAddress)) {
+      return NextResponse.json(
+        { error: "Public organizations must sign payments with their own wallet." },
+        { status: 403 }
+      );
+    }
 
     const network = getActiveNetwork();
     const isMainnet = network.mode === "mainnet";
@@ -50,7 +81,6 @@ export async function POST(req: NextRequest) {
       }
 
       // Check tiny sandbox cap (<= 0.05 USDC = 50,000 atomic)
-      const { prisma } = await import("@/lib/db");
       const inv = await prisma.invoice.findUnique({ where: { id: invoiceId } });
       if (inv && inv.totalUsdc > 50000n) {
         return NextResponse.json(

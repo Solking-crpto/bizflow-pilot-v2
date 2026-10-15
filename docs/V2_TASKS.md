@@ -29,13 +29,13 @@ Started: 15 Oct 2026
 - [x] 3.6 Phase 3 verification and local commit
 
 ### Phase 4 — Non-Custodial Payment Flow
-- [ ] 4.1 Payment Intent lifecycle: `POST /api/payments/intent` with policy gate re-evaluation, atomic amount, recipient, token, expiry, idempotency key
-- [ ] 4.2 Client-side signing with user's wallet via viem: chain check, gas check, USDC balance check, ERC-20 transfer
-- [ ] 4.3 On-chain receipt verification: `POST /api/payments/verify-receipt` fetching receipt from Arc RPC, verifying token address, sender, recipient, amount, status
-- [ ] 4.4 Non-custodial Audit Anchor: update `AuditAnchor.sol` uniqueness key to `(msg.sender, invoiceHash)`, compile Paris EVM target, user signs anchor tx
-- [ ] 4.5 Public `/verify/[id]` privacy filter (displays only org-approved public proof data from live RPC)
-- [ ] 4.6 Strict non-custodial guard: prevent public orgs from accessing server-treasury execution path
-- [ ] 4.7 Phase 4 verification and local commit
+- [x] 4.1 Payment Intent lifecycle: `POST /api/payments/intent` with policy gate re-evaluation, atomic amount, recipient, token, expiry, idempotency key
+- [x] 4.2 Client-side signing with user's wallet via viem: chain check, gas check, USDC balance check, ERC-20 transfer
+- [x] 4.3 On-chain receipt verification: `POST /api/payments/verify-receipt` fetching receipt from Arc RPC, verifying token address, sender, recipient, amount, status
+- [x] 4.4 Non-custodial Audit Anchor: update `AuditAnchor.sol` uniqueness key to `(msg.sender, invoiceHash)`, compile Paris EVM target, user signs anchor tx
+- [x] 4.5 Public `/verify/[id]` privacy filter (displays only org-approved public proof data from live RPC)
+- [x] 4.6 Strict non-custodial guard: prevent public orgs from accessing server-treasury execution path
+- [x] 4.7 Phase 4 verification and local commit
 
 ### Phase 5 — Agent for Public Orgs
 - [ ] 5.1 Public org "Analyze my invoices" action: reads org's open invoices and cash position directly from connected wallet, recommends pay now / schedule / hold / review with reasons

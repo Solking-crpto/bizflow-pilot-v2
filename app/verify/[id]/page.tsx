@@ -61,7 +61,11 @@ export default async function VerifyPaymentPassportPage({
       () =>
         prisma.payment.findFirst({
           where: {
-            OR: [{ id: id }, { invoiceId: id }],
+            OR: [
+              { id: id },
+              { invoiceId: id },
+              { txHash: { equals: id, mode: "insensitive" } },
+            ],
           },
           include: {
             invoice: { include: { policyEvaluations: true, purchaseOrder: true } },
@@ -70,24 +74,24 @@ export default async function VerifyPaymentPassportPage({
             anchor: true,
           },
         }),
-      2500
+      4000
     );
 
-    // If no direct payment found yet (or demo route), look up the first verified/paid invoice
+    // If payment not found directly, check if id is an invoice with payment
     if (!payment) {
       const invoice = await withDbTimeout(
         () =>
-          prisma.invoice.findFirst({
-            where: { status: { in: ["verified", "paid"] } },
+          prisma.invoice.findUnique({
+            where: { id: id },
             include: {
               vendor: true,
               organization: true,
               purchaseOrder: true,
               policyEvaluations: true,
-              payments: { include: { anchor: true } },
+              payments: { include: { anchor: true }, orderBy: { initiatedAt: "desc" }, take: 1 },
             },
           }),
-        2500
+        4000
       );
 
       if (invoice && invoice.payments.length > 0) {
@@ -101,10 +105,9 @@ export default async function VerifyPaymentPassportPage({
       }
     }
 
-    // Live chain verification
-    const org = await withDbTimeout(() => prisma.organization.findFirst(), 2000);
-    if (org) {
-      chainVerification = await verifyAuditChain(org.id);
+    // Verify audit chain for this specific payment organization
+    if (payment?.orgId) {
+      chainVerification = await verifyAuditChain(payment.orgId);
     }
   } catch (err) {
     // Offline / fallback demo mode on testnet

@@ -17,6 +17,7 @@ export interface NetworkConfig {
   fallbackRpcs: string[];
   explorerUrl: string;
   usdcAddress: `0x${string}`;
+  anchorAddress?: `0x${string}`;
   faucetUrl?: string;
   maxPaymentUsdc: string;
   chain: Chain;
@@ -51,6 +52,7 @@ export const NETWORKS: Record<NetworkMode, NetworkConfig> = {
     fallbackRpcs: ["https://rpc.testnet.arc.io"],
     explorerUrl: "https://testnet.arcscan.app",
     usdcAddress: (process.env.ARC_TESTNET_USDC_ADDRESS as `0x${string}`) || DEFAULT_USDC_ADDRESS,
+    anchorAddress: (process.env.NEXT_PUBLIC_AUDIT_ANCHOR_ADDRESS || process.env.AUDIT_ANCHOR_ADDRESS) as `0x${string}` | undefined,
     faucetUrl: "https://faucet.circle.com",
     maxPaymentUsdc: "10000.00",
     chain: arcTestnetChain,
@@ -66,6 +68,7 @@ export const NETWORKS: Record<NetworkMode, NetworkConfig> = {
       .filter(Boolean),
     explorerUrl: process.env.ARC_MAINNET_EXPLORER_URL || "https://explorer.arc.io",
     usdcAddress: (process.env.ARC_MAINNET_USDC_ADDRESS as `0x${string}`) || DEFAULT_USDC_ADDRESS,
+    anchorAddress: (process.env.NEXT_PUBLIC_AUDIT_ANCHOR_ADDRESS || process.env.AUDIT_ANCHOR_ADDRESS) as `0x${string}` | undefined,
     maxPaymentUsdc: process.env.MAX_MAINNET_PAYMENT_USDC || "1.00",
     chain: arcMainnetChain,
   },
