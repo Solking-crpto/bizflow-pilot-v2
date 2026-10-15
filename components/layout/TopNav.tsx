@@ -10,14 +10,22 @@ interface TopNavProps {
   orgName?: string;
   userEmail?: string;
   userRole?: string;
+  walletAddress?: string;
+  onConnectWallet?: () => void;
 }
 
 export function TopNav({
   networkMode,
-  orgName = "BuildPro Infrastructure Ltd",
-  userEmail = "finance@buildpro.internal",
-  userRole = "owner",
+  orgName = "Public Beta Org",
+  userEmail,
+  userRole = "member",
+  walletAddress,
+  onConnectWallet,
 }: TopNavProps) {
+  const displayAddress = walletAddress
+    ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+    : null;
+
   return (
     <header className="h-14 border-b border-border bg-surface px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20">
       {/* Org Selector & Judge Guide */}
@@ -25,8 +33,8 @@ export function TopNav({
         <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-canvas hover:bg-canvas-subtle transition-colors">
           <Building2 className="w-4 h-4 text-navy" />
           <span className="text-xs font-semibold text-ink tracking-tight">{orgName}</span>
-          <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded font-bold border border-amber-200">
-            DEMO ORG
+          <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 bg-brand-light text-brand-teal rounded font-bold border border-brand-teal/20">
+            BETA
           </span>
         </div>
 
@@ -56,15 +64,36 @@ export function TopNav({
           />
         </div>
 
-        {/* User Account / Demo Owner status */}
+        {/* User Account / Connected Wallet status */}
         <div className="flex items-center gap-2 pl-2 border-l border-border">
-          <div className="w-7 h-7 rounded-full bg-navy/10 flex items-center justify-center text-navy font-semibold text-xs border border-navy/20">
-            BP
-          </div>
-          <div className="hidden sm:flex flex-col text-left">
-            <span className="text-xs font-medium text-ink leading-tight">{userEmail}</span>
-            <span className="text-[10px] font-mono text-ink-muted uppercase">Role: {userRole}</span>
-          </div>
+          {displayAddress ? (
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-brand-teal/10 flex items-center justify-center text-brand-teal font-mono font-bold text-[11px] border border-brand-teal/30">
+                W
+              </div>
+              <div className="hidden sm:flex flex-col text-left">
+                <span className="text-xs font-mono font-bold text-ink leading-tight">{displayAddress}</span>
+                <span className="text-[10px] font-mono text-ink-muted uppercase">Role: {userRole}</span>
+              </div>
+            </div>
+          ) : userEmail ? (
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-navy/10 flex items-center justify-center text-navy font-semibold text-xs border border-navy/20">
+                {userEmail.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="hidden sm:flex flex-col text-left">
+                <span className="text-xs font-medium text-ink leading-tight">{userEmail}</span>
+                <span className="text-[10px] font-mono text-ink-muted uppercase">Role: {userRole}</span>
+              </div>
+            </div>
+          ) : (
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-navy text-white text-xs font-medium hover:bg-navy-light transition-colors"
+            >
+              <span>Non-Custodial Beta</span>
+            </Link>
+          )}
         </div>
       </div>
     </header>

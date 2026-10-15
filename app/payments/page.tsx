@@ -5,7 +5,6 @@ import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { evaluatePolicy, PolicyContext } from "@/lib/policy/engine";
 import { getActiveNetwork } from "@/lib/networks";
 import { PaymentDeskClient, PayableInvoiceItem } from "@/components/payments/PaymentDeskClient";
-import { DEMO_INVOICES, DEMO_SETTINGS } from "@/lib/demoData";
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 import { getTreasuryBalances } from "@/lib/balances";
 
@@ -55,12 +54,14 @@ export default async function PaymentsPage() {
     );
   }
 
-  if (!isMainnet && invoices.length === 0) {
-    invoices = DEMO_INVOICES;
-  }
-
   const payableItems: PayableInvoiceItem[] = invoices.map((inv) => {
-    const settings = inv.organization?.settings?.[0] || DEMO_SETTINGS;
+    const settings = inv.organization?.settings?.[0] || {
+      killSwitchActive: false,
+      priceToleranceBps: 100,
+      requireApprovalAbove: 5000000000n,
+      minReserveUsdc: 2000000000n,
+      dailyLimitUsdc: 20000000000n,
+    };
     const latestPayment = inv.payments?.[0];
 
     // Evaluate policy using live on-chain treasury balance on mainnet
@@ -72,15 +73,15 @@ export default async function PaymentsPage() {
       dailySpentUsdc: usdcAtomic(0n),
       dailyLimitUsdc: usdcAtomic(settings.dailyLimitUsdc),
       approvalThresholdUsdc: usdcAtomic(settings.requireApprovalAbove),
-      maxMainnetPaymentUsdc: usdcAtomic(1000000n), // 1.00 USDC
+      maxMainnetPaymentUsdc: usdcAtomic(25000000n), // 25.00 USDC Beta Cap
       hasOwnerConfirmation: true,
 
       vendor: {
-        id: inv.vendor?.id || "vendor-northgate-01",
-        name: inv.vendor?.name || "Northgate Cement Supply (demo vendor)",
+        id: inv.vendor?.id || inv.vendorId,
+        name: inv.vendor?.name || "Unknown Supplier",
         status: inv.vendor?.status || "active",
-        recordedWallet: inv.vendor?.walletAddress || "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-        perVendorLimitUsdc: usdcAtomic(inv.vendor?.perVendorLimitUsdc || 15000000000n),
+        recordedWallet: inv.vendor?.walletAddress || "",
+        perVendorLimitUsdc: usdcAtomic(inv.vendor?.perVendorLimitUsdc || 10000000000n),
         walletCooldownUntil: inv.vendor?.walletCooldownUntil || null,
       },
 
@@ -88,7 +89,7 @@ export default async function PaymentsPage() {
         id: inv.id,
         invoiceNumber: inv.invoiceNumber,
         totalUsdc: usdcAtomic(inv.totalUsdc),
-        remittanceWallet: inv.vendor?.walletAddress || "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+        remittanceWallet: inv.vendor?.walletAddress || "",
         matchStatus: inv.matchStatus,
         duplicateScore: inv.duplicateScore,
         isInjectionSuspect: inv.isInjectionSuspect,

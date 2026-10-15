@@ -5,22 +5,13 @@ import { isBlocklistedWallet } from "../lib/security/walletBlocklist";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("==================================================");
-  console.log("   BizFlow Pilot — Arc Mainnet Demo-Scale Seeder  ");
-  console.log("==================================================");
-
-  const vendorWallet = (process.env.VENDOR_WALLET_ADDRESS || "").trim();
-  if (!vendorWallet) {
-    throw new Error(
-      "Missing VENDOR_WALLET_ADDRESS in environment. On mainnet, the beneficiary vendor wallet must be explicitly set."
-    );
-  }
-
-  if (isBlocklistedWallet(vendorWallet)) {
-    throw new Error(
-      `VENDOR_WALLET_ADDRESS (${vendorWallet}) is a known Hardhat/Anvil public test wallet and is blocked on Arc mainnet.`
-    );
-  }
+  console.error("==================================================================");
+  console.error("  FATAL SECURITY REFUSAL: Mainnet demo seeding is disabled in V2  ");
+  console.error("  Public Beta enforces real, non-custodial production data only.  ");
+  console.error("  Mainnet databases must never be seeded with synthetic records.  ");
+  console.error("==================================================================");
+  process.exit(1);
+}
 
   const forceWipe = process.argv.includes("--force-wipe");
   const confirmedPaymentsCount = await prisma.payment.count({

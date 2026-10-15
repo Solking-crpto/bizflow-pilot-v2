@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { StatusChip, HashView } from "@/components/ui/StatusChip";
 import { truncateHash } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export interface PayableInvoiceItem {
   id: string;
@@ -178,8 +179,23 @@ export function PaymentDeskClient({
         </div>
       )}
 
-      {/* Main Split: Queue on Left, Payment Drawer on Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {items.length === 0 ? (
+        <EmptyState
+          icon={CreditCard}
+          title="No Payments in Settlement Queue"
+          description="Invoices verified and approved by the 10-rule corporate policy engine appear here for non-custodial settlement signed by your connected wallet."
+          action={{
+            label: "Review Invoices",
+            href: "/invoices",
+          }}
+          secondaryAction={{
+            label: "Configure Policy Rules",
+            href: "/settings",
+          }}
+        />
+      ) : (
+        /* Main Split: Queue on Left, Payment Drawer on Right */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Payable Queue */}
         <div className="lg:col-span-5 rounded-xl border border-border bg-surface shadow-card overflow-hidden">
           <div className="px-4 py-3 bg-canvas border-b border-border text-xs font-semibold text-ink-muted uppercase tracking-wider flex items-center justify-between">
@@ -388,6 +404,7 @@ export function PaymentDeskClient({
           )}
         </div>
       </div>
+      )}
 
       {/* Mainnet Safety Confirmation Modal */}
       {isMainnetModalOpen && (

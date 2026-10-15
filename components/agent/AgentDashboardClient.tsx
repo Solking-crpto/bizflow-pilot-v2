@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { StatusChip, HashView } from "@/components/ui/StatusChip";
 import { AgentRecommendation } from "@/lib/agent/types";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface InvoiceAgentView {
   id: string;
@@ -272,7 +273,22 @@ export function AgentDashboardClient({
       </div>
 
       {/* Main Analysis View */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {invoices.length === 0 ? (
+        <EmptyState
+          icon={Bot}
+          title="No Invoices for AI Advisory"
+          description="When you enter invoices from your suppliers, the AI finance agent analyzes payment obligations, detects early-payment discount opportunities, and formulates policy-compliant recommendations."
+          action={{
+            label: "Enter Your First Invoice",
+            href: "/invoices",
+          }}
+          secondaryAction={{
+            label: "View Decision History",
+            href: "/agent/decisions",
+          }}
+        />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Obligations Queue */}
         <div className="lg:col-span-5 rounded-xl border border-border bg-surface shadow-card overflow-hidden">
           <div className="px-4 py-3 bg-canvas border-b border-border text-xs font-semibold text-ink-muted uppercase tracking-wider flex items-center justify-between">
@@ -448,6 +464,7 @@ export function AgentDashboardClient({
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

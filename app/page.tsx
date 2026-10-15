@@ -18,8 +18,9 @@ import { getTreasuryPublicAddress, getSanitizedPaymentProvider } from "@/lib/tre
 import { getTreasuryBalances } from "@/lib/balances";
 import { StatusChip, HashView } from "@/components/ui/StatusChip";
 import type { Metadata } from "next";
-import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { LiveProofCard } from "@/components/common/LiveProofCard";
+import { Building2 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -36,17 +37,29 @@ export default async function CommandCenterPage() {
   const treasuryBalances = await getTreasuryBalances();
 
   if (!data) {
-    if (network.mode === "mainnet") {
-      return (
-        <DatabaseErrorState
-          title="Command Center Database Error"
-          message="Could not load live mainnet organization and invoice records from the database. Please ensure your database is reachable and seeded."
-        />
-      );
-    }
     return (
-      <div className="p-8 text-center text-ink-muted">
-        <p>No organization found. Please run the database seed script.</p>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-border">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-ink">Command Center</h1>
+            <p className="text-sm text-ink-muted mt-0.5">
+              Real-time corporate treasury overview, policy guardrails, and Arc settlement activity.
+            </p>
+          </div>
+        </div>
+        <EmptyState
+          icon={Building2}
+          title="Welcome to BizFlow Pilot V2"
+          description="Get started by connecting your Web3 wallet, setting up your business profile, and registering suppliers for verified USDC settlement on Arc."
+          action={{
+            label: "Onboard Business",
+            href: "/onboarding",
+          }}
+          secondaryAction={{
+            label: "Explore Judge Guide",
+            href: "/judges",
+          }}
+        />
       </div>
     );
   }

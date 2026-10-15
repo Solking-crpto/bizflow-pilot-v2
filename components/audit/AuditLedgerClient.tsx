@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { HashView } from "@/components/ui/StatusChip";
 import { truncateHash } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export interface SerializedAuditEvent {
   id: string;
@@ -139,8 +140,25 @@ export function AuditLedgerClient({
           <span className="text-xs font-mono text-ink-muted">Org: {orgName}</span>
         </div>
 
-        <div className="divide-y divide-border">
-          {events.map((ev, index) => {
+        {events.length === 0 ? (
+          <div className="p-6">
+            <EmptyState
+              icon={FileCheck2}
+              title="Audit Ledger Initialized"
+              description="Cryptographic SHA-256 hash-chained events will be appended here as procurement, policy evaluations, and Arc on-chain settlements occur."
+              action={{
+                label: "Review Invoices",
+                href: "/invoices",
+              }}
+              secondaryAction={{
+                label: "Command Center",
+                href: "/",
+              }}
+            />
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {events.map((ev, index) => {
             let parsedData: any = {};
             try {
               parsedData = JSON.parse(ev.eventData);
@@ -197,7 +215,8 @@ export function AuditLedgerClient({
             );
           })}
         </div>
-      </div>
+      )}
+    </div>
     </div>
   );
 }

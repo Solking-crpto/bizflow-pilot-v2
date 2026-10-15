@@ -59,11 +59,11 @@ export default async function JudgesPage() {
   const builderProfileUrl =
     process.env.NEXT_PUBLIC_BUILDER_PROFILE_URL || "https://github.com/Solking-crpto";
 
-  const paymentTxHash = confirmedPayment?.txHash || "0x9f5a7d65b758269d6c42939b4cb0e7e17eaec596b42b6559d2824dfb5dbd0e82";
-  const anchorTxHash = confirmedPayment?.anchorTxHash || confirmedPayment?.anchor?.anchorTxHash || "0x600e31431faba6022dbc5d259961ddc4fbd89e7c2867b1e590ca76f8d74b83e4";
+  const paymentTxHash = confirmedPayment?.txHash || null;
+  const anchorTxHash = confirmedPayment?.anchorTxHash || confirmedPayment?.anchor?.anchorTxHash || null;
   const settledAmount = confirmedPayment
     ? formatUsdc(usdcAtomic(confirmedPayment.amountAtomic))
-    : "0.50 USDC";
+    : null;
 
   return (
     <div className="max-w-4xl mx-auto py-6 px-4 space-y-8">
@@ -152,23 +152,33 @@ export default async function JudgesPage() {
               <tr className="hover:bg-canvas/50 transition-colors">
                 <td className="py-3 px-4 font-semibold text-ink">Real Mainnet Transaction</td>
                 <td className="py-3 px-4">
-                  <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Settled ({settledAmount})
-                  </span>
+                  {confirmedPayment && settledAmount ? (
+                    <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Settled ({settledAmount})
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
+                      Awaiting First Settlement
+                    </span>
+                  )}
                 </td>
                 <td className="py-3 px-4 font-mono text-[11px]">
-                  <HashView hash={paymentTxHash} truncate={true} />
+                  {paymentTxHash ? <HashView hash={paymentTxHash} truncate={true} /> : "—"}
                 </td>
                 <td className="py-3 px-4 text-right">
-                  <a
-                    href={`${network.explorerUrl}/tx/${paymentTxHash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-navy hover:text-brand-teal font-medium"
-                  >
-                    <span>Arc Explorer</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+                  {paymentTxHash ? (
+                    <a
+                      href={`${network.explorerUrl}/tx/${paymentTxHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-navy hover:text-brand-teal font-medium"
+                    >
+                      <span>Arc Explorer</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  ) : (
+                    <span className="text-ink-muted text-[11px]">Pending execution</span>
+                  )}
                 </td>
               </tr>
 
@@ -358,7 +368,7 @@ export default async function JudgesPage() {
 
           {/* Step 5 */}
           <Link
-            href={confirmedPayment ? `/verify/${confirmedPayment.id}` : "/verify/demo"}
+            href={confirmedPayment ? `/verify/${confirmedPayment.id}` : "/payments"}
             className="p-3.5 rounded-lg border border-border bg-canvas hover:bg-white hover:border-brand-teal transition-all group flex flex-col justify-between"
           >
             <div>
@@ -401,7 +411,7 @@ export default async function JudgesPage() {
         <div className="flex items-center gap-2 pb-2 border-b border-border">
           <Layers className="w-4 h-4 text-brand-teal" />
           <h2 className="text-sm font-semibold text-ink">
-            Transparent Disclosure: What is Real vs Demo Data
+            Transparent Disclosure: Non-Custodial Architecture & Live Operations
           </h2>
         </div>
 
@@ -422,13 +432,13 @@ export default async function JudgesPage() {
           <div className="p-3.5 rounded-lg bg-blue-50/60 border border-blue-200 space-y-1.5">
             <span className="font-semibold text-blue-900 block flex items-center gap-1">
               <Boxes className="w-3.5 h-3.5 text-blue-700" />
-              Demo-Scale Business Context
+              Non-Custodial Multi-Tenant Isolation
             </span>
             <ul className="list-disc list-inside space-y-1 text-blue-800 text-[11px]">
-              <li>Fictional demo supplier: Northgate Cement Supply.</li>
-              <li>Demo-scale amounts: transactions capped at 1.00 USDC.</li>
-              <li>Simulated enterprise anomalies: 1 duplicate, 1 qty mismatch, 1 injection attack.</li>
-              <li>Protects confidential vendor records while demonstrating full flow.</li>
+              <li>Non-custodial tenant onboarding: each business connects via SIWE wallet.</li>
+              <li>Public beta limits: per-payment cap enforced during public testing.</li>
+              <li>Isolated organizations: vendors, POs, and invoices scoped to authenticated wallet.</li>
+              <li>Builder treasury key restricted exclusively to admin operations.</li>
             </ul>
           </div>
         </div>

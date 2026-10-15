@@ -10,17 +10,22 @@ async function main() {
   console.log("==================================================");
 
   const networkMode = process.env.NEXT_PUBLIC_NETWORK_MODE || process.env.NETWORK_MODE || "testnet";
-  const isMainnet = networkMode === "mainnet";
+  const isMainnet =
+    networkMode === "mainnet" ||
+    process.env.DATABASE_URL?.includes("mainnet") ||
+    process.env.DATABASE_URL?.includes("v2_mainnet");
+
+  if (isMainnet) {
+    console.error("==================================================================");
+    console.error("  FATAL SECURITY REFUSAL: seedV2 is strictly forbidden on mainnet ");
+    console.error("  Public Beta requires non-custodial, real user data.             ");
+    console.error("==================================================================");
+    process.exit(1);
+  }
 
   let vendorWallet = (process.env.VENDOR_WALLET_ADDRESS || "").trim();
   if (!vendorWallet) {
-    if (isMainnet) {
-      throw new Error(
-        "Missing VENDOR_WALLET_ADDRESS in environment. On mainnet, the beneficiary vendor wallet must be explicitly set."
-      );
-    } else {
-      vendorWallet = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
-    }
+    vendorWallet = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
   }
 
   if (isMainnet && isBlocklistedWallet(vendorWallet)) {

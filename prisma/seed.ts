@@ -4,7 +4,32 @@ import { sha256 } from "../lib/crypto";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Seeding BizFlow Pilot demo scenario...");
+  const isMainnet =
+    process.env.NEXT_PUBLIC_NETWORK_MODE === "mainnet" ||
+    process.env.NETWORK_MODE === "mainnet";
+
+  if (isMainnet) {
+    console.error("==================================================================");
+    console.error("  FATAL SECURITY REFUSAL: Database seeding is disabled on Mainnet ");
+    console.error("  BizFlow Pilot V2 Public Beta enforces real production data only. ");
+    console.error("==================================================================");
+    process.exit(1);
+  }
+
+  const confirmedPayments = await prisma.payment.count({
+    where: { status: "confirmed" },
+  });
+
+  if (confirmedPayments > 0) {
+    console.error("==================================================================");
+    console.error("  SAFETY REFUSAL: Found confirmed payments in database.           ");
+    console.error(`  Total confirmed settlements: ${confirmedPayments}               `);
+    console.error("  Refusing to delete or wipe live payment data.                   ");
+    console.error("==================================================================");
+    process.exit(1);
+  }
+
+  console.log("Seeding BizFlow Pilot testnet sandbox scenario...");
 
   // 1. Clean existing records for fresh state
   await prisma.anchor.deleteMany();

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { StatusChip, HashView } from "@/components/ui/StatusChip";
 import { ThreeWayDiffViewer } from "./ThreeWayDiffViewer";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export interface SerializedInvoice {
   id: string;
@@ -86,44 +87,60 @@ export function InvoiceDeskClient({ invoices }: { invoices: SerializedInvoice[] 
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2 border-b border-border pb-2 text-xs font-medium">
-        <button
-          onClick={() => setFilter("all")}
-          className={`px-3 py-1.5 rounded-md transition-colors ${
-            filter === "all" ? "bg-navy text-white font-semibold" : "text-ink-muted hover:bg-canvas"
-          }`}
-        >
-          All Invoices ({invoices.length})
-        </button>
-        <button
-          onClick={() => setFilter("verified")}
-          className={`px-3 py-1.5 rounded-md transition-colors ${
-            filter === "verified" ? "bg-navy text-white font-semibold" : "text-ink-muted hover:bg-canvas"
-          }`}
-        >
-          Verified ({invoices.filter((i) => i.status === "verified").length})
-        </button>
-        <button
-          onClick={() => setFilter("review")}
-          className={`px-3 py-1.5 rounded-md transition-colors ${
-            filter === "review" ? "bg-navy text-white font-semibold" : "text-ink-muted hover:bg-canvas"
-          }`}
-        >
-          Needs Review ({invoices.filter((i) => i.status === "review_required").length})
-        </button>
-        <button
-          onClick={() => setFilter("blocked")}
-          className={`px-3 py-1.5 rounded-md transition-colors ${
-            filter === "blocked" ? "bg-navy text-white font-semibold" : "text-ink-muted hover:bg-canvas"
-          }`}
-        >
-          Blocked / Threats ({invoices.filter((i) => i.status === "blocked").length})
-        </button>
-      </div>
+      {invoices.length === 0 ? (
+        <EmptyState
+          icon={ReceiptText}
+          title="No Invoices Recorded Yet"
+          description="Invoices received from your suppliers undergo automated 3-way matching, duplicate screening, and deterministic policy evaluation."
+          action={{
+            label: "Add Your First Supplier",
+            href: "/suppliers",
+          }}
+          secondaryAction={{
+            label: "Create Purchase Order",
+            href: "/inventory",
+          }}
+        />
+      ) : (
+        <>
+          {/* Filter Tabs */}
+          <div className="flex items-center gap-2 border-b border-border pb-2 text-xs font-medium">
+            <button
+              onClick={() => setFilter("all")}
+              className={`px-3 py-1.5 rounded-md transition-colors ${
+                filter === "all" ? "bg-navy text-white font-semibold" : "text-ink-muted hover:bg-canvas"
+              }`}
+            >
+              All Invoices ({invoices.length})
+            </button>
+            <button
+              onClick={() => setFilter("verified")}
+              className={`px-3 py-1.5 rounded-md transition-colors ${
+                filter === "verified" ? "bg-navy text-white font-semibold" : "text-ink-muted hover:bg-canvas"
+              }`}
+            >
+              Verified ({invoices.filter((i) => i.status === "verified").length})
+            </button>
+            <button
+              onClick={() => setFilter("review")}
+              className={`px-3 py-1.5 rounded-md transition-colors ${
+                filter === "review" ? "bg-navy text-white font-semibold" : "text-ink-muted hover:bg-canvas"
+              }`}
+            >
+              Needs Review ({invoices.filter((i) => i.status === "review_required").length})
+            </button>
+            <button
+              onClick={() => setFilter("blocked")}
+              className={`px-3 py-1.5 rounded-md transition-colors ${
+                filter === "blocked" ? "bg-navy text-white font-semibold" : "text-ink-muted hover:bg-canvas"
+              }`}
+            >
+              Blocked / Threats ({invoices.filter((i) => i.status === "blocked").length})
+            </button>
+          </div>
 
-      {/* Main Layout: List on Left, Active Diff Viewer on Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Main Layout: List on Left, Active Diff Viewer on Right */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Invoices List */}
         <div className="lg:col-span-5 rounded-xl border border-border bg-surface shadow-card overflow-hidden">
           <div className="px-4 py-3 bg-canvas border-b border-border text-xs font-semibold text-ink-muted uppercase tracking-wider">
@@ -320,6 +337,8 @@ export function InvoiceDeskClient({ invoices }: { invoices: SerializedInvoice[] 
           )}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

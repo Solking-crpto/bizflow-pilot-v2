@@ -2,7 +2,6 @@ import React from "react";
 import type { Metadata } from "next";
 import { prisma, withDbTimeout } from "@/lib/db";
 import { getTreasuryPublicAddress } from "@/lib/treasury";
-import { DEMO_SETTINGS, DEMO_VENDORS } from "@/lib/demoData";
 import { SettingsClient, SerializedSettings, SerializedVendor } from "@/components/settings/SettingsClient";
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 
@@ -36,17 +35,26 @@ export default async function SettingsPage() {
     }
   }
 
-  if (isMainnet && (!org || dbError)) {
+  if (isMainnet && dbError) {
     return (
       <DatabaseErrorState
         title="Settings Database Error"
-        message={dbError || "No organization configuration found on Arc Mainnet. Please ensure database is seeded."}
+        message={dbError || "No organization configuration found on Arc Mainnet."}
       />
     );
   }
 
-  const rawSettings = org?.settings?.[0] || DEMO_SETTINGS;
-  const rawVendors = org?.vendors?.length > 0 ? org.vendors : DEMO_VENDORS;
+  const rawSettings = org?.settings?.[0] || {
+    killSwitchActive: false,
+    priceToleranceBps: 100,
+    requireApprovalAbove: 5000000000n,
+    minReserveUsdc: 2000000000n,
+    dailyLimitUsdc: 20000000000n,
+    agentMode: "assisted",
+    autoApproveLimitUsdc: 500000n,
+    maxDailyAutonomousUsdc: 1000000n,
+  };
+  const rawVendors = org?.vendors || [];
   const treasuryPublicAddress = getTreasuryPublicAddress();
 
   const serializedSettings: SerializedSettings = {

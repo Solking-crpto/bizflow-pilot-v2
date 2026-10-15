@@ -110,35 +110,28 @@ export default async function VerifyPaymentPassportPage({
     // Offline / fallback demo mode on testnet
   }
 
-  // On Arc Mainnet: strictly no mock/hardcoded payment fallback!
-  if (network.mode === "mainnet" && !payment && !searchParams?.txHash) {
+  // If no payment record found and no txHash passed, display honest empty state
+  if (!payment && !searchParams?.txHash) {
     return (
-      <DatabaseErrorState
-        title="Payment Passport Not Found"
-        message="No settled payment or audit anchor record was found for this identifier on Arc Mainnet. Please run a settlement first to generate a verifiable passport."
-      />
+      <div className="max-w-xl mx-auto py-12 px-4">
+        <DatabaseErrorState
+          title="Payment Passport Not Found"
+          message={`No confirmed settlement or on-chain audit record was found for identifier '${id}'. Settle an invoice through the Payment Desk to generate a verifiable on-chain passport.`}
+        />
+      </div>
     );
   }
 
-  const isMainnet = network.mode === "mainnet";
-  const invoiceNumber = payment?.invoice?.invoiceNumber || (isMainnet ? id : "INV-MAINNET-101");
-  const vendorName = payment?.vendor?.name || "Northgate Cement Supply (demo vendor)";
+  const invoiceNumber = payment?.invoice?.invoiceNumber || id;
+  const vendorName = payment?.vendor?.name || payment?.vendorName || "Verified Supplier";
   const vendorWallet = payment?.vendor?.walletAddress || payment?.destination || "";
   const amountFormatted = payment
     ? formatUsdc(usdcAtomic(payment.amountAtomic))
-    : (isMainnet ? "0.00 USDC" : "0.50 USDC");
-  const invoiceHash = payment?.invoice?.fileHash || "3c8bf0830cb41bc35ca54b395cb38ee05bc619aa3be6d649ab0f6e3c0ee04f32";
-  const decisionHash =
-    payment?.invoice?.policyEvaluations?.[0]?.decisionHash || "8ab5047f68c3479a0cfbf621db7cce86fe4939227ca3b0fb31f49372d8a9e701";
-  const txHash =
-    searchParams?.txHash ||
-    payment?.txHash ||
-    (isMainnet ? "" : "0x9f5a7d65b758269d6c42939b4cb0e7e17eaec596b42b6559d2824dfb5dbd0e82");
-  const anchorTxHash =
-    searchParams?.anchorAddress ||
-    payment?.anchor?.anchorTxHash ||
-    payment?.anchorTxHash ||
-    (isMainnet ? "" : "0x600e31431faba6022dbc5d259961ddc4fbd89e7c2867b1e590ca76f8d74b83e4");
+    : "0.00 USDC";
+  const invoiceHash = payment?.invoice?.fileHash || "";
+  const decisionHash = payment?.invoice?.policyEvaluations?.[0]?.decisionHash || "";
+  const txHash = searchParams?.txHash || payment?.txHash || "";
+  const anchorTxHash = searchParams?.anchorAddress || payment?.anchor?.anchorTxHash || payment?.anchorTxHash || "";
 
   return (
     <div className="max-w-4xl mx-auto py-6 px-4 space-y-6">

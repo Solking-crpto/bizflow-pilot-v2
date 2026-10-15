@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Boxes, PackageCheck, FileText, ArrowRight, CheckCircle2, TrendingDown } from "lucide-react";
 import { prisma, withDbTimeout } from "@/lib/db";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
-import { DEMO_ITEMS, DEMO_PURCHASE_ORDERS } from "@/lib/demoData";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 
 export const dynamic = "force-dynamic";
@@ -60,11 +60,6 @@ export default async function InventoryPage() {
     );
   }
 
-  if (!isMainnet) {
-    if (items.length === 0) items = DEMO_ITEMS;
-    if (purchaseOrders.length === 0) purchaseOrders = DEMO_PURCHASE_ORDERS;
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -86,8 +81,24 @@ export default async function InventoryPage() {
         </div>
       </div>
 
-      {/* Stock Items Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {items.length === 0 && purchaseOrders.length === 0 ? (
+        <EmptyState
+          icon={Boxes}
+          title="No Inventory Items or Purchase Orders"
+          description="Purchase orders record agreed supplier quantities and atomic USDC unit prices, which are cross-referenced against warehouse receiving notes to enable automated 3-way matching."
+          action={{
+            label: "Add Your First Supplier",
+            href: "/suppliers",
+          }}
+          secondaryAction={{
+            label: "Go to Invoices",
+            href: "/invoices",
+          }}
+        />
+      ) : (
+        <>
+          {/* Stock Items Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {items.map((item) => (
           <div key={item.id} className="p-4 rounded-xl border border-border bg-surface shadow-card space-y-3">
             <div className="flex items-center justify-between">
@@ -194,6 +205,8 @@ export default async function InventoryPage() {
           })}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

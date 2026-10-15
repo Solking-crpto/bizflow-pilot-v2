@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { prisma, withDbTimeout } from "@/lib/db";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { InvoiceDeskClient, SerializedInvoice } from "@/components/invoices/InvoiceDeskClient";
-import { DEMO_INVOICES } from "@/lib/demoData";
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 
 export const dynamic = "force-dynamic";
@@ -54,10 +53,6 @@ export default async function InvoiceDeskPage() {
     );
   }
 
-  if (!isMainnet && invoices.length === 0) {
-    invoices = DEMO_INVOICES;
-  }
-
   const serializedInvoices: SerializedInvoice[] = invoices.map((inv) => {
     const po = inv.purchaseOrder;
     const poLine = po?.lines?.[0];
@@ -65,7 +60,7 @@ export default async function InvoiceDeskPage() {
     const grLine = gr?.lines?.[0];
 
     const isDemo =
-      inv.invoiceNumber.includes("DEMO") ||
+      inv.invoiceNumber?.includes("DEMO") ||
       inv.vendor?.name?.includes("demo") ||
       inv.vendor?.name?.includes("DEMO") ||
       inv.rawContent?.includes("DEMO DATA");
@@ -74,15 +69,15 @@ export default async function InvoiceDeskPage() {
       id: inv.id,
       invoiceNumber: inv.invoiceNumber,
       vendorId: inv.vendorId,
-      vendorName: inv.vendor?.name || "Northgate Cement Supply (demo vendor)",
-      vendorWallet: inv.vendor?.walletAddress || "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-      poNumber: po?.poNumber || "PO-2026-0089",
-      poQty: poLine?.quantity || 200,
-      poUnitPrice: formatUsdc(usdcAtomic(poLine?.unitPriceUsdc || 8500000n)),
-      poTotal: formatUsdc(usdcAtomic(po?.totalUsdc || 1700000000n)),
-      grNumber: gr?.grNumber || "GR-2026-0089",
-      grQty: grLine?.quantity || 200,
-      receivedBy: gr?.receivedBy || "Warehouse Receiver",
+      vendorName: inv.vendor?.name || "Unknown Supplier",
+      vendorWallet: inv.vendor?.walletAddress || "",
+      poNumber: po?.poNumber || "N/A",
+      poQty: poLine?.quantity || 0,
+      poUnitPrice: poLine?.unitPriceUsdc ? formatUsdc(usdcAtomic(poLine.unitPriceUsdc)) : "0.00 USDC",
+      poTotal: po?.totalUsdc ? formatUsdc(usdcAtomic(po.totalUsdc)) : "0.00 USDC",
+      grNumber: gr?.grNumber || "N/A",
+      grQty: grLine?.quantity || 0,
+      receivedBy: gr?.receivedBy || "Unrecorded",
       amountFormatted: formatUsdc(usdcAtomic(inv.totalUsdc)),
       amountAtomic: inv.totalUsdc.toString(),
       status: inv.status,

@@ -1,7 +1,6 @@
 import { cache } from "react";
 import { prisma, withDbTimeout } from "./db";
 import { formatUsdc, usdcAtomic } from "./money";
-import { DEMO_ORG, DEMO_SETTINGS, DEMO_INVOICES, DEMO_VENDORS } from "./demoData";
 
 export const getCommandCenterData = cache(async () => {
   try {
@@ -25,7 +24,7 @@ export const getCommandCenterData = cache(async () => {
         })
     );
 
-    if (org && org.invoices.length > 0) {
+    if (org) {
       const settings = org.settings[0] || {
         killSwitchActive: false,
         priceToleranceBps: 100,
@@ -70,7 +69,7 @@ export const getCommandCenterData = cache(async () => {
       const actionRequiredCount = reviewRequiredCount + blockedCount;
 
       const allDecisions = await withDbTimeout(
-        () => prisma.agentDecision.findMany({ include: { invoice: true } }),
+        () => prisma.agentDecision.findMany({ where: { orgId: org.id }, include: { invoice: true } }),
         2500,
         []
       );
@@ -98,16 +97,16 @@ export const getCommandCenterData = cache(async () => {
           : "n/a";
 
       const decisionMetrics = {
-        invoicesProcessed: uniqueInvoices.size > 0 ? uniqueInvoices.size.toString() : "n/a",
+        invoicesProcessed: uniqueInvoices.size > 0 ? uniqueInvoices.size.toString() : "0",
         paymentVolumeUsdc:
           settledCount > 0
             ? `${formatUsdc(usdcAtomic(settledAtomic))} USDC`
-            : "n/a",
+            : "0.00 USDC",
         duplicatesCaught: duplicatesBlocked > 0 ? duplicatesBlocked.toString() : "0",
         injectionAttemptsBlocked: injectionsBlocked > 0 ? injectionsBlocked.toString() : "0",
-        decisionsMade: allDecisions.length > 0 ? allDecisions.length.toString() : "n/a",
-        autoExecuted: autoExecuted > 0 ? autoExecuted.toString() : allDecisions.length > 0 ? "0" : "n/a",
-        escalated: escalated > 0 ? escalated.toString() : allDecisions.length > 0 ? "0" : "n/a",
+        decisionsMade: allDecisions.length > 0 ? allDecisions.length.toString() : "0",
+        autoExecuted: autoExecuted > 0 ? autoExecuted.toString() : "0",
+        escalated: escalated > 0 ? escalated.toString() : "0",
         humanAgreementRate,
       };
 
@@ -168,61 +167,9 @@ export const getCommandCenterData = cache(async () => {
       };
     }
   } catch (err) {
-    // Graceful fallback to seeded corporate demo scenario on testnet
+    // Database query error handled gracefully
   }
 
-  const isMainnet = (process.env.NEXT_PUBLIC_NETWORK_MODE || process.env.NETWORK_MODE) === "mainnet";
-  if (isMainnet) {
-    return null; // Strictly no demo data fallback on mainnet!
-  }
-
-  // Fallback demo state (testnet only)
-  const upcomingBills = 1700000000n;
-  return {
-    org: DEMO_ORG,
-    settings: {
-      killSwitchActive: DEMO_SETTINGS.killSwitchActive,
-      priceToleranceBps: DEMO_SETTINGS.priceToleranceBps,
-      requireApprovalAbove: DEMO_SETTINGS.requireApprovalAbove.toString(),
-      minReserveUsdc: DEMO_SETTINGS.minReserveUsdc.toString(),
-      dailyLimitUsdc: DEMO_SETTINGS.dailyLimitUsdc.toString(),
-    },
-    metrics: {
-      upcomingBillsFormatted: formatUsdc(usdcAtomic(upcomingBills)),
-      upcomingBillsAtomic: upcomingBills.toString(),
-      settledFormatted: formatUsdc(usdcAtomic(500000n)),
-      settledAtomic: "500000",
-      awaitingSettlementCount: 1,
-      settledCount: 1,
-      actionRequiredCount: 3,
-      reviewRequiredCount: 1,
-      blockedCount: 2,
-      pendingApprovalsCount: 3,
-      totalInvoicesCount: DEMO_INVOICES.length,
-      vendorCount: DEMO_VENDORS.length,
-    },
-    decisionMetrics: {
-      invoicesProcessed: "n/a",
-      paymentVolumeUsdc: "n/a",
-      duplicatesCaught: "0",
-      injectionAttemptsBlocked: "0",
-      decisionsMade: "n/a",
-      autoExecuted: "n/a",
-      escalated: "n/a",
-      humanAgreementRate: "n/a",
-    },
-    recentInvoices: DEMO_INVOICES.map((inv) => ({
-      id: inv.id,
-      invoiceNumber: inv.invoiceNumber,
-      vendorName: inv.vendor.name,
-      amountFormatted: formatUsdc(usdcAtomic(inv.totalUsdc)),
-      amountAtomic: inv.totalUsdc.toString(),
-      status: inv.status,
-      matchStatus: inv.matchStatus,
-      isInjectionSuspect: inv.isInjectionSuspect,
-      duplicateScore: inv.duplicateScore,
-      createdAt: inv.createdAt.toISOString(),
-    })),
-    recentPayments: [],
-  };
+  // Production and testnet start empty when no org is registered
+  return null;
 });

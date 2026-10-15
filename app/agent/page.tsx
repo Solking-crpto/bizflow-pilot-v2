@@ -4,7 +4,6 @@ import { prisma, withDbTimeout } from "@/lib/db";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { runAgentAnalysis } from "@/lib/agent/recommender";
 import { AgentDashboardClient } from "@/components/agent/AgentDashboardClient";
-import { DEMO_INVOICES } from "@/lib/demoData";
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 import { getTreasuryBalances } from "@/lib/balances";
 
@@ -48,10 +47,6 @@ export default async function AgentPage() {
     );
   }
 
-  if (!isMainnet && invoices.length === 0) {
-    invoices = DEMO_INVOICES;
-  }
-
   const treasuryBalance = isMainnet ? balances.usdcAtomicValue : 100000000000n; // Live on mainnet
   const minReserve = isMainnet ? 250000n : 2000000000n; // 0.25 USDC on mainnet demo scale
   const freeCash = treasuryBalance > minReserve ? treasuryBalance - minReserve : 0n;
@@ -61,7 +56,7 @@ export default async function AgentPage() {
       const { recommendation } = await runAgentAnalysis({
         invoiceId: inv.id,
         invoiceNumber: inv.invoiceNumber,
-        vendorName: inv.vendor?.name || "Northgate Cement Supply (demo vendor)",
+        vendorName: inv.vendor?.name || "Unknown Supplier",
         amountFormatted: formatUsdc(usdcAtomic(inv.totalUsdc)),
         amountAtomic: inv.totalUsdc.toString(),
         matchStatus: inv.matchStatus,
@@ -82,7 +77,7 @@ export default async function AgentPage() {
       return {
         id: inv.id,
         invoiceNumber: inv.invoiceNumber,
-        vendorName: inv.vendor?.name || "Northgate Cement Supply (demo vendor)",
+        vendorName: inv.vendor?.name || "Unknown Supplier",
         amountFormatted: formatUsdc(usdcAtomic(inv.totalUsdc)),
         matchStatus: inv.matchStatus,
         duplicateScore: inv.duplicateScore,

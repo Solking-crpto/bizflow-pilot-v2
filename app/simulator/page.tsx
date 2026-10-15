@@ -2,7 +2,6 @@ import React from "react";
 import type { Metadata } from "next";
 import { prisma, withDbTimeout } from "@/lib/db";
 import { PolicySimulatorClient } from "@/components/simulator/PolicySimulatorClient";
-import { DEMO_INVOICES } from "@/lib/demoData";
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 
 export const dynamic = "force-dynamic";
@@ -43,22 +42,52 @@ export default async function PolicySimulatorPage() {
     );
   }
 
-  if (!isMainnet && invoices.length === 0) {
-    invoices = DEMO_INVOICES;
-  }
-
   const defaultNetwork = (process.env.NEXT_PUBLIC_NETWORK_MODE || "testnet") as "testnet" | "mainnet";
 
-  const options = invoices.map((inv) => ({
-    id: inv.id,
-    invoiceNumber: inv.invoiceNumber,
-    vendorName: inv.vendor?.name || "Northgate Cement Supply (demo vendor)",
-    amountAtomic: inv.totalUsdc.toString(),
-    wallet: inv.vendor?.walletAddress || "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    matchStatus: inv.matchStatus,
-    duplicateScore: inv.duplicateScore,
-    isInjectionSuspect: inv.isInjectionSuspect,
-  }));
+  const options =
+    invoices.length > 0
+      ? invoices.map((inv) => ({
+          id: inv.id,
+          invoiceNumber: inv.invoiceNumber,
+          vendorName: inv.vendor?.name || "Supplier",
+          amountAtomic: inv.totalUsdc.toString(),
+          wallet: inv.vendor?.walletAddress || "",
+          matchStatus: inv.matchStatus,
+          duplicateScore: inv.duplicateScore,
+          isInjectionSuspect: inv.isInjectionSuspect,
+        }))
+      : [
+          {
+            id: "preset-clean",
+            invoiceNumber: "PRESET-CLEAN-01",
+            vendorName: "Active Supplier (Simulation Preset)",
+            amountAtomic: "500000", // 0.50 USDC
+            wallet: "0x1111111111111111111111111111111111111111",
+            matchStatus: "exact_match",
+            duplicateScore: 0,
+            isInjectionSuspect: false,
+          },
+          {
+            id: "preset-threat",
+            invoiceNumber: "PRESET-INJECTION-02",
+            vendorName: "Adversarial Threat (Simulation Preset)",
+            amountAtomic: "1000000", // 1.00 USDC
+            wallet: "0x2222222222222222222222222222222222222222",
+            matchStatus: "exact_match",
+            duplicateScore: 0,
+            isInjectionSuspect: true,
+          },
+          {
+            id: "preset-duplicate",
+            invoiceNumber: "PRESET-DUPLICATE-03",
+            vendorName: "Duplicate Billing (Simulation Preset)",
+            amountAtomic: "800000", // 0.80 USDC
+            wallet: "0x3333333333333333333333333333333333333333",
+            matchStatus: "exact_match",
+            duplicateScore: 95,
+            isInjectionSuspect: false,
+          },
+        ];
 
   return <PolicySimulatorClient invoices={options} defaultNetwork={defaultNetwork} />;
 }

@@ -2,7 +2,6 @@ import React from "react";
 import type { Metadata } from "next";
 import { prisma, withDbTimeout } from "@/lib/db";
 import { AuditLedgerClient } from "@/components/audit/AuditLedgerClient";
-import { DEMO_AUDIT_EVENTS, DEMO_ORG } from "@/lib/demoData";
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +33,7 @@ export default async function AuditLedgerPage() {
     }
   }
 
-  if (isMainnet && (dbError || !org)) {
+  if (isMainnet && dbError) {
     return (
       <DatabaseErrorState
         title="Audit Ledger Database Error"
@@ -43,7 +42,7 @@ export default async function AuditLedgerPage() {
     );
   }
 
-  const orgName = org?.name || (isMainnet ? "BizFlow Mainnet" : DEMO_ORG.name);
+  const orgName = org?.name || "Corporate Treasury Ledger";
   const events =
     org && org.auditEvents?.length > 0
       ? org.auditEvents.map((ev: any) => ({
@@ -55,9 +54,7 @@ export default async function AuditLedgerPage() {
           eventHash: ev.eventHash,
           timestamp: ev.timestamp.toISOString(),
         }))
-      : isMainnet
-      ? []
-      : DEMO_AUDIT_EVENTS;
+      : [];
 
   return <AuditLedgerClient events={events} orgName={orgName} />;
 }

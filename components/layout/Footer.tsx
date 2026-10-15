@@ -30,22 +30,41 @@ export function Footer({ networkMode = "testnet" }: FooterProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@bizflow.io";
+  const supportMailto = `mailto:${supportEmail}?subject=BizFlow%20Pilot%20V2%20Problem%20Report`;
+
   return (
     <footer className="border-t border-border bg-surface text-ink text-xs mt-auto">
       <div className="max-w-[1280px] w-full mx-auto px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-3">
-        {/* Left: Built for Arc + Demo scale note */}
+        {/* Left: Built for Arc + Beta note + Legal Links */}
         <div className="flex flex-wrap items-center gap-2 text-ink-muted">
           <span className="font-semibold text-navy">BizFlow Pilot V2</span>
           <span>•</span>
-          <span className="text-brand-teal font-medium">Tameion edition</span>
+          <span className="text-brand-teal font-medium">Non-Custodial Beta</span>
           <span>•</span>
           <span className="font-mono text-[11px] bg-canvas px-1.5 py-0.5 rounded border border-border">
-            v2.0.0
+            v2.1.0
           </span>
           <span>•</span>
-          <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/70 font-medium">
-            Demo-scale data: amounts capped at 1 USDC
+          <span className="text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/70 font-medium">
+            Beta Limit: 25.00 USDC max / payment
           </span>
+          <span>•</span>
+          <Link href="/terms" className="hover:text-navy transition-colors underline">
+            Terms
+          </Link>
+          <span>•</span>
+          <Link href="/privacy" className="hover:text-navy transition-colors underline">
+            Privacy
+          </Link>
+          <span>•</span>
+          <Link href="/risk" className="hover:text-navy transition-colors underline">
+            Risk Notice
+          </Link>
+          <span>•</span>
+          <a href={supportMailto} className="hover:text-brand-teal transition-colors underline">
+            Report a Problem
+          </a>
         </div>
 
         {/* Right: Contract Anchor + Network + Repo */}

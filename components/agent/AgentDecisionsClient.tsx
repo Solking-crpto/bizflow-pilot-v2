@@ -23,6 +23,7 @@ import {
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { HashView } from "@/components/ui/StatusChip";
 import { truncateHash } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export interface DecisionRecord {
   id: string;
@@ -242,12 +243,20 @@ export function AgentDecisionsClient({
       {/* Decisions Table */}
       <div className="rounded-xl border border-border bg-surface shadow-card overflow-hidden">
         {filteredDecisions.length === 0 ? (
-          <div className="p-8 text-center space-y-2">
-            <Bot className="w-8 h-8 text-ink-muted mx-auto" />
-            <p className="text-sm font-semibold text-ink">No decisions recorded yet</p>
-            <p className="text-xs text-ink-muted max-w-sm mx-auto">
-              Run the autonomous agent loop from the Agent page or let the daily Vercel cron process open invoices.
-            </p>
+          <div className="p-6">
+            <EmptyState
+              icon={Bot}
+              title="No Agent Decisions Recorded"
+              description="When the AI agent evaluates open invoices, observation hashes, policy evaluations, and reasoning trails will appear here."
+              action={{
+                label: "Run Agent Advisory",
+                href: "/agent",
+              }}
+              secondaryAction={{
+                label: "View Invoices",
+                href: "/invoices",
+              }}
+            />
           </div>
         ) : (
           <div className="overflow-x-auto">
