@@ -5,6 +5,8 @@ import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { InvoiceDeskClient, SerializedInvoice } from "@/components/invoices/InvoiceDeskClient";
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 
+import { getServerSession, getSessionOrg } from "@/lib/auth/session";
+
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
@@ -14,33 +16,41 @@ export const metadata: Metadata = {
 
 export default async function InvoiceDeskPage() {
   const isMainnet = (process.env.NEXT_PUBLIC_NETWORK_MODE || process.env.NETWORK_MODE) === "mainnet";
+  const session = await getServerSession();
   let invoices: any[] = [];
   let dbError: string | null = null;
 
-  try {
-    invoices = await withDbTimeout(
-      () =>
-        prisma.invoice.findMany({
-          where: isMainnet ? { network: "mainnet" } : undefined,
-          include: {
-            vendor: true,
-            purchaseOrder: {
-              include: {
-                lines: { include: { item: true } },
-                goodsReceipts: {
-                  include: { lines: { include: { item: true } } },
+  if (session) {
+    try {
+      const org = await getSessionOrg(session);
+      if (org) {
+        invoices = await withDbTimeout(() =>
+          prisma.invoice.findMany({
+            where: {
+              orgId: org.id,
+              ...(isMainnet ? { network: "mainnet" } : {}),
+            },
+            include: {
+              vendor: true,
+              purchaseOrder: {
+                include: {
+                  lines: { include: { item: true } },
+                  goodsReceipts: {
+                    include: { lines: { include: { item: true } } },
+                  },
                 },
               },
             },
-          },
-          orderBy: { createdAt: "desc" },
-        })
-    );
-  } catch (err: any) {
-    if (isMainnet) {
-      dbError = err.message || "Failed to load invoices from database.";
-    } else {
-      invoices = [];
+            orderBy: { createdAt: "desc" },
+          })
+        );
+      }
+    } catch (err: any) {
+      if (isMainnet) {
+        dbError = err.message || "Failed to load invoices from database.";
+      } else {
+        invoices = [];
+      }
     }
   }
 

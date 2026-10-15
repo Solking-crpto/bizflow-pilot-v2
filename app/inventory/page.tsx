@@ -1,10 +1,13 @@
 import React from "react";
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Boxes, PackageCheck, FileText, ArrowRight, CheckCircle2, TrendingDown } from "lucide-react";
 import { prisma, withDbTimeout } from "@/lib/db";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { getServerSession, getSessionOrg } from "@/lib/auth/session";
+import {
+  InventoryDeskClient,
+  SerializedItem,
+  SerializedPO,
+} from "@/components/inventory/InventoryDeskClient";
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 
 export const dynamic = "force-dynamic";
@@ -16,38 +19,99 @@ export const metadata: Metadata = {
 
 export default async function InventoryPage() {
   const isMainnet = (process.env.NEXT_PUBLIC_NETWORK_MODE || process.env.NETWORK_MODE) === "mainnet";
-  let items: any[] = [];
-  let purchaseOrders: any[] = [];
+  const session = await getServerSession();
+  let items: SerializedItem[] = [];
+  let purchaseOrders: SerializedPO[] = [];
   let dbError: string | null = null;
 
-  try {
-    const results = await withDbTimeout(
-      () =>
-        Promise.all([
-          prisma.item.findMany({
-            include: {
-              stockMovements: { orderBy: { createdAt: "desc" }, take: 5 },
-            },
-          }),
-          prisma.purchaseOrder.findMany({
-            include: {
-              vendor: true,
-              lines: { include: { item: true } },
-              goodsReceipts: { include: { lines: true } },
-            },
-            orderBy: { createdAt: "desc" },
-          }),
-        ])
-    );
+  if (session) {
+    try {
+      const org = await getSessionOrg(session);
+      if (org) {
+        const [rawItems, rawPOs] = await withDbTimeout(() =>
+          Promise.all([
+            prisma.item.findMany({
+              where: { orgId: org.id },
+              include: {
+                stockMovements: { orderBy: { createdAt: "desc" }, take: 5 },
+              },
+              orderBy: { createdAt: "desc" },
+            }),
+            prisma.purchaseOrder.findMany({
+              where: { orgId: org.id },
+              include: {
+                vendor: true,
+                lines: { include: { item: true } },
+                goodsReceipts: { include: { lines: { include: { item: true } } } },
+              },
+              orderBy: { createdAt: "desc" },
+            }),
+          ])
+        );
 
-    items = results[0];
-    purchaseOrders = results[1];
-  } catch (err: any) {
-    if (isMainnet) {
-      dbError = err.message || "Failed to load inventory data from database.";
-    } else {
-      items = [];
-      purchaseOrders = [];
+        items = rawItems.map((item) => ({
+          id: item.id,
+          sku: item.sku,
+          name: item.name,
+          unit: item.unit,
+          currentStock: item.currentStock,
+          unitPriceUsdc: formatUsdc(usdcAtomic(item.unitPriceUsdc)),
+          stockMovements: item.stockMovements.map((sm) => ({
+            id: sm.id,
+            quantity: sm.quantity,
+            type: sm.type,
+            reference: sm.reference,
+            createdAt: sm.createdAt.toISOString(),
+          })),
+        }));
+
+        purchaseOrders = rawPOs.map((po) => ({
+          id: po.id,
+          poNumber: po.poNumber,
+          status: po.status,
+          totalUsdc: formatUsdc(usdcAtomic(po.totalUsdc)),
+          orderDate: po.orderDate.toISOString(),
+          vendor: {
+            id: po.vendor.id,
+            name: po.vendor.name,
+            walletAddress: po.vendor.walletAddress,
+          },
+          lines: po.lines.map((l) => ({
+            id: l.id,
+            quantity: l.quantity,
+            unitPriceUsdc: formatUsdc(usdcAtomic(l.unitPriceUsdc)),
+            totalUsdc: formatUsdc(usdcAtomic(l.totalUsdc)),
+            item: {
+              id: l.item.id,
+              name: l.item.name,
+              sku: l.item.sku,
+              unit: l.item.unit,
+            },
+          })),
+          goodsReceipts: po.goodsReceipts.map((gr) => ({
+            id: gr.id,
+            grNumber: gr.grNumber,
+            receivedDate: gr.receivedDate.toISOString(),
+            receivedBy: gr.receivedBy,
+            notes: gr.notes,
+            lines: gr.lines.map((gl) => ({
+              id: gl.id,
+              quantity: gl.quantity,
+              item: gl.item
+                ? {
+                    id: gl.item.id,
+                    name: gl.item.name,
+                    sku: gl.item.sku,
+                  }
+                : undefined,
+            })),
+          })),
+        }));
+      }
+    } catch (err: any) {
+      if (isMainnet) {
+        dbError = err.message || "Failed to load inventory data from database.";
+      }
     }
   }
 
@@ -60,153 +124,5 @@ export default async function InventoryPage() {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-border">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-ink">Inventory & Purchase Orders</h1>
-          <p className="text-sm text-ink-muted mt-0.5">
-            Operational ledger justifying procurement payments with real goods receipt proofs.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/invoices"
-            className="px-3.5 py-1.5 rounded-md bg-navy text-white text-xs font-semibold hover:bg-navy-light transition-colors shadow-xs flex items-center gap-1.5"
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Match Invoices</span>
-          </Link>
-        </div>
-      </div>
-
-      {items.length === 0 && purchaseOrders.length === 0 ? (
-        <EmptyState
-          icon={Boxes}
-          title="No Inventory Items or Purchase Orders"
-          description="Purchase orders record agreed supplier quantities and atomic USDC unit prices, which are cross-referenced against warehouse receiving notes to enable automated 3-way matching."
-          action={{
-            label: "Add Your First Supplier",
-            href: "/suppliers",
-          }}
-          secondaryAction={{
-            label: "Go to Invoices",
-            href: "/invoices",
-          }}
-        />
-      ) : (
-        <>
-          {/* Stock Items Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {items.map((item) => (
-          <div key={item.id} className="p-4 rounded-xl border border-border bg-surface shadow-card space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-xs font-bold text-navy">{item.sku}</span>
-              <span className="text-[10px] font-mono uppercase bg-brand-light text-brand-teal px-1.5 py-0.5 rounded font-semibold">
-                In Stock
-              </span>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-semibold text-ink">{item.name}</h3>
-              <div className="text-xs text-ink-muted mt-1">
-                Standard Valuation:{" "}
-                <span className="font-mono font-medium text-ink">
-                  {formatUsdc(usdcAtomic(item.unitPriceUsdc))} / {item.unit}
-                </span>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-border flex items-center justify-between">
-              <span className="text-xs text-ink-muted">Verified Physical Units:</span>
-              <span className="text-lg font-mono font-bold text-ink">
-                {item.currentStock} <span className="text-xs font-normal text-ink-muted">{item.unit}</span>
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Purchase Orders and Goods Receipts Section */}
-      <div className="rounded-xl border border-border bg-surface shadow-card overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-border flex items-center justify-between bg-canvas/60">
-          <div className="flex items-center gap-2">
-            <Boxes className="w-4 h-4 text-navy" />
-            <h2 className="text-sm font-semibold text-ink">Authorized Purchase Orders & Receiving Slips</h2>
-          </div>
-          <span className="text-xs font-mono text-ink-muted">{purchaseOrders.length} records</span>
-        </div>
-
-        <div className="divide-y divide-border">
-          {purchaseOrders.map((po) => {
-            const line = po.lines[0];
-            const gr = po.goodsReceipts[0];
-
-            return (
-              <div key={po.id} className="p-5 hover:bg-canvas/40 transition-colors space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm font-bold text-ink">{po.poNumber}</span>
-                      <span className="text-xs font-medium text-success bg-success-light border border-success-border px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Fully Received & Signed
-                      </span>
-                    </div>
-                    <div className="text-xs text-ink-muted">
-                      Vendor: <span className="font-semibold text-ink">{po.vendor.name}</span>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-base font-mono font-bold text-ink">
-                      {formatUsdc(usdcAtomic(po.totalUsdc))}
-                    </div>
-                    <div className="text-xs text-ink-muted font-mono">
-                      Authorized: {line?.quantity} units @ {formatUsdc(usdcAtomic(line?.unitPriceUsdc || 0n))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Goods Receipt Card */}
-                {gr && (
-                  <div className="p-3.5 rounded-lg bg-canvas border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-1.5 rounded-md bg-white border border-border text-brand-teal">
-                        <PackageCheck className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="font-mono font-semibold text-ink flex items-center gap-2">
-                          <span>{gr.grNumber}</span>
-                          <span className="text-[10px] font-sans text-ink-muted font-normal">
-                            Logged by {gr.receivedBy}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-ink-muted mt-0.5">{gr.notes}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 self-end sm:self-center">
-                      <span className="font-mono font-bold text-ink">
-                        {gr.lines[0]?.quantity || 200} units received
-                      </span>
-                      <Link
-                        href="/invoices"
-                        className="text-navy font-semibold hover:text-brand-teal transition-colors flex items-center gap-1"
-                      >
-                        <span>Cross-Match</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </Link>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      </>
-      )}
-    </div>
-  );
+  return <InventoryDeskClient items={items} purchaseOrders={purchaseOrders} />;
 }

@@ -21,12 +21,12 @@ Started: 15 Oct 2026
 - [x] 2.7 Phase 2 verification and local commit
 
 ### Phase 3 — Onboarding and Data Entry (Zod Validated)
-- [ ] 3.1 Onboarding wizard for new sign-ins: business name, country, optional website/X/LinkedIn, contact email, user governance settings (limits, tolerance, reserve) with beta hard cap `APP_MAX_PAYMENT_USDC`
-- [ ] 3.2 Suppliers management (CRUD): name, category, payout wallet (checksummed, non-blocklisted, screening checked), email, cooldown on wallet change
-- [ ] 3.3 Purchase Orders with line items (description, quantity, atomic USDC price) and Goods Receipts with running atomic totals
-- [ ] 3.4 Invoices entry: manual form, paste-text, and file upload (SHA-256 hash stored, untrusted extraction)
-- [ ] 3.5 Consistent atomic integer storage, formatted USDC display ("1,250.00 USDC"), inline validation, loading and error states
-- [ ] 3.6 Phase 3 verification and local commit
+- [x] 3.1 Onboarding wizard for new sign-ins: business name, country, optional website/X/LinkedIn, contact email, user governance settings (limits, tolerance, reserve) with beta hard cap `APP_MAX_PAYMENT_USDC`
+- [x] 3.2 Suppliers management (CRUD): name, category, payout wallet (checksummed, non-blocklisted, screening checked), email, cooldown on wallet change
+- [x] 3.3 Purchase Orders with line items (description, quantity, atomic USDC price) and Goods Receipts with running atomic totals
+- [x] 3.4 Invoices entry: manual form, paste-text, and file upload (SHA-256 hash stored, untrusted extraction)
+- [x] 3.5 Consistent atomic integer storage, formatted USDC display ("1,250.00 USDC"), inline validation, loading and error states
+- [x] 3.6 Phase 3 verification and local commit
 
 ### Phase 4 — Non-Custodial Payment Flow
 - [ ] 4.1 Payment Intent lifecycle: `POST /api/payments/intent` with policy gate re-evaluation, atomic amount, recipient, token, expiry, idempotency key

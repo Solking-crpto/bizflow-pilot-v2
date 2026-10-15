@@ -53,9 +53,14 @@ export interface SerializedInvoice {
   createdAt: string;
 }
 
+import { InvoiceUploadModal } from "./InvoiceUploadModal";
+import { useRouter } from "next/navigation";
+
 export function InvoiceDeskClient({ invoices }: { invoices: SerializedInvoice[] }) {
+  const router = useRouter();
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>(invoices[0]?.id || "");
   const [filter, setFilter] = useState<string>("all");
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
 
   const filteredInvoices = invoices.filter((inv) => {
     if (filter === "verified") return inv.status === "verified";
@@ -77,6 +82,13 @@ export function InvoiceDeskClient({ invoices }: { invoices: SerializedInvoice[] 
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsUploadOpen(true)}
+            className="px-3.5 py-1.5 rounded-md bg-brand-teal text-white text-xs font-semibold hover:bg-brand-hover transition-colors shadow-xs flex items-center gap-1.5"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Enter Invoice</span>
+          </button>
           <Link
             href="/agent"
             className="px-3.5 py-1.5 rounded-md bg-navy text-white text-xs font-semibold hover:bg-navy-light transition-colors shadow-xs flex items-center gap-1.5"
@@ -87,14 +99,20 @@ export function InvoiceDeskClient({ invoices }: { invoices: SerializedInvoice[] 
         </div>
       </div>
 
+      <InvoiceUploadModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        onSuccess={() => router.refresh()}
+      />
+
       {invoices.length === 0 ? (
         <EmptyState
           icon={ReceiptText}
           title="No Invoices Recorded Yet"
           description="Invoices received from your suppliers undergo automated 3-way matching, duplicate screening, and deterministic policy evaluation."
           action={{
-            label: "Add Your First Supplier",
-            href: "/suppliers",
+            label: "Enter First Invoice",
+            onClick: () => setIsUploadOpen(true),
           }}
           secondaryAction={{
             label: "Create Purchase Order",

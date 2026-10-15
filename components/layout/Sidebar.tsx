@@ -18,14 +18,14 @@ import {
   Award,
   CheckCircle2,
   Building2,
+  Users,
 } from "lucide-react";
 import { Logo } from "../ui/Logo";
 import { OrgSwitcher } from "./OrgSwitcher";
 
 const NAV_ITEMS = [
   { name: "Command Center", href: "/", icon: LayoutDashboard },
-  { name: "Judge Guide", href: "/judges", icon: Award },
-  { name: "Pilot Businesses", href: "/pilots", icon: Building2 },
+  { name: "Suppliers", href: "/suppliers", icon: Users },
   { name: "Inventory & POs", href: "/inventory", icon: Boxes },
   { name: "Invoice Desk", href: "/invoices", icon: ReceiptText },
   { name: "AI Finance Agent", href: "/agent", icon: Bot },
@@ -33,7 +33,9 @@ const NAV_ITEMS = [
   { name: "Payment Desk", href: "/payments", icon: CreditCard },
   { name: "Trust & Audit Ledger", href: "/audit", icon: FileCheck2 },
   { name: "Policy Simulator", href: "/simulator", icon: SlidersHorizontal },
+  { name: "Pilot Businesses", href: "/pilots", icon: Building2 },
   { name: "Rules & Settings", href: "/settings", icon: Settings },
+  { name: "Judge Guide", href: "/judges", icon: Award },
   { name: "About & Trust Model", href: "/about", icon: HelpCircle },
 ];
 

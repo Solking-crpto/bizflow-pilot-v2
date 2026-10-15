@@ -6,7 +6,17 @@ const globalForPrisma = globalThis as unknown as {
 
 // Prefer DIRECT_URL (port 5432 direct connection) over pooled DATABASE_URL if provided,
 // particularly for environments where port 6543 is firewalled.
-const datasourceUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
+function getOptimizedDatasourceUrl(): string | undefined {
+  let url = process.env.DIRECT_URL || process.env.DATABASE_URL;
+  if (!url) return undefined;
+  if (!url.includes("connection_limit=")) {
+    const separator = url.includes("?") ? "&" : "?";
+    url = `${url}${separator}connection_limit=3&pool_timeout=20&connect_timeout=15`;
+  }
+  return url;
+}
+
+const datasourceUrl = getOptimizedDatasourceUrl();
 
 export const prisma =
   globalForPrisma.prisma ??

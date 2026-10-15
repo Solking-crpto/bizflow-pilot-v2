@@ -1,17 +1,38 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import { runAutonomousAgentLoop } from "../lib/agent/runner";
 import { prisma } from "../lib/db";
 
+async function retryQuery<T>(fn: () => Promise<T>, retries = 5): Promise<T> {
+  let lastErr: any;
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (i === retries - 1) throw e;
+      await new Promise((r) => setTimeout(r, 2000 * (i + 1)));
+    }
+  }
+  throw lastErr || new Error("Retry failed");
+}
+
 describe("Acceptance Verification: Autonomous Agent Loop in DRY_RUN", () => {
+  beforeAll(async () => {
+    // Warm up connection
+    await retryQuery(() => prisma.$queryRawUnsafe("SELECT 1"));
+  }, 45000);
+
   it("executes the full autonomous cycle across all invoice scenarios in DRY_RUN", async () => {
     // Ensure agentMode is set to autonomous for this test
-    const setting = await prisma.setting.findFirst();
+    const setting = await retryQuery(() => prisma.setting.findFirst());
     const originalMode = setting?.agentMode;
     if (setting) {
-      await prisma.setting.update({
-        where: { id: setting.id },
-        data: { agentMode: "autonomous", killSwitchActive: false },
-      });
+      await retryQuery(() =>
+        prisma.setting.update({
+          where: { id: setting.id },
+          data: { agentMode: "autonomous", killSwitchActive: false },
+        })
+      );
     }
 
     try {
@@ -54,19 +75,23 @@ describe("Acceptance Verification: Autonomous Agent Loop in DRY_RUN", () => {
       }
     } finally {
       if (setting && originalMode) {
-        await prisma.setting.update({
-          where: { id: setting.id },
-          data: { agentMode: originalMode },
-        });
+        await retryQuery(() =>
+          prisma.setting.update({
+            where: { id: setting.id },
+            data: { agentMode: originalMode },
+          })
+        );
       }
     }
-  });
+  }, 60000);
 
   it("verifies kill switch completely halts autonomous execution", async () => {
     // Set kill switch active across all settings
-    await prisma.setting.updateMany({
-      data: { killSwitchActive: true },
-    });
+    await retryQuery(() =>
+      prisma.setting.updateMany({
+        data: { killSwitchActive: true },
+      })
+    );
 
     try {
       const killResult = await runAutonomousAgentLoop({ dryRun: true });
@@ -74,9 +99,11 @@ describe("Acceptance Verification: Autonomous Agent Loop in DRY_RUN", () => {
       expect(killResult.decisions.every((d) => d.outcome === "held")).toBe(true);
     } finally {
       // Disarm kill switch
-      await prisma.setting.updateMany({
-        data: { killSwitchActive: false },
-      });
+      await retryQuery(() =>
+        prisma.setting.updateMany({
+          data: { killSwitchActive: false },
+        })
+      );
     }
-  });
+  }, 60000);
 });
