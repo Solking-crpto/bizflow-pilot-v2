@@ -1,14 +1,19 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { withDbTimeout } from "@/lib/db";
 import { verifyOwnerPasscodeWithRateLimit, getClientIp } from "@/lib/security/auth";
 import { executePaymentTransaction } from "@/lib/payments/executor";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { getSessionFromRequest, isAdminWallet, getSessionOrg } from "@/lib/auth/session";
+import { validateApiNetwork } from "@/lib/api-guard";
 
 export async function GET(req: NextRequest) {
   try {
+    const apiCheck = validateApiNetwork(req);
+    if (apiCheck.errorResponse) return apiCheck.errorResponse;
+    const { network: networkMode, db } = apiCheck;
+
     const searchParams = req.nextUrl.searchParams;
     const filterChoice = searchParams.get("choice");
     const filterEscalated = searchParams.get("escalated");
@@ -16,6 +21,7 @@ export async function GET(req: NextRequest) {
 
     const session = getSessionFromRequest(req);
     const isAdmin = session ? isAdminWallet(session.address) : false;
+    const org = session ? await getSessionOrg(session, networkMode) : null;
 
     const whereClause: any = {};
     if (filterChoice) whereClause.choice = filterChoice;
@@ -24,12 +30,12 @@ export async function GET(req: NextRequest) {
     if (filterOutcome) whereClause.outcome = filterOutcome;
 
     // Tenant isolation: public users only see their own org's decisions
-    if (session && !isAdmin && session.orgId) {
-      whereClause.orgId = session.orgId;
+    if (session && !isAdmin && org) {
+      whereClause.orgId = org.id;
     }
 
     const decisions = await withDbTimeout(() =>
-      prisma.agentDecision.findMany({
+      db.agentDecision.findMany({
         where: whereClause,
         include: {
           invoice: {
@@ -44,10 +50,10 @@ export async function GET(req: NextRequest) {
     );
 
     // Compute honest metrics strictly from real rows scoped to org if not admin
-    const metricsWhere: any = (session && !isAdmin && session.orgId) ? { orgId: session.orgId } : {};
+    const metricsWhere: any = (session && !isAdmin && org) ? { orgId: org.id } : {};
 
     const allDecisions = await withDbTimeout(() =>
-      prisma.agentDecision.findMany({
+      db.agentDecision.findMany({
         where: metricsWhere,
         include: {
           invoice: true,
@@ -56,12 +62,12 @@ export async function GET(req: NextRequest) {
     );
 
     const paymentWhere: any = { status: { in: ["confirmed", "anchored"] } };
-    if (session && !isAdmin && session.orgId) {
-      paymentWhere.orgId = session.orgId;
+    if (session && !isAdmin && org) {
+      paymentWhere.orgId = org.id;
     }
 
     const confirmedPayments = await withDbTimeout(() =>
-      prisma.payment.findMany({
+      db.payment.findMany({
         where: paymentWhere,
         select: { amountAtomic: true },
       })
@@ -136,11 +142,16 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const apiCheck = validateApiNetwork(req);
+    if (apiCheck.errorResponse) return apiCheck.errorResponse;
+    const { network: networkMode, db } = apiCheck;
+
     const clientIp = getClientIp(req);
     const body = await req.json();
     const { decisionId, action } = body;
     const session = getSessionFromRequest(req);
     const isAdmin = session ? isAdminWallet(session.address) : false;
+    const org = session ? await getSessionOrg(session, networkMode) : null;
 
     if (!decisionId || !action || !["approve", "reject"].includes(action)) {
       return NextResponse.json({ error: "Invalid payload: decisionId and action (approve|reject) required" }, { status: 400 });
@@ -162,7 +173,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const decision = await prisma.agentDecision.findUnique({
+    const decision = await db.agentDecision.findUnique({
       where: { id: decisionId },
       include: {
         invoice: {
@@ -178,7 +189,7 @@ export async function POST(req: NextRequest) {
     }
 
     // IDOR protection: user can only act on their own organization's decisions unless admin
-    if (session && !isAdmin && session.orgId && decision.orgId !== session.orgId) {
+    if (session && !isAdmin && org && decision.orgId !== org.id) {
       return NextResponse.json(
         { error: "Forbidden: You do not have permission to modify decisions for another organization." },
         { status: 403 }
@@ -199,11 +210,12 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Execute builder-operated payment safely through server executor
+      // Execute builder-operated payment safely through server executor (mainnet only)
       const execResult = await executePaymentTransaction({
         invoiceId: decision.invoiceId,
         actor: "human",
         hasOwnerConfirmation: true,
+        network: networkMode,
       });
 
       if (!execResult.success) {
@@ -213,7 +225,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const updated = await prisma.agentDecision.update({
+      const updated = await db.agentDecision.update({
         where: { id: decisionId },
         data: {
           humanResponse: "approved",
@@ -231,7 +243,7 @@ export async function POST(req: NextRequest) {
       });
     } else {
       // Reject escalation
-      const updated = await prisma.agentDecision.update({
+      const updated = await db.agentDecision.update({
         where: { id: decisionId },
         data: {
           humanResponse: "rejected",

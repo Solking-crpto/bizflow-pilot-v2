@@ -1,9 +1,11 @@
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import React from "react";
 import type { Metadata } from "next";
-import { prisma, withDbTimeout } from "@/lib/db";
-import { getActiveNetwork } from "@/lib/networks";
+import { cookies } from "next/headers";
+import { getDb, withDbTimeout } from "@/lib/db";
+import { getServerActiveNetwork, NETWORKS } from "@/lib/networks";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { AgentDecisionsClient, DecisionRecord, DecisionMetrics } from "@/components/agent/AgentDecisionsClient";
 import { getServerSession, getSessionOrg, isAdminWallet } from "@/lib/auth/session";
@@ -14,7 +16,10 @@ export const metadata: Metadata = {
 };
 
 export default async function AgentDecisionsPage() {
-  const network = getActiveNetwork();
+  const cookieStore = cookies();
+  const networkMode = getServerActiveNetwork(cookieStore.get("bizflow_network")?.value);
+  const network = NETWORKS[networkMode];
+  const db = getDb(networkMode);
   const session = await getServerSession();
 
   let decisions: any[] = [];
@@ -23,13 +28,13 @@ export default async function AgentDecisionsPage() {
 
   if (session) {
     try {
-      const org = await getSessionOrg(session);
+      const org = await getSessionOrg(session, networkMode);
       const isAdmin = isAdminWallet(session.address);
       // For non-admin, strictly isolate to their own organization
       const orgFilter = isAdmin ? {} : org ? { orgId: org.id } : { orgId: "unauthorized" };
 
       decisions = await withDbTimeout(() =>
-        prisma.agentDecision.findMany({
+        db.agentDecision.findMany({
           where: orgFilter,
           include: {
             invoice: {
@@ -44,14 +49,14 @@ export default async function AgentDecisionsPage() {
       );
 
       allDecisions = await withDbTimeout(() =>
-        prisma.agentDecision.findMany({
+        db.agentDecision.findMany({
           where: orgFilter,
           include: { invoice: true },
         })
       );
 
       confirmedPayments = await withDbTimeout(() =>
-        prisma.payment.findMany({
+        db.payment.findMany({
           where: {
             status: { in: ["confirmed", "anchored"] },
             invoice: orgFilter,

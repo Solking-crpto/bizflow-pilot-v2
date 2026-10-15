@@ -25,7 +25,7 @@ test.describe("Non-Custodial Public Beta Full User Journey", () => {
     await expect(page.locator("h1", { hasText: "Onboard Your Business" })).toBeVisible();
     await expect(page.locator("input[placeholder*='Acme Logistics']")).toBeVisible();
 
-    // 4. Suppliers Desk & OFAC Screening
+    // 4. Suppliers Desk & Blocked-Address Screening
     await page.goto("/suppliers", { waitUntil: "domcontentloaded" });
     await expect(page.locator("body")).toBeVisible();
 

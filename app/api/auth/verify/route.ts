@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyMessage } from "viem";
-import { prisma, withDbTimeout } from "@/lib/db";
-import { getActiveNetwork } from "@/lib/networks";
+import { withDbTimeout } from "@/lib/db";
+import { NETWORKS } from "@/lib/networks";
+import { validateApiNetwork } from "@/lib/api-guard";
 import {
   parseSiweMessage,
   createSessionToken,
@@ -20,6 +21,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const apiCheck = validateApiNetwork(req);
+    if (apiCheck.errorResponse) return apiCheck.errorResponse;
+    const { network: networkMode, db } = apiCheck;
+
     const body = await req.json();
     const { message, signature, address } = body || {};
 
@@ -56,7 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Validate chain ID
-    const activeNetwork = getActiveNetwork();
+    const activeNetwork = NETWORKS[networkMode];
     if (parsed.chainId !== activeNetwork.chainId) {
       return NextResponse.json(
         {
@@ -77,7 +82,7 @@ export async function POST(req: NextRequest) {
 
     // 4. One-time nonce validation and atomic invalidation
     const nonceRecord = await withDbTimeout(() =>
-      prisma.authNonce.findUnique({
+      db.authNonce.findUnique({
         where: { nonce: parsed.nonce },
       })
     );
@@ -91,7 +96,7 @@ export async function POST(req: NextRequest) {
 
     // Delete nonce immediately to prevent any replay attempt
     await withDbTimeout(() =>
-      prisma.authNonce.delete({
+      db.authNonce.delete({
         where: { nonce: parsed.nonce },
       })
     ).catch(() => {});
@@ -110,9 +115,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 6. Resolve tenant organization belonging to this wallet
+    // 6. Resolve tenant organization belonging to this wallet on the active network
     const org = await withDbTimeout(() =>
-      prisma.organization.findFirst({
+      db.organization.findFirst({
         where: {
           OR: [
             { walletAddress: { equals: normalizedAddress, mode: "insensitive" } },

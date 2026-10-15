@@ -8,73 +8,108 @@ import {
   ShieldCheck,
   Bot,
   Anchor,
-  AlertTriangle,
   ArrowLeft,
-  CheckCircle2,
   ExternalLink,
+  AlertTriangle,
 } from "lucide-react";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { getDb, withDbTimeout } from "@/lib/db";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
-import { getActiveNetwork } from "@/lib/networks";
+import { NETWORKS, NetworkMode } from "@/lib/networks";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Public Metrics & Traction Ledger | BizFlow Pilot V2",
-  description: "Real-time, verifiable metrics computed strictly from real database records and Arc on-chain settlement receipts.",
+  description: "Real-time, verifiable metrics computed strictly from real database records and Arc on-chain settlement receipts across Mainnet and Testnet.",
 };
 
-export default async function MetricsPage() {
-  const network = getActiveNetwork();
+interface NetworkMetricsData {
+  networkMode: NetworkMode;
+  name: string;
+  chainId: number;
+  available: boolean;
+  error?: string;
+  invoicesCount: number;
+  confirmedPaymentsCount: number;
+  settledVolumeFormatted: string;
+  vendorsCount: number;
+  agentDecisionsCount: number;
+  duplicatesCount: number;
+  injectionsCount: number;
+  anchoredCount: number;
+}
 
-  let invoicesCount = 0;
-  let confirmedPayments: { amountAtomic: bigint }[] = [];
-  let vendorsCount = 0;
-  let agentDecisionsCount = 0;
-  let duplicatesCount = 0;
-  let injectionsCount = 0;
-  let anchoredCount = 0;
-
+async function fetchNetworkMetrics(networkMode: NetworkMode): Promise<NetworkMetricsData> {
+  const network = NETWORKS[networkMode];
   try {
+    const db = getDb(networkMode);
     const [invCount, payments, venCount, decisionsCount, dupsCount, injCount, anchCount] =
       await withDbTimeout(() =>
         Promise.all([
-          prisma.invoice.count(),
-          prisma.payment.findMany({
+          db.invoice.count(),
+          db.payment.findMany({
             where: { status: { in: ["confirmed", "anchored"] } },
             select: { amountAtomic: true },
           }),
-          prisma.vendor.count({ where: { status: "active" } }),
-          prisma.agentDecision.count(),
-          prisma.invoice.count({ where: { duplicateScore: { gte: 90 } } }),
-          prisma.invoice.count({ where: { isInjectionSuspect: true } }),
-          prisma.payment.count({ where: { anchorTxHash: { not: null } } }),
-        ])
+          db.vendor.count({ where: { status: "active" } }),
+          db.agentDecision.count(),
+          db.invoice.count({ where: { duplicateScore: { gte: 90 } } }),
+          db.invoice.count({ where: { isInjectionSuspect: true } }),
+          db.payment.count({ where: { anchorTxHash: { not: null } } }),
+        ]),
+        3000
       );
 
-    invoicesCount = invCount;
-    confirmedPayments = payments;
-    vendorsCount = venCount;
-    agentDecisionsCount = decisionsCount;
-    duplicatesCount = dupsCount;
-    injectionsCount = injCount;
-    anchoredCount = anchCount;
-  } catch (err) {
-    console.warn("MetricsPage database fallback:", err);
+    const totalVolumeAtomic = payments.reduce(
+      (sum, p) => sum + BigInt(p.amountAtomic),
+      0n
+    );
+
+    return {
+      networkMode,
+      name: network.name,
+      chainId: network.chainId,
+      available: true,
+      invoicesCount: invCount,
+      confirmedPaymentsCount: payments.length,
+      settledVolumeFormatted:
+        payments.length > 0
+          ? `${formatUsdc(usdcAtomic(totalVolumeAtomic))} USDC`
+          : "0.00 USDC",
+      vendorsCount: venCount,
+      agentDecisionsCount: decisionsCount,
+      duplicatesCount: dupsCount,
+      injectionsCount: injCount,
+      anchoredCount: anchCount,
+    };
+  } catch (err: any) {
+    return {
+      networkMode,
+      name: network.name,
+      chainId: network.chainId,
+      available: false,
+      error: err.message || "Database connection unavailable",
+      invoicesCount: 0,
+      confirmedPaymentsCount: 0,
+      settledVolumeFormatted: "0.00 USDC",
+      vendorsCount: 0,
+      agentDecisionsCount: 0,
+      duplicatesCount: 0,
+      injectionsCount: 0,
+      anchoredCount: 0,
+    };
   }
+}
 
-  const totalVolumeAtomic = confirmedPayments.reduce(
-    (sum, p) => sum + BigInt(p.amountAtomic),
-    0n
-  );
-
-  const formattedVolume =
-    confirmedPayments.length > 0
-      ? `${formatUsdc(usdcAtomic(totalVolumeAtomic))} USDC`
-      : "0.00 USDC (n/a)";
+export default async function MetricsPage() {
+  const [mainnetData, testnetData] = await Promise.all([
+    fetchNetworkMetrics("mainnet"),
+    fetchNetworkMetrics("testnet"),
+  ]);
 
   return (
-    <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 space-y-8">
+    <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 space-y-8">
       {/* Navigation */}
       <div>
         <Link
@@ -89,13 +124,18 @@ export default async function MetricsPage() {
       {/* Header */}
       <div className="border-b border-border pb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-brand-light text-brand-teal text-xs font-semibold font-mono border border-brand-teal/20 mb-2">
-            <TrendingUp className="w-3.5 h-3.5" />
-            <span>Public Traction & Integrity Dashboard</span>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-brand-light text-brand-teal text-xs font-semibold font-mono border border-brand-teal/20">
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>Public Traction & Integrity Dashboard</span>
+            </div>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold uppercase tracking-wider bg-canvas border border-border text-ink-muted">
+              Zero Cross-Network Aggregation
+            </span>
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-ink">Verifiable Metrics</h1>
           <p className="text-sm text-ink-muted mt-1">
-            Real-time AP/AR throughput computed exclusively from production database rows on {network.name}.
+            Real-time AP/AR throughput computed exclusively from production database rows on Arc Mainnet and Arc Testnet.
           </p>
         </div>
 
@@ -118,108 +158,160 @@ export default async function MetricsPage() {
         </div>
         <div className="leading-relaxed space-y-1">
           <strong className="font-semibold block text-emerald-950">
-            Tameion Integrity Policy: Zero Synthetic Volume
+            Tameion Integrity Policy: Zero Synthetic Volume & Physical Separation
           </strong>
           <p>
             Every statistic shown below is queried in real time from PostgreSQL records and on-chain Arc transaction receipts.
-            We never inject synthetic transactions, fake customer balances, or simulated volumes. If a metric is zero, it is honestly displayed as zero.
+            Mainnet and Testnet data are stored in completely separate schemas (<code className="font-mono bg-emerald-100 px-1 py-0.5 rounded">v2_mainnet</code> and <code className="font-mono bg-emerald-100 px-1 py-0.5 rounded">v2_testnet</code>) and are <strong>never aggregated or summed together</strong>. If a metric is zero, it is honestly displayed as zero.
           </p>
         </div>
       </div>
 
-      {/* Key Metric KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Settled Volume */}
-        <div className="p-5 rounded-xl border border-border bg-surface shadow-card space-y-2">
-          <span className="text-xs text-ink-muted font-medium flex items-center gap-1.5">
-            <TrendingUp className="w-3.5 h-3.5 text-brand-teal" />
-            Real Settled Volume
+      {/* Side-by-Side Dual Network Columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Mainnet Column */}
+        <NetworkMetricsColumn data={mainnetData} isMainnet={true} />
+
+        {/* Testnet Column */}
+        <NetworkMetricsColumn data={testnetData} isMainnet={false} />
+      </div>
+
+      {/* Navigation Footer */}
+      <div className="pt-6 border-t border-border flex items-center justify-between text-xs text-ink-muted">
+        <span>BizFlow Pilot V2 • Runtime Dual-Network Architecture</span>
+        <div className="flex items-center gap-4">
+          <Link href="/pilots" className="hover:text-ink underline">Pilot Businesses</Link>
+          <Link href="/judges" className="hover:text-ink underline">Judge Guide</Link>
+          <Link href="/risk" className="hover:text-ink underline">Risk Notice</Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NetworkMetricsColumn({
+  data,
+  isMainnet,
+}: {
+  data: NetworkMetricsData;
+  isMainnet: boolean;
+}) {
+  const badgeClasses = isMainnet
+    ? "bg-navy-50 text-navy-900 border-navy-300"
+    : "bg-amber-50 text-amber-900 border-amber-300";
+
+  const dotClass = isMainnet ? "bg-emerald-500" : "bg-amber-500";
+
+  if (!data.available) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6 space-y-4 shadow-card">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider border ${badgeClasses}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${dotClass}`} />
+              {data.name}
+            </span>
+          </div>
+          <span className="text-xs text-ink-muted font-mono">Chain ID: {data.chainId}</span>
+        </div>
+        <div className="p-6 rounded-lg bg-canvas border border-border text-center space-y-2">
+          <AlertTriangle className="w-8 h-8 text-amber-600 mx-auto" />
+          <h3 className="text-sm font-semibold text-ink">{data.name} Data Degraded</h3>
+          <p className="text-xs text-ink-muted max-w-sm mx-auto">
+            {data.error || "Database schema connection temporarily unavailable. The other network remains fully accessible."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-6 space-y-6 shadow-card">
+      {/* Column Header */}
+      <div className="flex items-center justify-between border-b border-border pb-4">
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider border ${badgeClasses}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${dotClass}`} />
+            {isMainnet ? "Mainnet (Real USDC)" : "Testnet (Test USDC)"}
           </span>
-          <div className="text-2xl font-mono font-bold text-ink">{formattedVolume}</div>
-          <span className="text-[11px] text-ink-muted block">
-            {confirmedPayments.length > 0
-              ? `${confirmedPayments.length} confirmed on-chain payments`
-              : "Awaiting first public beta settlement"}
+        </div>
+        <span className="text-xs font-mono text-ink-muted">
+          Chain {data.chainId}
+        </span>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Settled Volume */}
+        <div className="p-4 rounded-lg bg-canvas border border-border space-y-1">
+          <span className="text-[11px] text-ink-muted font-medium flex items-center gap-1.5">
+            <TrendingUp className="w-3.5 h-3.5 text-brand-teal" />
+            Settled Volume ({data.name})
+          </span>
+          <div className="text-xl font-mono font-bold text-ink">{data.settledVolumeFormatted}</div>
+          <span className="text-[10px] text-ink-muted block">
+            {data.confirmedPaymentsCount > 0
+              ? `${data.confirmedPaymentsCount} confirmed payments`
+              : "0 confirmed payments"}
           </span>
         </div>
 
         {/* Invoices Processed */}
-        <div className="p-5 rounded-xl border border-border bg-surface shadow-card space-y-2">
-          <span className="text-xs text-ink-muted font-medium flex items-center gap-1.5">
+        <div className="p-4 rounded-lg bg-canvas border border-border space-y-1">
+          <span className="text-[11px] text-ink-muted font-medium flex items-center gap-1.5">
             <Receipt className="w-3.5 h-3.5 text-navy" />
-            Invoices Intake & Verified
+            Invoices Intake ({data.name})
           </span>
-          <div className="text-2xl font-mono font-bold text-ink">{invoicesCount}</div>
-          <span className="text-[11px] text-ink-muted block">
+          <div className="text-xl font-mono font-bold text-ink">{data.invoicesCount}</div>
+          <span className="text-[10px] text-ink-muted block">
             Passed 3-way match & security verification
           </span>
         </div>
 
         {/* Verified Suppliers */}
-        <div className="p-5 rounded-xl border border-border bg-surface shadow-card space-y-2">
-          <span className="text-xs text-ink-muted font-medium flex items-center gap-1.5">
+        <div className="p-4 rounded-lg bg-canvas border border-border space-y-1">
+          <span className="text-[11px] text-ink-muted font-medium flex items-center gap-1.5">
             <Users className="w-3.5 h-3.5 text-brand-teal" />
-            Verified Suppliers
+            Suppliers ({data.name})
           </span>
-          <div className="text-2xl font-mono font-bold text-ink">{vendorsCount}</div>
-          <span className="text-[11px] text-ink-muted block">
-            OFAC-screened with remittance addresses
+          <div className="text-xl font-mono font-bold text-ink">{data.vendorsCount}</div>
+          <span className="text-[10px] text-ink-muted block">
+            Screened against blocked-address list
           </span>
         </div>
 
         {/* On-Chain Audit Proofs */}
-        <div className="p-5 rounded-xl border border-border bg-surface shadow-card space-y-2">
-          <span className="text-xs text-ink-muted font-medium flex items-center gap-1.5">
+        <div className="p-4 rounded-lg bg-canvas border border-border space-y-1">
+          <span className="text-[11px] text-ink-muted font-medium flex items-center gap-1.5">
             <Anchor className="w-3.5 h-3.5 text-navy" />
-            Audit Proofs Anchored
+            Audit Proofs ({data.name})
           </span>
-          <div className="text-2xl font-mono font-bold text-ink">{anchoredCount}</div>
-          <span className="text-[11px] text-ink-muted block">
-            Anchored to AuditAnchor.sol smart contract
+          <div className="text-xl font-mono font-bold text-ink">{data.anchoredCount}</div>
+          <span className="text-[10px] text-ink-muted block">
+            Anchored to AuditAnchor contract
           </span>
         </div>
       </div>
 
       {/* Security Defense & Agent Decision Metrics */}
-      <div className="rounded-xl border border-border bg-surface shadow-card p-6 space-y-4">
-        <h2 className="text-sm font-bold text-ink flex items-center gap-2">
-          <Bot className="w-4 h-4 text-brand-teal" />
-          <span>Security & Autonomous Agent Defensive Performance</span>
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-          <div className="p-4 rounded-lg bg-canvas border border-border space-y-1">
-            <span className="text-ink-muted block font-medium">Duplicate Invoices Blocked</span>
-            <div className="text-xl font-mono font-bold text-amber-700">{duplicatesCount}</div>
-            <span className="text-[11px] text-ink-muted block">
-              Prevented duplicate payments via hash & PO checks
-            </span>
+      <div className="p-4 rounded-lg bg-canvas border border-border space-y-3">
+        <h4 className="text-xs font-bold text-ink flex items-center gap-1.5">
+          <Bot className="w-3.5 h-3.5 text-brand-teal" />
+          <span>Defensive Performance ({data.name})</span>
+        </h4>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="p-2 rounded bg-surface border border-border">
+            <span className="text-[10px] text-ink-muted block">Duplicates</span>
+            <div className="text-sm font-mono font-bold text-amber-700">{data.duplicatesCount}</div>
           </div>
-
-          <div className="p-4 rounded-lg bg-canvas border border-border space-y-1">
-            <span className="text-ink-muted block font-medium">Injection Attacks Blocked</span>
-            <div className="text-xl font-mono font-bold text-danger">{injectionsCount}</div>
-            <span className="text-[11px] text-ink-muted block">
-              Hostile prompt injection payloads quarantined
-            </span>
+          <div className="p-2 rounded bg-surface border border-border">
+            <span className="text-[10px] text-ink-muted block">Injections</span>
+            <div className="text-sm font-mono font-bold text-danger">{data.injectionsCount}</div>
           </div>
-
-          <div className="p-4 rounded-lg bg-canvas border border-border space-y-1">
-            <span className="text-ink-muted block font-medium">Agent Decisions Recorded</span>
-            <div className="text-xl font-mono font-bold text-navy">{agentDecisionsCount}</div>
-            <span className="text-[11px] text-ink-muted block">
-              Immutable decision trails with observation hashes
-            </span>
+          <div className="p-2 rounded bg-surface border border-border">
+            <span className="text-[10px] text-ink-muted block">Decisions</span>
+            <div className="text-sm font-mono font-bold text-navy">{data.agentDecisionsCount}</div>
           </div>
-        </div>
-      </div>
-
-      {/* Navigation Footer */}
-      <div className="pt-6 border-t border-border flex items-center justify-between text-xs text-ink-muted">
-        <span>BizFlow Pilot V2 • Public Beta on Arc</span>
-        <div className="flex items-center gap-4">
-          <Link href="/pilots" className="hover:text-ink underline">Pilot Businesses</Link>
-          <Link href="/judges" className="hover:text-ink underline">Judge Guide</Link>
-          <Link href="/risk" className="hover:text-ink underline">Risk Notice</Link>
         </div>
       </div>
     </div>

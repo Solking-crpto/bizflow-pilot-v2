@@ -5,7 +5,9 @@ import { detectDuplicateInvoice } from "../lib/matching/duplicateDetector";
 import { runAgentAnalysis } from "../lib/agent/recommender";
 import { parseUsdc, formatUsdc } from "../lib/money";
 import { recordAuditEvent, verifyAuditChain } from "../lib/audit/ledger";
-import { prisma } from "../lib/db";
+import { getDb } from "../lib/db";
+
+const prisma = getDb("testnet");
 
 describe("E2E Acceptance Flow: Golden Path, Policy Enforcement, and Attack Neutralization", () => {
   const e2eOrgId = "org-e2e-acceptance-01";
@@ -85,20 +87,20 @@ describe("E2E Acceptance Flow: Golden Path, Policy Enforcement, and Attack Neutr
       orgId: e2eOrgId,
       eventType: "invoice_matched",
       eventData: { matchStatus: matchResult.matchStatus },
-    });
+    }, "testnet");
     await recordAuditEvent({
       orgId: e2eOrgId,
       eventType: "policy_evaluated",
       eventData: { decision: policyEval.decision, decisionHash: policyEval.decisionHash },
-    });
+    }, "testnet");
     await recordAuditEvent({
       orgId: e2eOrgId,
       eventType: "payment_settled",
       eventData: { txHash: "0xsimulated_arc_tx_golden", amount: "1700.00 USDC" },
-    });
+    }, "testnet");
 
     // 6. Verify Full Chain Integrity
-    const chainVerification = await verifyAuditChain(e2eOrgId);
+    const chainVerification = await verifyAuditChain(e2eOrgId, "testnet");
     expect(chainVerification.valid).toBe(true);
     expect(chainVerification.totalEvents).toBe(3);
   });

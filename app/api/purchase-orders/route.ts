@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { withDbTimeout } from "@/lib/db";
+import { validateApiNetwork } from "@/lib/api-guard";
 import { parseUsdc, formatUsdc, usdcAtomic } from "@/lib/money";
 import { getSessionFromRequest, getSessionOrg } from "@/lib/auth/session";
 
@@ -21,18 +22,22 @@ const CreatePOSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
+    const netCtx = validateApiNetwork(req);
+    if (!netCtx.success) return netCtx.response;
+    const { network, db } = netCtx;
+
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const org = await getSessionOrg(session);
+    const org = await getSessionOrg(session, network);
     if (!org) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
 
     const pos = await withDbTimeout(() =>
-      prisma.purchaseOrder.findMany({
+      db.purchaseOrder.findMany({
         where: { orgId: org.id },
         include: {
           vendor: true,
@@ -51,6 +56,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      network,
       purchaseOrders: pos.map((po) => ({
         id: po.id,
         poNumber: po.poNumber,
@@ -77,12 +83,16 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const netCtx = validateApiNetwork(req);
+    if (!netCtx.success) return netCtx.response;
+    const { network, db } = netCtx;
+
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const org = await getSessionOrg(session);
+    const org = await getSessionOrg(session, network);
     if (!org) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
@@ -100,7 +110,7 @@ export async function POST(req: NextRequest) {
 
     // Validate vendor belongs to org (IDOR check)
     const vendor = await withDbTimeout(() =>
-      prisma.vendor.findUnique({
+      db.vendor.findUnique({
         where: { id: vendorId },
       })
     );
@@ -114,7 +124,7 @@ export async function POST(req: NextRequest) {
 
     // Check duplicate PO number in org
     const existingPO = await withDbTimeout(() =>
-      prisma.purchaseOrder.findFirst({
+      db.purchaseOrder.findFirst({
         where: { orgId: org.id, poNumber: poNumber.trim().toUpperCase() },
       })
     );
@@ -145,7 +155,7 @@ export async function POST(req: NextRequest) {
 
       // Find or create item
       const item = await withDbTimeout(() =>
-        prisma.item.upsert({
+        db.item.upsert({
           where: { sku: cleanSku },
           update: { name: line.description, unitPriceUsdc: unitPriceAtomic },
           create: {
@@ -167,7 +177,7 @@ export async function POST(req: NextRequest) {
     }
 
     const po = await withDbTimeout(() =>
-      prisma.purchaseOrder.create({
+      db.purchaseOrder.create({
         data: {
           orgId: org.id,
           poNumber: poNumber.trim().toUpperCase(),
@@ -188,6 +198,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      network,
       purchaseOrder: {
         id: po.id,
         poNumber: po.poNumber,

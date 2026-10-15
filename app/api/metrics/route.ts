@@ -1,14 +1,14 @@
-import { NextResponse } from "next/server";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { NextRequest, NextResponse } from "next/server";
+import { getDb, withDbTimeout } from "@/lib/db";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
-import { getActiveNetwork } from "@/lib/networks";
+import { NETWORKS, NetworkMode } from "@/lib/networks";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+async function getNetworkMetrics(networkMode: NetworkMode) {
+  const network = NETWORKS[networkMode];
   try {
-    const network = getActiveNetwork();
-
+    const db = getDb(networkMode);
     const [
       invoicesCount,
       confirmedPayments,
@@ -19,25 +19,26 @@ export async function GET() {
       anchoredCount,
     ] = await withDbTimeout(() =>
       Promise.all([
-        prisma.invoice.count(),
-        prisma.payment.findMany({
+        db.invoice.count(),
+        db.payment.findMany({
           where: { status: { in: ["confirmed", "anchored"] } },
           select: { amountAtomic: true },
         }),
-        prisma.vendor.count({
+        db.vendor.count({
           where: { status: "active" },
         }),
-        prisma.agentDecision.count(),
-        prisma.invoice.count({
+        db.agentDecision.count(),
+        db.invoice.count({
           where: { duplicateScore: { gte: 90 } },
         }),
-        prisma.invoice.count({
+        db.invoice.count({
           where: { isInjectionSuspect: true },
         }),
-        prisma.payment.count({
+        db.payment.count({
           where: { anchorTxHash: { not: null } },
         }),
-      ])
+      ]),
+      3000
     );
 
     const totalVolumeAtomic = confirmedPayments.reduce(
@@ -45,9 +46,11 @@ export async function GET() {
       0n
     );
 
-    return NextResponse.json({
+    return {
       network: network.name,
+      mode: network.mode,
       chainId: network.chainId,
+      available: true,
       metrics: {
         invoicesProcessed: invoicesCount,
         settledVolumeUsdc: formatUsdc(usdcAtomic(totalVolumeAtomic)),
@@ -58,9 +61,33 @@ export async function GET() {
         agentDecisionsLogged: agentDecisionsCount,
         auditProofsAnchored: anchoredCount,
       },
+    };
+  } catch (err: any) {
+    return {
+      network: network.name,
+      mode: network.mode,
+      chainId: network.chainId,
+      available: false,
+      error: err.message || "Failed to load database schema",
+      metrics: null,
+    };
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const [mainnetMetrics, testnetMetrics] = await Promise.all([
+      getNetworkMetrics("mainnet"),
+      getNetworkMetrics("testnet"),
+    ]);
+
+    return NextResponse.json({
+      mainnet: mainnetMetrics,
+      testnet: testnetMetrics,
       integrity: {
         mode: "100% Real Database & On-Chain Rows",
         syntheticDataAllowed: false,
+        crossNetworkAggregation: false,
         lastComputedAt: new Date().toISOString(),
       },
     });

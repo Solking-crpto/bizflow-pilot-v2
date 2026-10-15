@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { prisma } from "../lib/db";
+import { getDb } from "../lib/db";
+
+const prisma = getDb("testnet");
 import { createSessionToken } from "../lib/auth/session";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { NextRequest } from "next/server";
@@ -96,6 +98,10 @@ describe("Phase 5 — Advisory Agent (Proposes, Explains, NEVER Signs)", () => {
   it("1. Refuses unauthenticated requests to POST /api/agent/analyze", async () => {
     const req = new NextRequest("http://localhost:3000/api/agent/analyze", {
       method: "POST",
+      headers: {
+        "x-bizflow-network": "testnet",
+        cookie: "bizflow_network=testnet",
+      },
     });
 
     const res = await analyzeRoute(req);
@@ -106,7 +112,8 @@ describe("Phase 5 — Advisory Agent (Proposes, Explains, NEVER Signs)", () => {
     const req = new NextRequest("http://localhost:3000/api/agent/analyze", {
       method: "POST",
       headers: {
-        cookie: `bizflow_session=${sessionCookie}`,
+        cookie: `bizflow_session=${sessionCookie}; bizflow_network=testnet`,
+        "x-bizflow-network": "testnet",
       },
     });
 
@@ -199,7 +206,8 @@ describe("Phase 5 — Advisory Agent (Proposes, Explains, NEVER Signs)", () => {
     const req = new NextRequest("http://localhost:3000/api/agent/analyze", {
       method: "POST",
       headers: {
-        cookie: `bizflow_session=${sessionCookie}`,
+        cookie: `bizflow_session=${sessionCookie}; bizflow_network=testnet`,
+        "x-bizflow-network": "testnet",
       },
     });
 

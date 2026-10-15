@@ -4,10 +4,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyOwnerPasscodeWithRateLimit, getClientIp } from "@/lib/security/auth";
 import { executePaymentTransaction } from "@/lib/payments/executor";
-import { getActiveNetwork } from "@/lib/networks";
-
+import { getNetworkConfig } from "@/lib/networks";
 import { getSessionFromRequest, isAdminWallet } from "@/lib/auth/session";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { withDbTimeout } from "@/lib/db";
+import { validateApiNetwork } from "@/lib/api-guard";
 
 const ExecutePaymentSchema = z.object({
   invoiceId: z.string(),
@@ -17,6 +17,18 @@ const ExecutePaymentSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const netCtx = validateApiNetwork(req);
+    if (!netCtx.success) return netCtx.response;
+    const { network, db } = netCtx;
+
+    // Requirement A.7: Builder/admin features exist on MAINNET only!
+    if (network !== "mainnet") {
+      return NextResponse.json(
+        { error: "Server treasury execution is restricted to Arc Mainnet builder-admin mode only." },
+        { status: 403 }
+      );
+    }
+
     const clientIp = getClientIp(req);
     const body = await req.json();
     const parsed = ExecutePaymentSchema.safeParse(body);
@@ -37,7 +49,7 @@ export async function POST(req: NextRequest) {
     }
 
     const invoice = await withDbTimeout(() =>
-      prisma.invoice.findUnique({
+      db.invoice.findUnique({
         where: { id: invoiceId },
         include: { organization: true },
       })
@@ -54,60 +66,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const network = getActiveNetwork();
-    const isMainnet = network.mode === "mainnet";
-    const isPublicSandbox =
-      process.env.PUBLIC_SANDBOX === "true" || process.env.NEXT_PUBLIC_PUBLIC_SANDBOX === "true";
-
-    if (isMainnet && isPublicSandbox) {
+    // Enforce owner passcode with rate limiting
+    const authCheck = verifyOwnerPasscodeWithRateLimit(passcode, clientIp);
+    if (!authCheck.authorized) {
       return NextResponse.json(
-        { error: "FATAL SECURITY REFUSAL: PUBLIC_SANDBOX cannot be enabled on Arc Mainnet!" },
-        { status: 500 }
+        { error: authCheck.error },
+        {
+          status: authCheck.status || 401,
+          headers: authCheck.retryAfterSeconds
+            ? { "Retry-After": authCheck.retryAfterSeconds.toString() }
+            : {},
+        }
       );
-    }
-
-    if (isPublicSandbox && !isMainnet) {
-      // In sandbox mode: rate limit visitor IP and cap invoice amount
-      const { checkRateLimit } = await import("@/lib/security/auth");
-      const rateLimitCheck = checkRateLimit(`sandbox:${clientIp}`);
-      if (!rateLimitCheck.allowed) {
-        return NextResponse.json(
-          { error: "Sandbox rate limit reached. Please wait before testing another payment." },
-          {
-            status: 429,
-            headers: { "Retry-After": (rateLimitCheck.retryAfterSeconds || 60).toString() },
-          }
-        );
-      }
-
-      // Check tiny sandbox cap (<= 0.05 USDC = 50,000 atomic)
-      const inv = await prisma.invoice.findUnique({ where: { id: invoiceId } });
-      if (inv && inv.totalUsdc > 50000n) {
-        return NextResponse.json(
-          { error: "Sandbox cap exceeded: Public sandbox testing is restricted to <= 0.05 USDC." },
-          { status: 403 }
-        );
-      }
-    } else {
-      // Enforce owner passcode with rate limiting
-      const authCheck = verifyOwnerPasscodeWithRateLimit(passcode, clientIp);
-      if (!authCheck.authorized) {
-        return NextResponse.json(
-          { error: authCheck.error },
-          {
-            status: authCheck.status || 401,
-            headers: authCheck.retryAfterSeconds
-              ? { "Retry-After": authCheck.retryAfterSeconds.toString() }
-              : {},
-          }
-        );
-      }
     }
 
     const result = await executePaymentTransaction({
       invoiceId,
-      actor: isPublicSandbox && !isMainnet ? "sandbox_visitor" : "human",
+      actor: "human",
       hasOwnerConfirmation: hasOwnerConfirmation ?? true,
+      network: "mainnet",
     });
 
     if (!result.success) {
@@ -130,9 +107,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const networkConfig = getActiveNetwork();
+    const networkConfig = getNetworkConfig("mainnet");
     return NextResponse.json({
       success: true,
+      network: "mainnet",
       payment: {
         id: result.payment.id,
         status: "anchored",

@@ -2,14 +2,14 @@
 
 import React from "react";
 import Link from "next/link";
-import { Building2, Search, Bell, UserCheck, ShieldCheck, Award } from "lucide-react";
-import { NetworkBadge } from "./NetworkBadge";
-
+import { Building2, Search, Award, ArrowLeftRight } from "lucide-react";
+import { NetworkSwitcher } from "./NetworkSwitcher";
+import { useNetwork } from "@/components/network/NetworkContext";
 import { WalletConnectButton } from "@/components/auth/WalletConnectButton";
 import { useWallet } from "@/components/auth/WalletContext";
 
 interface TopNavProps {
-  networkMode: "testnet" | "mainnet";
+  networkMode?: "testnet" | "mainnet";
   orgName?: string;
   userEmail?: string;
   userRole?: string;
@@ -18,19 +18,15 @@ interface TopNavProps {
 }
 
 export function TopNav({
-  networkMode,
   orgName = "Public Beta Org",
-  userEmail,
-  userRole = "member",
-  walletAddress,
-  onConnectWallet,
 }: TopNavProps) {
   const { org, isAuthenticated } = useWallet();
-  const activeOrgName = (isAuthenticated && org?.name) ? org.name : orgName;
+  const { isMainnet, switchNetwork } = useNetwork();
+  const activeOrgName = isAuthenticated && org?.name ? org.name : orgName;
 
   return (
     <header className="h-14 border-b border-border bg-surface px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20">
-      {/* Org Selector & Judge Guide */}
+      {/* Org Selector, Segmented Network Switcher & Quick Links */}
       <div className="flex items-center gap-3 sm:gap-4">
         <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-canvas hover:bg-canvas-subtle transition-colors">
           <Building2 className="w-4 h-4 text-navy" />
@@ -40,8 +36,21 @@ export function TopNav({
           </span>
         </div>
 
-        {/* Global Network Badge */}
-        <NetworkBadge mode={networkMode} />
+        {/* Global Segmented Network Switcher */}
+        <NetworkSwitcher />
+
+        {/* Mainnet Extra: "Try testnet first" direct switch */}
+        {isMainnet && (
+          <button
+            type="button"
+            onClick={() => switchNetwork("testnet")}
+            className="hidden xl:inline-flex items-center gap-1.5 text-[11px] font-medium text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+            title="Switch to Arc Testnet with free test USDC"
+          >
+            <ArrowLeftRight className="w-3 h-3 text-amber-600" />
+            <span>Try testnet first</span>
+          </button>
+        )}
 
         {/* Judge Guide Link */}
         <Link

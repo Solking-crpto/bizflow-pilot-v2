@@ -1,6 +1,8 @@
 import React from "react";
 import type { Metadata } from "next";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { cookies } from "next/headers";
+import { getDb, withDbTimeout } from "@/lib/db";
+import { getServerActiveNetwork } from "@/lib/networks";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { runAgentAnalysis } from "@/lib/agent/recommender";
 import { AgentDashboardClient } from "@/components/agent/AgentDashboardClient";
@@ -8,6 +10,7 @@ import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 import { getServerSession, getSessionOrg, isAdminWallet } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "AI Finance Agent — Advisory Treasury Copilot | BizFlow Pilot V2",
@@ -15,6 +18,9 @@ export const metadata: Metadata = {
 };
 
 export default async function AgentPage() {
+  const cookieStore = cookies();
+  const networkMode = getServerActiveNetwork(cookieStore.get("bizflow_network")?.value);
+  const db = getDb(networkMode);
   const session = await getServerSession();
 
   let invoices: any[] = [];
@@ -24,7 +30,7 @@ export default async function AgentPage() {
 
   if (session) {
     try {
-      const org = await getSessionOrg(session);
+      const org = await getSessionOrg(session, networkMode);
       if (org) {
         orgName = org.name;
         const startOfDay = new Date();
@@ -32,7 +38,7 @@ export default async function AgentPage() {
 
         const [orgInvoices, decisionCount] = await withDbTimeout(() =>
           Promise.all([
-            prisma.invoice.findMany({
+            db.invoice.findMany({
               where: {
                 orgId: org.id,
                 status: { in: ["verified", "review_required", "blocked"] },
@@ -40,7 +46,7 @@ export default async function AgentPage() {
               include: { vendor: true, purchaseOrder: true },
               orderBy: { createdAt: "desc" },
             }),
-            prisma.agentDecision.count({
+            db.agentDecision.count({
               where: {
                 orgId: org.id,
                 timestamp: { gte: startOfDay },

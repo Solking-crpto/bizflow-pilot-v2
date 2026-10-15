@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { isAddress } from "viem";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { withDbTimeout } from "@/lib/db";
+import { validateApiNetwork } from "@/lib/api-guard";
 import { parseUsdc, formatUsdc, usdcAtomic } from "@/lib/money";
 import { getSessionFromRequest, getSessionOrg } from "@/lib/auth/session";
 import { isBlocklistedWallet } from "@/lib/security/walletBlocklist";
 
 export const dynamic = "force-dynamic";
-
-const BETA_HARD_CAP_USDC = usdcAtomic(BigInt(process.env.APP_MAX_PAYMENT_USDC || "25") * 1_000_000n);
 
 const UpdateSupplierSchema = z.object({
   name: z.string().min(2).max(100).optional(),
@@ -25,18 +24,22 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const netCtx = validateApiNetwork(req);
+    if (!netCtx.success) return netCtx.response;
+    const { network, db } = netCtx;
+
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const org = await getSessionOrg(session);
+    const org = await getSessionOrg(session, network);
     if (!org) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
 
     const vendor = await withDbTimeout(() =>
-      prisma.vendor.findUnique({
+      db.vendor.findUnique({
         where: { id: params.id },
       })
     );
@@ -50,6 +53,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
+      network,
       supplier: {
         id: vendor.id,
         name: vendor.name,
@@ -70,18 +74,22 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const netCtx = validateApiNetwork(req);
+    if (!netCtx.success) return netCtx.response;
+    const { network, db } = netCtx;
+
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const org = await getSessionOrg(session);
+    const org = await getSessionOrg(session, network);
     if (!org) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
 
     const vendor = await withDbTimeout(() =>
-      prisma.vendor.findUnique({
+      db.vendor.findUnique({
         where: { id: params.id },
       })
     );
@@ -102,13 +110,19 @@ export async function PATCH(
       );
     }
 
+    const maxPaymentEnv =
+      network === "mainnet"
+        ? process.env.APP_MAX_PAYMENT_USDC || "25"
+        : process.env.APP_MAX_PAYMENT_USDC_TESTNET || "100";
+    const betaHardCapUsdc = usdcAtomic(BigInt(maxPaymentEnv) * 1_000_000n);
+
     const updateData: any = {};
     if (parsed.data.name) updateData.name = parsed.data.name.trim();
     if (parsed.data.status) updateData.status = parsed.data.status;
 
     if (parsed.data.perVendorLimitUsdc) {
       let limit = parseUsdc(parsed.data.perVendorLimitUsdc);
-      if (limit > BETA_HARD_CAP_USDC) limit = BETA_HARD_CAP_USDC;
+      if (limit > betaHardCapUsdc) limit = betaHardCapUsdc;
       updateData.perVendorLimitUsdc = limit;
     }
 
@@ -133,7 +147,7 @@ export async function PATCH(
     }
 
     const updated = await withDbTimeout(() =>
-      prisma.vendor.update({
+      db.vendor.update({
         where: { id: vendor.id },
         data: updateData,
       })
@@ -141,6 +155,7 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
+      network,
       supplier: {
         id: updated.id,
         name: updated.name,

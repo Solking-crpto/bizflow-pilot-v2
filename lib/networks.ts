@@ -1,149 +1,275 @@
 /**
- * BizFlow Pilot — Network Configuration and Arc Chain Guardrails
+ * BizFlow Pilot V2 — Network Configuration and Arc Chain Guardrails
  * 
- * Centralized network definition ensuring safe, isolated execution for
+ * Centralized runtime network definition supporting instant switching between
  * Arc Testnet (5042002) and Arc Mainnet (5042).
+ * 
+ * The build-time variable NEXT_PUBLIC_NETWORK_MODE is NO LONGER the source of truth.
+ * The active network is request-scoped via the 'bizflow_network' cookie,
+ * falling back to DEFAULT_NETWORK (default "mainnet").
  */
 
 import { defineChain, Chain } from "viem";
 
 export type NetworkMode = "testnet" | "mainnet";
 
+export const NETWORK_COOKIE_NAME = "bizflow_network";
+export const NETWORK_HEADER_NAME = "x-bizflow-network";
+
+export const DEFAULT_NETWORK: NetworkMode =
+  process.env.DEFAULT_NETWORK === "testnet" ? "testnet" : "mainnet";
+
 export interface NetworkConfig {
   mode: NetworkMode;
   name: string;
+  badgeLabel: string;
   chainId: number;
   rpcUrl: string;
+  publicRpcUrl: string;
   fallbackRpcs: string[];
   explorerUrl: string;
   usdcAddress: `0x${string}`;
   anchorAddress?: `0x${string}`;
   faucetUrl?: string;
   maxPaymentUsdc: string;
+  isTestnet: boolean;
   chain: Chain;
 }
 
-const DEFAULT_TESTNET_RPC = "https://rpc.testnet.arc.network";
-const DEFAULT_MAINNET_RPC = "https://rpc.mainnet.arc.io";
+export interface AddEthereumChainParameter {
+  chainId: `0x${string}`;
+  chainName: string;
+  nativeCurrency: {
+    name: string;
+    symbol: string;
+    decimals: number;
+  };
+  rpcUrls: string[];
+  blockExplorerUrls: string[];
+}
+
+export const ARC_DOCS_URLS = {
+  networkInfo: "https://docs.arc.network",
+  getUsdcMainnet: "https://docs.arc.network",
+  testnetFaucet: "https://faucet.circle.com",
+  addArcWallet: "https://docs.arc.network",
+};
+
+// Official PUBLIC RPC endpoints suitable for any user's browser wallet
+export const PUBLIC_MAINNET_RPCS = [
+  process.env.NEXT_PUBLIC_ARC_MAINNET_PUBLIC_RPC || "https://rpc.mainnet.arc.io",
+  "https://rpc.arc.network",
+];
+
+export const PUBLIC_TESTNET_RPCS = [
+  process.env.NEXT_PUBLIC_ARC_TESTNET_PUBLIC_RPC || "https://rpc.testnet.arc.network",
+];
+
+const DEFAULT_MAINNET_PUBLIC_RPC = PUBLIC_MAINNET_RPCS[0];
+const DEFAULT_TESTNET_PUBLIC_RPC = PUBLIC_TESTNET_RPCS[0];
 const DEFAULT_USDC_ADDRESS = "0x3600000000000000000000000000000000000000" as `0x${string}`;
 
 export const arcTestnetChain = defineChain({
   id: 5042002,
   name: "Arc Testnet",
   nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
-  rpcUrls: { default: { http: [process.env.ARC_TESTNET_RPC_URL || DEFAULT_TESTNET_RPC] } },
-  blockExplorers: { default: { name: "Arcscan", url: "https://testnet.arcscan.app" } },
+  rpcUrls: {
+    default: {
+      http: [
+        process.env.ARC_TESTNET_RPC_URL ||
+        process.env.NEXT_PUBLIC_ARC_TESTNET_PUBLIC_RPC ||
+        DEFAULT_TESTNET_PUBLIC_RPC,
+      ],
+    },
+    public: {
+      http: [
+        process.env.NEXT_PUBLIC_ARC_TESTNET_PUBLIC_RPC ||
+        DEFAULT_TESTNET_PUBLIC_RPC,
+      ],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: "Arcscan Testnet",
+      url: process.env.ARC_TESTNET_EXPLORER_URL || "https://testnet.arcscan.app",
+    },
+  },
 });
 
 export const arcMainnetChain = defineChain({
   id: 5042,
   name: "Arc Mainnet",
   nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
-  rpcUrls: { default: { http: [process.env.ARC_MAINNET_RPC_URL || DEFAULT_MAINNET_RPC] } },
-  blockExplorers: { default: { name: "Arc Explorer", url: process.env.ARC_MAINNET_EXPLORER_URL || "https://explorer.arc.io" } },
+  rpcUrls: {
+    default: {
+      http: [
+        process.env.ARC_MAINNET_RPC_URL ||
+        process.env.NEXT_PUBLIC_ARC_MAINNET_PUBLIC_RPC ||
+        DEFAULT_MAINNET_PUBLIC_RPC,
+      ],
+    },
+    public: {
+      http: [
+        process.env.NEXT_PUBLIC_ARC_MAINNET_PUBLIC_RPC ||
+        DEFAULT_MAINNET_PUBLIC_RPC,
+      ],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: "Arc Explorer",
+      url: process.env.ARC_MAINNET_EXPLORER_URL || "https://explorer.arc.io",
+    },
+  },
 });
 
 export const NETWORKS: Record<NetworkMode, NetworkConfig> = {
-  testnet: {
-    mode: "testnet",
-    name: "Arc Testnet",
-    chainId: 5042002,
-    rpcUrl: process.env.ARC_TESTNET_RPC_URL || DEFAULT_TESTNET_RPC,
-    fallbackRpcs: ["https://rpc.testnet.arc.io"],
-    explorerUrl: "https://testnet.arcscan.app",
-    usdcAddress: (process.env.ARC_TESTNET_USDC_ADDRESS as `0x${string}`) || DEFAULT_USDC_ADDRESS,
-    anchorAddress: (process.env.NEXT_PUBLIC_AUDIT_ANCHOR_ADDRESS || process.env.AUDIT_ANCHOR_ADDRESS) as `0x${string}` | undefined,
-    faucetUrl: "https://faucet.circle.com",
-    maxPaymentUsdc: "10000.00",
-    chain: arcTestnetChain,
-  },
   mainnet: {
     mode: "mainnet",
     name: "Arc Mainnet",
+    badgeLabel: "ARC MAINNET: real USDC",
     chainId: 5042,
-    rpcUrl: process.env.ARC_MAINNET_RPC_URL || DEFAULT_MAINNET_RPC,
-    fallbackRpcs: (process.env.ARC_MAINNET_RPC_FALLBACKS || "https://rpc.arc.network")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean),
+    rpcUrl:
+      process.env.ARC_MAINNET_RPC_URL ||
+      process.env.NEXT_PUBLIC_ARC_MAINNET_PUBLIC_RPC ||
+      DEFAULT_MAINNET_PUBLIC_RPC,
+    publicRpcUrl:
+      process.env.NEXT_PUBLIC_ARC_MAINNET_PUBLIC_RPC ||
+      DEFAULT_MAINNET_PUBLIC_RPC,
+    fallbackRpcs: ["https://rpc.arc.network"],
     explorerUrl: process.env.ARC_MAINNET_EXPLORER_URL || "https://explorer.arc.io",
-    usdcAddress: (process.env.ARC_MAINNET_USDC_ADDRESS as `0x${string}`) || DEFAULT_USDC_ADDRESS,
-    anchorAddress: (process.env.NEXT_PUBLIC_AUDIT_ANCHOR_ADDRESS || process.env.AUDIT_ANCHOR_ADDRESS) as `0x${string}` | undefined,
-    maxPaymentUsdc: process.env.MAX_MAINNET_PAYMENT_USDC || "1.00",
+    usdcAddress:
+      (process.env.ARC_MAINNET_USDC_ADDRESS as `0x${string}`) || DEFAULT_USDC_ADDRESS,
+    anchorAddress:
+      (process.env.AUDIT_ANCHOR_ADDRESS_MAINNET ||
+        process.env.NEXT_PUBLIC_AUDIT_ANCHOR_ADDRESS ||
+        process.env.AUDIT_ANCHOR_ADDRESS) as `0x${string}` | undefined,
+    maxPaymentUsdc: process.env.APP_MAX_PAYMENT_USDC || "25.00",
+    isTestnet: false,
     chain: arcMainnetChain,
+  },
+  testnet: {
+    mode: "testnet",
+    name: "Arc Testnet",
+    badgeLabel: "TESTNET: test USDC has no value",
+    chainId: 5042002,
+    rpcUrl:
+      process.env.ARC_TESTNET_RPC_URL ||
+      process.env.NEXT_PUBLIC_ARC_TESTNET_PUBLIC_RPC ||
+      DEFAULT_TESTNET_PUBLIC_RPC,
+    publicRpcUrl:
+      process.env.NEXT_PUBLIC_ARC_TESTNET_PUBLIC_RPC ||
+      DEFAULT_TESTNET_PUBLIC_RPC,
+    fallbackRpcs: ["https://rpc.testnet.arc.network"],
+    explorerUrl: process.env.ARC_TESTNET_EXPLORER_URL || "https://testnet.arcscan.app",
+    usdcAddress:
+      (process.env.ARC_TESTNET_USDC_ADDRESS as `0x${string}`) || DEFAULT_USDC_ADDRESS,
+    anchorAddress:
+      (process.env.AUDIT_ANCHOR_ADDRESS_TESTNET) as `0x${string}` | undefined,
+    faucetUrl: "https://faucet.circle.com",
+    maxPaymentUsdc: process.env.APP_MAX_PAYMENT_USDC_TESTNET || "100.00",
+    isTestnet: true,
+    chain: arcTestnetChain,
   },
 };
 
 /**
- * Hard guard refusing startup if PUBLIC_SANDBOX is enabled on Arc Mainnet.
+ * Validates whether an unknown value is a valid NetworkMode.
  */
-export function assertValidSandboxMode(): void {
-  const mode = (process.env.NEXT_PUBLIC_NETWORK_MODE || process.env.NETWORK_MODE || "testnet") as NetworkMode;
+export function isValidNetwork(val: unknown): val is NetworkMode {
+  return val === "mainnet" || val === "testnet";
+}
+
+/**
+ * Parses and returns a validated NetworkMode or null.
+ */
+export function validateNetwork(val: unknown): NetworkMode | null {
+  return isValidNetwork(val) ? val : null;
+}
+
+/**
+ * Returns the NetworkConfig for a given network mode.
+ */
+export function getNetworkConfig(mode: NetworkMode): NetworkConfig {
+  return NETWORKS[mode] || NETWORKS[DEFAULT_NETWORK];
+}
+
+/**
+ * Request-scoped resolution of the active network mode.
+ * Reads the 'bizflow_network' cookie string, validates against whitelist,
+ * and falls back to DEFAULT_NETWORK.
+ */
+export function getServerActiveNetwork(cookieVal?: string | null): NetworkMode {
+  if (cookieVal && isValidNetwork(cookieVal)) {
+    return cookieVal;
+  }
+  return DEFAULT_NETWORK;
+}
+
+/**
+ * Returns the chain parameters for wallet_addEthereumChain read directly
+ * from official Arc specifications. The RPC URL provided is guaranteed to be
+ * a public, unauthenticated RPC endpoint suitable for any end-user wallet.
+ */
+export function getWalletAddChainParams(mode: NetworkMode): AddEthereumChainParameter {
+  const isMainnet = mode === "mainnet";
+  const cfg = NETWORKS[mode];
+  return {
+    chainId: isMainnet ? "0x13B2" : "0x4CECE2", // 5042 or 5042002
+    chainName: cfg.name,
+    nativeCurrency: {
+      name: "USDC",
+      symbol: "USDC",
+      decimals: 18,
+    },
+    rpcUrls: [cfg.publicRpcUrl],
+    blockExplorerUrls: [cfg.explorerUrl],
+  };
+}
+
+/**
+ * Hard guard refusing startup if unsafe configurations are detected on Arc Mainnet.
+ */
+export function assertValidSandboxMode(mode?: NetworkMode): void {
+  const activeMode =
+    mode ||
+    (process.env.DEFAULT_NETWORK === "testnet" || process.env.NEXT_PUBLIC_NETWORK_MODE === "testnet"
+      ? "testnet"
+      : DEFAULT_NETWORK);
   const isPublicSandbox =
     process.env.PUBLIC_SANDBOX === "true" || process.env.NEXT_PUBLIC_PUBLIC_SANDBOX === "true";
+  const isDryRun = process.env.DRY_RUN === "true";
+  const isProduction = process.env.NODE_ENV === "production";
 
-  if (mode === "mainnet" && isPublicSandbox) {
-    throw new Error(
-      "CRITICAL SECURITY VIOLATION: PUBLIC_SANDBOX is strictly prohibited on Arc Mainnet! Refusing startup."
-    );
-  }
-}
-
-/**
- * Returns the currently active network configuration based on NEXT_PUBLIC_NETWORK_MODE
- */
-export function getActiveNetwork(): NetworkConfig {
-  assertValidSandboxMode();
-  const mode = (process.env.NEXT_PUBLIC_NETWORK_MODE || "testnet") as NetworkMode;
-  return NETWORKS[mode] || NETWORKS.testnet;
-}
-
-/**
- * Verifies that the connected RPC's chain ID matches our expected Arc network chain ID.
- * Refuses execution if there is a mismatch.
- */
-export async function validateRpcChainId(rpcUrl?: string): Promise<{ valid: boolean; actualChainId: number; expectedChainId: number; error?: string }> {
-  const network = getActiveNetwork();
-  const targetRpc = rpcUrl || network.rpcUrl;
-
-  try {
-    const res = await fetch(targetRpc, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        method: "eth_chainId",
-        params: [],
-        id: 1,
-      }),
-      signal: AbortSignal.timeout(5000),
-    });
-
-    if (!res.ok) {
-      return {
-        valid: false,
-        actualChainId: 0,
-        expectedChainId: network.chainId,
-        error: `RPC returned HTTP ${res.status}`,
-      };
+  if (activeMode === "mainnet") {
+    if (isPublicSandbox) {
+      throw new Error(
+        "CRITICAL SECURITY VIOLATION: PUBLIC_SANDBOX is strictly prohibited on Arc Mainnet! Refusing startup."
+      );
     }
-
-    const data = await res.json();
-    const hexChainId = data.result;
-    const actualChainId = parseInt(hexChainId, 16);
-
-    return {
-      valid: actualChainId === network.chainId,
-      actualChainId,
-      expectedChainId: network.chainId,
-      error: actualChainId !== network.chainId ? `Chain ID mismatch: expected ${network.chainId}, got ${actualChainId}` : undefined,
-    };
-  } catch (err: any) {
-    return {
-      valid: false,
-      actualChainId: 0,
-      expectedChainId: network.chainId,
-      error: err.message || "Failed to reach RPC endpoint",
-    };
+    if (isProduction && isDryRun) {
+      throw new Error(
+        "CRITICAL SECURITY VIOLATION: DRY_RUN cannot be enabled on Arc Mainnet in production! Refusing startup."
+      );
+    }
   }
+
+  // Startup warning in dev when DRY_RUN is set
+  if (isDryRun && !isProduction && typeof window === "undefined") {
+    if (!(globalThis as any).__dryRunWarned) {
+      console.warn(
+        "\x1b[33m[BizFlow Security Warning] DRY_RUN is currently active in the shell environment. Transactions will be simulated without broadcasting to Arc.\x1b[0m"
+      );
+      (globalThis as any).__dryRunWarned = true;
+    }
+  }
+}
+
+/**
+ * Backward-compatible helper that resolves network config.
+ * When called with no arguments, resolves based on DEFAULT_NETWORK.
+ */
+export function getActiveNetwork(mode?: NetworkMode): NetworkConfig {
+  assertValidSandboxMode(mode);
+  return getNetworkConfig(mode || DEFAULT_NETWORK);
 }

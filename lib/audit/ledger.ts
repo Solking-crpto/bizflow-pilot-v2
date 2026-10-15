@@ -1,4 +1,5 @@
-import { prisma } from "../db";
+import { getDb } from "../db";
+import { NetworkMode } from "../networks";
 import { sha256, canonicalJson } from "../crypto";
 
 export interface AuditVerificationResult {
@@ -19,9 +20,12 @@ export async function recordAuditEvent(params: {
   eventType: string;
   referenceId?: string;
   eventData: Record<string, any>;
+  network?: NetworkMode;
 }): Promise<{ eventId: string; eventHash: string; prevHash: string }> {
+  const db = getDb(params.network || "mainnet");
+
   // 1. Fetch latest event in org to obtain prev_hash
-  const lastEvent = await prisma.auditEvent.findFirst({
+  const lastEvent = await db.auditEvent.findFirst({
     where: { orgId: params.orgId },
     orderBy: { timestamp: "desc" },
   });
@@ -30,7 +34,7 @@ export async function recordAuditEvent(params: {
   const canonicalData = canonicalJson(params.eventData);
   const eventHash = sha256(`${prevHash}:${canonicalData}`);
 
-  const event = await prisma.auditEvent.create({
+  const event = await db.auditEvent.create({
     data: {
       orgId: params.orgId,
       eventType: params.eventType,
@@ -51,8 +55,12 @@ export async function recordAuditEvent(params: {
 /**
  * Traverses and cryptographically re-verifies the entire audit hash chain
  */
-export async function verifyAuditChain(orgId: string): Promise<AuditVerificationResult> {
-  const events = await prisma.auditEvent.findMany({
+export async function verifyAuditChain(
+  orgId: string,
+  network: NetworkMode = "mainnet"
+): Promise<AuditVerificationResult> {
+  const db = getDb(network);
+  const events = await db.auditEvent.findMany({
     where: { orgId },
     orderBy: { timestamp: "asc" },
   });

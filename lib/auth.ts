@@ -1,5 +1,7 @@
-import { prisma } from "./db";
+import { getDb } from "./db";
 import { getServerSession, getSessionOrg } from "./auth/session";
+import { getServerActiveNetwork } from "./networks";
+import { cookies } from "next/headers";
 
 export interface UserSession {
   id: string;
@@ -39,7 +41,11 @@ export async function getCurrentSession(): Promise<UserSession> {
       }
     }
 
-    const org = await prisma.organization.findFirst({
+    const cookieStore = cookies();
+    const networkMode = getServerActiveNetwork(cookieStore.get("bizflow_network")?.value);
+    const db = getDb(networkMode);
+
+    const org = await db.organization.findFirst({
       include: { members: true },
     });
 

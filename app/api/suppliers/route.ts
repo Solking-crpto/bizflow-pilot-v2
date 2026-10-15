@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { isAddress } from "viem";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { withDbTimeout } from "@/lib/db";
+import { validateApiNetwork } from "@/lib/api-guard";
 import { parseUsdc, formatUsdc, usdcAtomic } from "@/lib/money";
 import { getSessionFromRequest, getSessionOrg } from "@/lib/auth/session";
 import { isBlocklistedWallet } from "@/lib/security/walletBlocklist";
+import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 
 export const dynamic = "force-dynamic";
-
-const BETA_HARD_CAP_USDC = usdcAtomic(BigInt(process.env.APP_MAX_PAYMENT_USDC || "25") * 1_000_000n);
 
 const CreateSupplierSchema = z.object({
   name: z.string().min(2, "Supplier name must be at least 2 characters").max(100),
@@ -20,18 +20,22 @@ const CreateSupplierSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
+    const netCtx = validateApiNetwork(req);
+    if (!netCtx.success) return netCtx.response;
+    const { network, db } = netCtx;
+
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized: Please sign in" }, { status: 401 });
     }
 
-    const org = await getSessionOrg(session);
+    const org = await getSessionOrg(session, network);
     if (!org) {
       return NextResponse.json({ error: "No organization found for this wallet" }, { status: 404 });
     }
 
     const vendors = await withDbTimeout(() =>
-      prisma.vendor.findMany({
+      db.vendor.findMany({
         where: { orgId: org.id },
         orderBy: { createdAt: "desc" },
       })
@@ -39,6 +43,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      network,
       suppliers: vendors.map((v) => ({
         id: v.id,
         name: v.name,
@@ -57,10 +62,12 @@ export async function GET(req: NextRequest) {
   }
 }
 
-import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
-
 export async function POST(req: NextRequest) {
   try {
+    const netCtx = validateApiNetwork(req);
+    if (!netCtx.success) return netCtx.response;
+    const { network, db } = netCtx;
+
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized: Please sign in" }, { status: 401 });
@@ -70,7 +77,7 @@ export async function POST(req: NextRequest) {
     const rlIp = checkRateLimit(`supplier:create:ip:${ip}`, 30, 60_000);
     if (!rlIp.allowed) return rateLimitExceededResponse(rlIp.retryAfterSeconds);
 
-    const org = await getSessionOrg(session);
+    const org = await getSessionOrg(session, network);
     if (!org) {
       return NextResponse.json({ error: "No organization found for this wallet" }, { status: 404 });
     }
@@ -84,10 +91,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const maxPaymentEnv =
+      network === "mainnet"
+        ? process.env.APP_MAX_PAYMENT_USDC || "25"
+        : process.env.APP_MAX_PAYMENT_USDC_TESTNET || "100";
+    const betaHardCapUsdc = usdcAtomic(BigInt(maxPaymentEnv) * 1_000_000n);
+
     const { name, walletAddress, perVendorLimitUsdc } = parsed.data;
     const normalizedWallet = walletAddress.toLowerCase();
 
-    // 1. OFAC & Security Compliance Screening
+    // 1. Blocked-Address Screening (known public test wallets; not an official regulatory sanctions screen)
     if (isBlocklistedWallet(normalizedWallet)) {
       return NextResponse.json(
         { error: "Compliance violation: Payout wallet address failed screening." },
@@ -97,13 +110,13 @@ export async function POST(req: NextRequest) {
 
     // 2. Parse and cap limit to Public Beta hard cap
     let limitAtomic = parseUsdc(perVendorLimitUsdc);
-    if (limitAtomic > BETA_HARD_CAP_USDC) {
-      limitAtomic = BETA_HARD_CAP_USDC;
+    if (limitAtomic > betaHardCapUsdc) {
+      limitAtomic = betaHardCapUsdc;
     }
 
     // 3. Create Supplier
     const vendor = await withDbTimeout(() =>
-      prisma.vendor.create({
+      db.vendor.create({
         data: {
           orgId: org.id,
           name: name.trim(),
@@ -116,6 +129,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      network,
       supplier: {
         id: vendor.id,
         name: vendor.name,

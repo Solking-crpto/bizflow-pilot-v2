@@ -5,7 +5,9 @@ import { TopNav } from "@/components/layout/TopNav";
 import { NetworkBanner } from "@/components/layout/NetworkBadge";
 import { Footer } from "@/components/layout/Footer";
 import { assertValidSandboxMode } from "@/lib/networks";
-
+import { FirstVisitChoiceModal } from "@/components/common/FirstVisitChoiceModal";
+import { TestnetExtrasPanel } from "@/components/testnet/TestnetExtrasPanel";
+import { MainnetExtrasBanner } from "@/components/mainnet/MainnetExtrasBanner";
 import { AppProviders } from "@/components/providers/AppProviders";
 
 export const metadata: Metadata = {
@@ -28,12 +30,15 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen bg-canvas text-ink flex flex-col font-sans">
         <AppProviders>
+          <FirstVisitChoiceModal networkMode={networkMode} />
           <NetworkBanner mode={networkMode} isPublicSandbox={isPublicSandbox} />
           <div className="flex flex-1 min-h-0">
             <Sidebar />
             <div className="flex-1 flex flex-col min-w-0">
               <TopNav networkMode={networkMode} />
               <main className="flex-1 p-6 md:p-8 max-w-[1280px] w-full mx-auto overflow-y-auto">
+                <TestnetExtrasPanel />
+                <MainnetExtrasBanner />
                 {children}
               </main>
               <Footer networkMode={networkMode} />

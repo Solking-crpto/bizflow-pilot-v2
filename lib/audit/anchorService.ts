@@ -2,8 +2,8 @@ import "server-only";
 
 import { createPublicClient, createWalletClient, http, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { prisma } from "../db";
-import { getActiveNetwork } from "../networks";
+import { getDb } from "../db";
+import { getNetworkConfig, NetworkMode } from "../networks";
 import { recordAuditEvent } from "./ledger";
 import { sha256Bytes32, sha256 } from "../crypto";
 
@@ -17,9 +17,12 @@ export async function executeAnchorProof(params: {
   invoiceHashHex: string;
   decisionHashHex: string;
   paymentTxHash: string;
+  network?: NetworkMode;
 }): Promise<{ anchorTxHash: string; blockNumber: number }> {
-  const network = getActiveNetwork();
-  const contractAddress = process.env.AUDIT_ANCHOR_ADDRESS as `0x${string}` | undefined;
+  const networkMode: NetworkMode = params.network || "mainnet";
+  const network = getNetworkConfig(networkMode);
+  const db = getDb(networkMode);
+  const contractAddress = (network.anchorAddress || process.env.AUDIT_ANCHOR_ADDRESS) as `0x${string}` | undefined;
 
   const invoiceHashBytes32 = sha256Bytes32(params.invoiceHashHex);
   const decisionHashBytes32 = sha256Bytes32(params.decisionHashHex);
@@ -65,7 +68,7 @@ export async function executeAnchorProof(params: {
   }
 
   // Update payment record in database
-  await prisma.payment.update({
+  await db.payment.update({
     where: { id: params.paymentId },
     data: {
       status: "anchored",
@@ -75,7 +78,7 @@ export async function executeAnchorProof(params: {
   });
 
   // Save in Anchor table
-  await prisma.anchor.upsert({
+  await db.anchor.upsert({
     where: { paymentId: params.paymentId },
     update: {
       anchorTxHash,
@@ -107,6 +110,7 @@ export async function executeAnchorProof(params: {
       network: network.name,
       timestamp: new Date().toISOString(),
     },
+    network: networkMode,
   });
 
   return { anchorTxHash, blockNumber };

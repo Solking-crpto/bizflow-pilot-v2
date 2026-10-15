@@ -1,11 +1,15 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import React from "react";
 import type { Metadata } from "next";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { cookies } from "next/headers";
+import { getDb, withDbTimeout } from "@/lib/db";
+import { getServerActiveNetwork } from "@/lib/networks";
 import { getTreasuryPublicAddress } from "@/lib/treasury";
+import { getServerSession, getSessionOrg } from "@/lib/auth/session";
 import { SettingsClient, SerializedSettings, SerializedVendor } from "@/components/settings/SettingsClient";
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
-
-export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Rules & Settings — Governance & Security Controls | BizFlow Pilot V2",
@@ -13,33 +17,47 @@ export const metadata: Metadata = {
 };
 
 export default async function SettingsPage() {
-  const isMainnet = (process.env.NEXT_PUBLIC_NETWORK_MODE || process.env.NETWORK_MODE) === "mainnet";
+  const cookieStore = cookies();
+  const networkMode = getServerActiveNetwork(cookieStore.get("bizflow_network")?.value);
+  const db = getDb(networkMode);
+  const session = await getServerSession();
+
   let org: any = null;
   let dbError: string | null = null;
 
   try {
-    org = await withDbTimeout(
-      () =>
-        prisma.organization.findFirst({
-          include: {
-            settings: true,
-            vendors: true,
-          },
-        })
-    );
-  } catch (err: any) {
-    if (isMainnet) {
-      dbError = err.message || "Failed to load settings from database.";
-    } else {
-      org = null;
+    if (session) {
+      org = await getSessionOrg(session, networkMode);
     }
+    if (!org) {
+      org = await withDbTimeout(
+        () =>
+          db.organization.findFirst({
+            include: {
+              settings: true,
+              vendors: true,
+            },
+          })
+      );
+    } else {
+      // Fetch settings and vendors for the session org
+      const [settings, vendors] = await withDbTimeout(() =>
+        Promise.all([
+          db.setting.findMany({ where: { orgId: org.id } }),
+          db.vendor.findMany({ where: { orgId: org.id } }),
+        ])
+      );
+      org = { ...org, settings, vendors };
+    }
+  } catch (err: any) {
+    dbError = err.message || "Failed to load settings from database.";
   }
 
-  if (isMainnet && dbError) {
+  if (dbError) {
     return (
       <DatabaseErrorState
         title="Settings Database Error"
-        message={dbError || "No organization configuration found on Arc Mainnet."}
+        message={dbError || "No organization configuration found on active database."}
       />
     );
   }

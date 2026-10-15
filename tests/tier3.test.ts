@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { AppKitSendProvider } from "../lib/payments/appKitProvider";
 import { vendorScreeningProvider } from "../lib/security/screening";
+import { NETWORKS } from "../lib/networks";
 
 describe("Tier 3 Feature-Flagged Extensions", () => {
   describe("Arc App Kit Send Provider", () => {
@@ -15,7 +16,7 @@ describe("Tier 3 Feature-Flagged Extensions", () => {
 
       expect(url.startsWith("https://testnet.arc.network/send?")).toBe(true);
       expect(url).toContain("to=0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
-      expect(url).toContain("token=0x3600000000000000000000000000000000000000");
+      expect(url).toContain(`token=${NETWORKS.testnet.usdcAddress}`);
       expect(url).toContain("amount=0.500000");
       expect(url).toContain("ref=INV-TEST-01");
     });

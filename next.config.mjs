@@ -39,7 +39,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.arc.network https://*.arc.io https://*.arcscan.app https://*.circle.com https://*.supabase.co wss://*.supabase.co",
+              "connect-src 'self' https://arc.network https://*.arc.network https://arc.io https://*.arc.io https://arcscan.app https://*.arcscan.app https://circle.com https://*.circle.com https://*.supabase.co wss://*.supabase.co",
               "frame-ancestors 'none'",
               "object-src 'none'",
               "base-uri 'self'",

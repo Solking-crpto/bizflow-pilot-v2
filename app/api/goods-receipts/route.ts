@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { withDbTimeout } from "@/lib/db";
+import { validateApiNetwork } from "@/lib/api-guard";
 import { getSessionFromRequest, getSessionOrg } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -21,18 +22,22 @@ const CreateGRSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
+    const netCtx = validateApiNetwork(req);
+    if (!netCtx.success) return netCtx.response;
+    const { network, db } = netCtx;
+
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const org = await getSessionOrg(session);
+    const org = await getSessionOrg(session, network);
     if (!org) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
 
     const grs = await withDbTimeout(() =>
-      prisma.goodsReceipt.findMany({
+      db.goodsReceipt.findMany({
         where: { orgId: org.id },
         include: {
           purchaseOrder: true,
@@ -46,6 +51,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      network,
       goodsReceipts: grs.map((gr) => ({
         id: gr.id,
         grNumber: gr.grNumber,
@@ -69,12 +75,16 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const netCtx = validateApiNetwork(req);
+    if (!netCtx.success) return netCtx.response;
+    const { network, db } = netCtx;
+
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const org = await getSessionOrg(session);
+    const org = await getSessionOrg(session, network);
     if (!org) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
@@ -92,7 +102,7 @@ export async function POST(req: NextRequest) {
 
     // Verify PO belongs to this organization (IDOR check)
     const po = await withDbTimeout(() =>
-      prisma.purchaseOrder.findUnique({
+      db.purchaseOrder.findUnique({
         where: { id: purchaseOrderId },
         include: { lines: true },
       })
@@ -107,7 +117,7 @@ export async function POST(req: NextRequest) {
 
     // Check duplicate GR number
     const existingGR = await withDbTimeout(() =>
-      prisma.goodsReceipt.findFirst({
+      db.goodsReceipt.findFirst({
         where: { orgId: org.id, grNumber: grNumber.trim().toUpperCase() },
       })
     );
@@ -121,7 +131,7 @@ export async function POST(req: NextRequest) {
 
     // Create Goods Receipt
     const gr = await withDbTimeout(() =>
-      prisma.goodsReceipt.create({
+      db.goodsReceipt.create({
         data: {
           orgId: org.id,
           grNumber: grNumber.trim().toUpperCase(),
@@ -145,7 +155,7 @@ export async function POST(req: NextRequest) {
     // Update stock counts
     for (const line of lines) {
       await withDbTimeout(() =>
-        prisma.item.update({
+        db.item.update({
           where: { id: line.itemId },
           data: {
             currentStock: { increment: line.quantity },
@@ -154,7 +164,7 @@ export async function POST(req: NextRequest) {
       );
 
       await withDbTimeout(() =>
-        prisma.stockMovement.create({
+        db.stockMovement.create({
           data: {
             itemId: line.itemId,
             quantity: line.quantity,
@@ -167,6 +177,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      network,
       goodsReceipt: {
         id: gr.id,
         grNumber: gr.grNumber,

@@ -73,7 +73,7 @@ For new businesses joining the BizFlow Pilot V2 Public Beta:
 
 1. **Self-Service Wallet Connection**: Connect an Arc-compatible Web3 wallet (MetaMask, Rabby, etc.) at `/onboarding`.
 2. **Profile Creation**: Configure corporate identity, contact email, tolerance threshold (default 1.00%), and cash reserve buffer.
-3. **Vendor Registry**: Add verified supplier payout addresses with automated OFAC sanctions screening and 24h cooldown verification.
+3. **Vendor Registry**: Add verified supplier payout addresses with automated blocked-address screening (against known test accounts; not an official regulatory sanctions screen) and 24h cooldown verification.
 4. **Three-Way Reconciliation**: Issue POs, log warehouse receipts, and upload invoices.
 5. **Non-Custodial Settlement**: Run the AI advisory timing engine (`/agent`), review the payment intent, and sign the ERC-20 transfer directly in your wallet.
 6. **Public Audit Passport**: Issue immutable verification passports at `/verify/[invoiceId]` for vendor transparency.

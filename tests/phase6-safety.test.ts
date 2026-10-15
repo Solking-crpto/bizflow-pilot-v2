@@ -71,10 +71,8 @@ describe("Phase 6 — Safety, Legal & Public Readiness", () => {
     expect(res.status).toBe(200);
 
     const data = await res.json();
-    expect(data.network).toBeDefined();
-    expect(data.metrics).toBeDefined();
-    expect(typeof data.metrics.invoicesProcessed).toBe("number");
-    expect(typeof data.metrics.settledVolumeUsdc).toBe("string");
+    expect(data.mainnet).toBeDefined();
+    expect(data.testnet).toBeDefined();
     expect(data.integrity.syntheticDataAllowed).toBe(false);
     expect(data.integrity.mode).toContain("100% Real Database & On-Chain Rows");
   });

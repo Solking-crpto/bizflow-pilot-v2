@@ -172,21 +172,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       // 4902 indicated chain is not added yet
       if (switchError.code === 4902 || switchError?.data?.originalError?.code === 4902) {
         try {
+          const { getWalletAddChainParams } = await import("@/lib/networks");
+          const chainParams = getWalletAddChainParams(activeNetwork.mode);
           await window.ethereum.request({
             method: "wallet_addEthereumChain",
-            params: [
-              {
-                chainId: targetHex,
-                chainName: activeNetwork.name,
-                rpcUrls: [activeNetwork.rpcUrl],
-                nativeCurrency: {
-                  name: "USDC",
-                  symbol: "USDC",
-                  decimals: 18,
-                },
-                blockExplorerUrls: [activeNetwork.explorerUrl],
-              },
-            ],
+            params: [chainParams],
           });
           setChainId(activeNetwork.chainId);
           return true;
@@ -224,7 +214,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       if (!nonceRes.ok) throw new Error("Could not acquire authentication nonce");
       const { nonce } = await nonceRes.json();
 
-      // B. Build SIWE message
+      // B. Build SIWE message with network name and chain ID
       const domain = window.location.host;
       const uri = window.location.origin;
       const message = buildSiweMessage({
@@ -233,6 +223,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         uri,
         nonce,
         chainId: activeNetwork.chainId,
+        networkName: activeNetwork.name,
       });
 
       // C. Request user wallet signature (EIP-191 personal_sign)

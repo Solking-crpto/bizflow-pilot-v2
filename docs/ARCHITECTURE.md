@@ -79,7 +79,7 @@ flowchart TB
 - **Tenant Scoping**: All Prisma queries, mutations, and API routes are scoped to `session.orgId`. IDOR security tests prove that orgs cannot access or modify each other's suppliers, invoices, decisions, or payments.
 
 ### 3.2 Procurement & Intake Engine
-- **Suppliers**: Validated payout addresses with checksumming, OFAC sanctions list screening, and a mandatory 24-hour settlement cooldown on payout wallet updates.
+- **Suppliers**: Validated payout addresses with checksumming, blocked-address screening (known test-wallet blocklist; not an official regulatory sanctions screen), and a mandatory 24-hour settlement cooldown on payout wallet updates.
 - **Purchase Orders & Goods Receipts**: Line-item tracking storing atomic integer values (`BigInt`) to eliminate floating-point rounding errors.
 - **Invoice Processing**: Text/PDF ingestion with prompt injection quarantine defenses, computing deterministic SHA-256 content hashes to detect zero-day duplicates.
 
@@ -127,3 +127,28 @@ Every payment intent must pass 10 server-side rules before issuance:
 | **Native Gas Currency** | USDC (18 decimals) | USDC (18 decimals) |
 | **Settlement USDC Token** | `0x3600000000000000000000000000000000000000` | `0x3600000000000000000000000000000000000000` |
 | **App Max Beta Limit** | 25.00 USDC | Unlimited (Faucet) |
+
+---
+
+## 5. Runtime Dual-Network Architecture & Physical Isolation
+
+BizFlow Pilot V2 provides a seamless, instant runtime switch between Arc Mainnet (`5042`) and Arc Testnet (`5042002`) within a single deployment:
+
+### 5.1 Request-Scoped Network Resolution
+- The active network is request-scoped via the `bizflow_network` cookie (`mainnet` or `testnet`), validated against a strict whitelist with `SameSite=Lax`, `Secure` in production, and falling back to `DEFAULT_NETWORK` (`mainnet`).
+- Build-time flags like `NEXT_PUBLIC_NETWORK_MODE` are eliminated as sources of truth. All Server Components, Server Actions, and Route Handlers resolve network dynamically.
+
+### 5.2 Physical Database Isolation (Zero Cross-Talk)
+- **Mainnet Database**: Uses `DATABASE_URL_MAINNET` / `DIRECT_URL_MAINNET` enforcing `schema=v2_mainnet`.
+- **Testnet Database**: Uses `DATABASE_URL_TESTNET` / `DIRECT_URL_TESTNET` enforcing `schema=v2_testnet`.
+- Exposes exclusively `getDb(network)`. The legacy global `prisma` import is removed across the codebase, guaranteed by compile-time assertions and `tests/no-unscoped-prisma-import.test.ts`.
+
+### 5.3 Anti-Desync & Stale-Tab Protection (HTTP 409 Conflict)
+- All state-changing mutations (`POST`, `PUT`, `PATCH`, `DELETE`) require the `X-Bizflow-Network` header matching the active cookie.
+- If a user changes networks in one browser tab, any pending mutations in older tabs are immediately rejected with **HTTP 409 Conflict**, preventing accidental transactions or database writes on the wrong network.
+- Cross-tab synchronization is maintained via `BroadcastChannel` and `storage` events.
+
+### 5.4 Public Routes & Data Presentation
+- **Public Verification Passport**: `/verify/[network]/[id]` displays verified on-chain proofs and audit blocks for the selected network. Legacy `/verify/[id]` links automatically 301-redirect to the appropriate network.
+- **Public Real-Time Metrics**: `/metrics` and `/api/metrics` display real Mainnet and Testnet metrics in dedicated side-by-side columns with zero aggregation or cross-network blending.
+- **Judge & Pilot Discovery**: `/pilots` filters pilot businesses by the active network context.

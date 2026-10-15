@@ -1,12 +1,13 @@
 import "server-only";
 
-import { prisma } from "../db";
+import { getDb } from "../db";
 import { evaluatePolicy, PolicyContext } from "../policy/engine";
 import { getPaymentProvider } from "./index";
 import { executeAnchorProof } from "../audit/anchorService";
 import { recordAuditEvent } from "../audit/ledger";
-import { getActiveNetwork } from "../networks";
+import { getNetworkConfig, NetworkMode } from "../networks";
 import { usdcAtomic, parseUsdc } from "../money";
+import { isAdminWallet } from "../auth/session";
 
 export interface ExecutePaymentParams {
   invoiceId: string;
@@ -14,6 +15,7 @@ export interface ExecutePaymentParams {
   hasOwnerConfirmation?: boolean;
   isAutonomous?: boolean;
   dryRun?: boolean;
+  network?: NetworkMode;
 }
 
 export interface ExecutePaymentResult {
@@ -30,6 +32,7 @@ export interface ExecutePaymentResult {
 
 /**
  * Server-side idempotent payment execution engine.
+ * RESTRICTED TO ARC MAINNET BUILDER-ADMIN TREASURY ONLY.
  * Re-evaluates 10-point deterministic policy at execution time,
  * records actor ('agent' | 'human') in the audit ledger,
  * executes on-chain transfer, and anchors cryptographic proof.
@@ -38,9 +41,20 @@ export async function executePaymentTransaction(
   params: ExecutePaymentParams
 ): Promise<ExecutePaymentResult> {
   const { invoiceId, actor, isAutonomous, dryRun } = params;
+  const networkMode: NetworkMode = params.network || "mainnet";
+
+  // Strict Guard: Server treasury key exists ONLY on Mainnet for builder/admin
+  if (networkMode !== "mainnet") {
+    return {
+      success: false,
+      error: "Server treasury execution is restricted to Arc Mainnet builder-admin mode only.",
+    };
+  }
+
+  const db = getDb(networkMode);
 
   // 1. Fetch Invoice with relations
-  const invoice = await prisma.invoice.findUnique({
+  const invoice = await db.invoice.findUnique({
     where: { id: invoiceId },
     include: {
       vendor: true,
@@ -53,9 +67,18 @@ export async function executePaymentTransaction(
     return { success: false, error: "Invoice not found" };
   }
 
-  const networkConfig = getActiveNetwork();
-  const networkMode = networkConfig.mode;
+  const networkConfig = getNetworkConfig(networkMode);
   const org = invoice.organization;
+
+  // Strict Non-Custodial Invariant:
+  // Public organizations must NEVER use the server treasury private key.
+  if (org.walletAddress && !isAdminWallet(org.walletAddress)) {
+    return {
+      success: false,
+      error: "Non-custodial invariant violation: Server treasury execution is strictly disabled for public organizations.",
+    };
+  }
+
   const settings = org.settings[0] || {
     killSwitchActive: false,
     priceToleranceBps: 100,
@@ -69,7 +92,7 @@ export async function executePaymentTransaction(
 
   // 2. Strict Idempotency Check per (invoiceId, networkMode)
   const idempotencyKey = `PAY-${invoice.id}-${networkMode}`;
-  const existingPayment = await prisma.payment.findUnique({
+  const existingPayment = await db.payment.findUnique({
     where: { idempotencyKey },
   });
 
@@ -85,7 +108,7 @@ export async function executePaymentTransaction(
   const startOfDay = new Date();
   startOfDay.setUTCHours(0, 0, 0, 0);
 
-  const todayPayments = await prisma.payment.findMany({
+  const todayPayments = await db.payment.findMany({
     where: {
       orgId: org.id,
       network: networkMode,
@@ -148,7 +171,7 @@ export async function executePaymentTransaction(
   const policyEval = evaluatePolicy(policyContext);
 
   // Persist evaluation
-  await prisma.policyEvaluation.create({
+  await db.policyEvaluation.create({
     data: {
       invoiceId: invoice.id,
       decision: policyEval.decision,
@@ -178,7 +201,7 @@ export async function executePaymentTransaction(
 
   // 6. Create Initial Payment Record
   const provider = getPaymentProvider();
-  const payment = existingPayment || await prisma.payment.create({
+  const payment = existingPayment || await db.payment.create({
     data: {
       orgId: org.id,
       invoiceId: invoice.id,
@@ -209,6 +232,7 @@ export async function executePaymentTransaction(
       provider: provider.name,
       decisionHash: policyEval.decisionHash,
     },
+    network: networkMode,
   });
 
   // 7. On-Chain Settlement via Payment Provider
@@ -221,7 +245,7 @@ export async function executePaymentTransaction(
   });
 
   if (transferResult.status === "failed") {
-    await prisma.payment.update({
+    await db.payment.update({
       where: { id: payment.id },
       data: { status: "failed" },
     });
@@ -233,7 +257,7 @@ export async function executePaymentTransaction(
   }
 
   // 8. Update Payment to Confirmed & Invoice to Paid
-  const updatedPayment = await prisma.payment.update({
+  const updatedPayment = await db.payment.update({
     where: { id: payment.id },
     data: {
       status: "confirmed",
@@ -243,7 +267,7 @@ export async function executePaymentTransaction(
     },
   });
 
-  await prisma.invoice.update({
+  await db.invoice.update({
     where: { id: invoice.id },
     data: { status: "paid" },
   });
@@ -260,6 +284,7 @@ export async function executePaymentTransaction(
       network: networkMode,
       receipt: transferResult.receipt,
     },
+    network: networkMode,
   });
 
   // 9. Anchor Cryptographic Proof to AuditAnchor.sol
@@ -270,6 +295,7 @@ export async function executePaymentTransaction(
     invoiceHashHex: invoice.fileHash,
     decisionHashHex: policyEval.decisionHash,
     paymentTxHash: transferResult.txHash,
+    network: networkMode,
   });
 
   return {

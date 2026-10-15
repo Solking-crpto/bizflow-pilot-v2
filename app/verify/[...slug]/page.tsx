@@ -1,43 +1,40 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import React from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
 import {
   ShieldCheck,
   CheckCircle2,
-  ExternalLink,
-  Receipt,
-  Layers,
-  Cpu,
-  FileCode2,
-  Lock,
   ArrowRight,
-  Boxes,
   Bot,
-  Scale,
-  Sparkles,
 } from "lucide-react";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { getDb, withDbTimeout } from "@/lib/db";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
-import { getActiveNetwork } from "@/lib/networks";
+import { NETWORKS, NetworkMode, isValidNetwork } from "@/lib/networks";
 import { HashView } from "@/components/ui/StatusChip";
-import { truncateHash } from "@/lib/utils";
 import { verifyAuditChain } from "@/lib/audit/ledger";
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 import { RpcVerificationWidget } from "@/components/verify/RpcVerificationWidget";
 
-export const dynamic = "force-dynamic";
-
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: { slug: string[] };
 }): Promise<Metadata> {
+  const isDirect = params.slug?.length === 2;
+  const networkStr = isDirect ? params.slug[0] : "mainnet";
+  const id = isDirect ? params.slug[1] : params.slug?.[0] || "";
+  const networkName = isValidNetwork(networkStr) ? NETWORKS[networkStr as NetworkMode].name : "Arc";
+
   return {
-    title: `Payment Passport ${params.id} — Cryptographic Proof | BizFlow Pilot V2`,
-    description: `Public, tamper-evident cryptographic proof for payment ${params.id} settled in native USDC on Arc. Verified across 10 deterministic policy guardrails and anchored on-chain.`,
+    title: `Payment Passport ${id} — Cryptographic Proof | BizFlow Pilot V2`,
+    description: `Public, tamper-evident cryptographic proof for payment ${id} settled in USDC on ${networkName}. Verified across deterministic policy guardrails and anchored on-chain.`,
     openGraph: {
-      title: `BizFlow Pilot V2 Payment Passport — ${params.id}`,
-      description: `Cryptographically verified corporate settlement on Arc with on-chain audit anchor.`,
+      title: `BizFlow Pilot V2 Payment Passport — ${id} (${networkName})`,
+      description: `Cryptographically verified corporate settlement on ${networkName} with on-chain audit anchor.`,
       type: "website",
     },
   };
@@ -47,19 +44,91 @@ export default async function VerifyPaymentPassportPage({
   params,
   searchParams,
 }: {
-  params: { id: string };
+  params: { slug: string[] };
   searchParams?: { txHash?: string; anchorAddress?: string };
 }) {
-  const network = getActiveNetwork();
-  const id = params.id;
+  const slug = params.slug || [];
+
+  // Legacy single-parameter route: /verify/[id] (slug.length === 1)
+  // 301-redirects to /verify/mainnet/[id] (or testnet if found there)
+  if (slug.length === 1) {
+    const id = slug[0];
+
+    // 1. Check mainnet first
+    try {
+      const mainnetDb = getDb("mainnet");
+      const foundMainnet = await withDbTimeout(
+        () =>
+          mainnetDb.payment.findFirst({
+            where: {
+              OR: [
+                { id: id },
+                { invoiceId: id },
+                { txHash: { equals: id, mode: "insensitive" } },
+              ],
+            },
+            select: { id: true },
+          }),
+        2000
+      );
+
+      if (foundMainnet) {
+        redirect(`/verify/mainnet/${id}`);
+      }
+    } catch (err: any) {
+      if (err?.digest?.startsWith("NEXT_REDIRECT")) throw err;
+    }
+
+    // 2. Check testnet if not found on mainnet
+    try {
+      const testnetDb = getDb("testnet");
+      const foundTestnet = await withDbTimeout(
+        () =>
+          testnetDb.payment.findFirst({
+            where: {
+              OR: [
+                { id: id },
+                { invoiceId: id },
+                { txHash: { equals: id, mode: "insensitive" } },
+              ],
+            },
+            select: { id: true },
+          }),
+        2000
+      );
+
+      if (foundTestnet) {
+        redirect(`/verify/testnet/${id}`);
+      }
+    } catch (err: any) {
+      if (err?.digest?.startsWith("NEXT_REDIRECT")) throw err;
+    }
+
+    // Default legacy redirect to mainnet
+    redirect(`/verify/mainnet/${id}`);
+  }
+
+  // Canonical route: /verify/[network]/[id] (slug.length === 2)
+  if (slug.length !== 2) {
+    notFound();
+  }
+
+  const [networkParam, id] = slug;
+  if (!isValidNetwork(networkParam)) {
+    notFound();
+  }
+
+  const networkMode = networkParam as NetworkMode;
+  const network = NETWORKS[networkMode];
+  const db = getDb(networkMode);
 
   let payment: any = null;
-  let chainVerification = { valid: true, totalEvents: 4 };
+  let chainVerification = { valid: true, totalEvents: 0 };
 
   try {
     payment = await withDbTimeout(
       () =>
-        prisma.payment.findFirst({
+        db.payment.findFirst({
           where: {
             OR: [
               { id: id },
@@ -81,7 +150,7 @@ export default async function VerifyPaymentPassportPage({
     if (!payment) {
       const invoice = await withDbTimeout(
         () =>
-          prisma.invoice.findUnique({
+          db.invoice.findUnique({
             where: { id: id },
             include: {
               vendor: true,
@@ -107,10 +176,10 @@ export default async function VerifyPaymentPassportPage({
 
     // Verify audit chain for this specific payment organization
     if (payment?.orgId) {
-      chainVerification = await verifyAuditChain(payment.orgId);
+      chainVerification = await verifyAuditChain(payment.orgId, networkMode);
     }
   } catch (err) {
-    // Offline / fallback demo mode on testnet
+    console.warn("Verify passport query warning:", err);
   }
 
   // If no payment record found and no txHash passed, display honest empty state
@@ -119,17 +188,17 @@ export default async function VerifyPaymentPassportPage({
       <div className="max-w-xl mx-auto py-12 px-4">
         <DatabaseErrorState
           title="Payment Passport Not Found"
-          message={`No confirmed settlement or on-chain audit record was found for identifier '${id}'. Settle an invoice through the Payment Desk to generate a verifiable on-chain passport.`}
+          message={`No confirmed settlement or on-chain audit record was found for identifier '${id}' on ${network.name}. Please check that the URL specifies the correct network (mainnet or testnet).`}
         />
       </div>
     );
   }
 
   const invoiceNumber = payment?.invoice?.invoiceNumber || id;
-  const vendorName = payment?.vendor?.name || payment?.vendorName || "Verified Supplier";
+  const vendorName = payment?.vendor?.name || payment?.vendorName || "Unknown Supplier";
   const vendorWallet = payment?.vendor?.walletAddress || payment?.destination || "";
   const amountFormatted = payment
-    ? formatUsdc(usdcAtomic(payment.amountAtomic))
+    ? `${formatUsdc(usdcAtomic(payment.amountAtomic))} USDC`
     : "0.00 USDC";
   const invoiceHash = payment?.invoice?.fileHash || "";
   const decisionHash = payment?.invoice?.policyEvaluations?.[0]?.decisionHash || "";
@@ -150,8 +219,12 @@ export default async function VerifyPaymentPassportPage({
                 <span className="text-xs font-mono font-bold uppercase tracking-wider text-success">
                   Public Payment Passport
                 </span>
-                <span className="text-[10px] bg-brand-light text-brand-teal px-2 py-0.5 rounded font-mono font-bold">
-                  Arc {network.name} ({network.chainId})
+                <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold border ${
+                  network.isTestnet
+                    ? "bg-amber-50 text-amber-900 border-amber-300"
+                    : "bg-navy-50 text-navy-900 border-navy-300"
+                }`}>
+                  {network.name} (Chain {network.chainId})
                 </span>
               </div>
               <h1 className="text-2xl font-bold text-ink mt-0.5 tracking-tight">
@@ -238,7 +311,7 @@ export default async function VerifyPaymentPassportPage({
             </span>
           </div>
           <p className="text-xs text-ink-muted font-mono bg-white p-3 rounded-lg border border-border leading-relaxed">
-            &quot;Autonomous 3-Way Match verified against purchase order PO-MAINNET-0001 and warehouse delivery note GR-MAINNET-0001. Quantity 10 bags delivered at 0.05 USDC unit price matches invoiced amount exactly (0.50 USDC). Zero duplicate signatures detected (duplicateScore: 0/100). Malicious prompt injection heuristic: negative. Destination wallet matches active vendor whitelist. Proposing execution under Net-15 terms.&quot;
+            &quot;Autonomous 3-Way Match verified against purchase order and warehouse delivery note. Quantity delivered matches invoiced amount exactly. Zero duplicate signatures detected. Malicious prompt injection heuristic: negative. Destination wallet matches active vendor whitelist. Proposing execution under Net-15 terms.&quot;
           </p>
         </div>
 
@@ -266,7 +339,7 @@ export default async function VerifyPaymentPassportPage({
             </div>
             <div className="flex items-center gap-2 p-2.5 rounded bg-canvas border border-border">
               <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-              <span>4. Warehouse Receipt Quantity Verified (10/10)</span>
+              <span>4. Warehouse Receipt Quantity Verified</span>
             </div>
             <div className="flex items-center gap-2 p-2.5 rounded bg-canvas border border-border">
               <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
@@ -278,7 +351,7 @@ export default async function VerifyPaymentPassportPage({
             </div>
             <div className="flex items-center gap-2 p-2.5 rounded bg-canvas border border-border">
               <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-              <span>7. Single Payment Amount Cap Verified (&le; 1.00 USDC)</span>
+              <span>7. Single Payment Amount Cap Verified</span>
             </div>
             <div className="flex items-center gap-2 p-2.5 rounded bg-canvas border border-border">
               <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
@@ -297,7 +370,7 @@ export default async function VerifyPaymentPassportPage({
 
         {/* Footer / Return Action */}
         <div className="pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <span className="text-ink-muted">Public, tamper-evident audit record anchored on Arc Mainnet.</span>
+          <span className="text-ink-muted">Public, tamper-evident audit record anchored on {network.name}.</span>
           <div className="flex items-center gap-4">
             <Link
               href="/judges"

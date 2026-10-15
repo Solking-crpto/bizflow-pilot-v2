@@ -53,7 +53,7 @@ export class AppKitSendProvider implements PaymentProvider {
    * https://docs.arc.network/app-kit/send
    */
   generateSendLink(params: TransferParams): string {
-    const network = getActiveNetwork();
+    const network = getActiveNetwork(this.network);
     const tokenAddress = network.usdcAddress;
     const amountDisplay = (Number(params.amountAtomic) / 1e6).toFixed(6);
 

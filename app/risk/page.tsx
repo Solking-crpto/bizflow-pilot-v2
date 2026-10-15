@@ -113,8 +113,8 @@ export default function RiskPage() {
             Default hard cap of 25.00 USDC per transaction during public testing.
           </div>
           <div className="p-3 rounded-lg bg-canvas border border-border">
-            <strong className="text-ink block">OFAC & Cooldown Checks</strong>
-            Sanctions screening and 24-hour settlement cooldown on new supplier addresses.
+            <strong className="text-ink block">Blocked-Address & Cooldown</strong>
+            Known test-wallet blocklist check (not an official sanctions screen) and 24-hour settlement cooldown on new supplier addresses.
           </div>
           <div className="p-3 rounded-lg bg-canvas border border-border">
             <strong className="text-ink block">Prompt-Injection Shield</strong>

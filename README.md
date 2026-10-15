@@ -15,7 +15,7 @@ Upgraded from the original [BizFlow Pilot (Arc Microgrants edition)](https://git
    - **Public Orgs**: AI advisory engine analyzes cash position and obligations, recommending `pay_now`, `schedule`, `hold`, or `request_review` with early-pay discount calculations (e.g. 2/10 net 30).
    - **Builder Admin Org**: Autonomous loop with daily cron execution and strict spending limits (`AUTO_APPROVE_LIMIT_USDC`, `MAX_DAILY_AUTONOMOUS_USDC`).
 3. **Wallet Sign-In & Multi-Tenant Cryptographic Isolation**: EIP-191 Sign-In With Ethereum (SIWE) with one-time nonces and HMAC-SHA256 authenticated cookies. Full IDOR isolation between organizations.
-4. **Onboarding & Procurement Suite**: Full CRUD for suppliers (with OFAC sanctions screening and 24h wallet update cooldowns), line-item Purchase Orders, Goods Receipts, and Invoices with prompt injection quarantine.
+4. **Onboarding & Procurement Suite**: Full CRUD for suppliers (with blocked-address check against known test accounts and 24h wallet update cooldowns; not an official regulatory sanctions screen), line-item Purchase Orders, Goods Receipts, and Invoices with prompt injection quarantine.
 5. **Multi-Tenant Audit Anchor (`AuditAnchor.sol`)**: Compiled to `paris` EVM target (no `PUSH0`), partitioning on-chain audit proofs by `(msg.sender, invoiceHash)` on Arc Mainnet.
 6. **Honest Public Metrics (`/metrics`)**: Computed strictly from live database rows with zero synthetic data or mock fallbacks. Shows `0` or `"n/a"` when empty.
 7. **Comprehensive Test Suite**: 121 tests passing across 20 Vitest test files + Playwright E2E testing + strict TypeScript build.
@@ -24,7 +24,8 @@ Upgraded from the original [BizFlow Pilot (Arc Microgrants edition)](https://git
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue.svg)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-14_App_Router-black.svg)](https://nextjs.org/)
 [![Arc Mainnet](https://img.shields.io/badge/Arc_Mainnet-Chain_5042-teal.svg)](https://explorer.arc.io)
-[![Tests Passing](https://img.shields.io/badge/Tests-121_passed-brightgreen.svg)](tests/)
+[![Arc Testnet](https://img.shields.io/badge/Arc_Testnet-Chain_5042002-amber.svg)](https://testnet.arcscan.app)
+[![Tests Passing](https://img.shields.io/badge/Tests-167_passed-brightgreen.svg)](tests/)
 
 ---
 
@@ -136,7 +137,7 @@ Every payment intent must pass all 10 deterministic server-side rules before iss
 - Configure corporate governance parameters: per-payment ceiling, price matching tolerance (e.g. 1.00%), and cash reserve buffer.
 
 ### 3. Register Suppliers & Issue Procurement Documents
-- **Suppliers (`/suppliers`)**: Add your suppliers with validated payout wallets. Includes automated OFAC screening and a 24-hour settlement cooldown on payout wallet updates.
+- **Suppliers (`/suppliers`)**: Add your suppliers with validated payout wallets. Includes automated blocked-address check (known test-wallet blocklist; not an official regulatory sanctions screen) and a 24-hour settlement cooldown on payout wallet updates.
 - **Purchase Orders (`/inventory`)**: Create line-item POs with atomic integer USDC pricing.
 - **Goods Receipts (`/inventory`)**: Log warehouse receiving slips to enable 3-way matching.
 - **Invoices (`/invoices`)**: Ingest vendor invoices via manual entry, text paste, or PDF upload.
@@ -189,30 +190,37 @@ npm install
 
 ### 2. Database Initialization
 ```powershell
-npx prisma generate
-npx prisma db push
+# Generate Prisma Client
+npm run db:generate
+
+# Push schema to Arc Testnet database (schema=v2_testnet)
+npm run db:push:testnet
+
+# Push schema to Arc Mainnet database (schema=v2_mainnet)
+npm run db:push:mainnet
 ```
 
 ### 3. Running Development Server
 ```powershell
-# Start dev server on port 3001
+# Start dev server on port 3002 (with runtime network switcher enabled)
 npm run dev
-
-# Or with testnet environment:
-npm run dev:testnet
-
-# Or with mainnet configuration:
-npm run dev:mainnet
 ```
-Visit [http://localhost:3001](http://localhost:3001) in your browser.
+Visit [http://localhost:3002](http://localhost:3002) in your browser.
 
-### 4. Running Test Suites
+### 4. Running Test Suites & Bundle Verification
 ```powershell
-# Run all 121 unit, integration, and security tests
+# Run all 167 unit, integration, and security tests across 33 test suites
 npm test
 
-# Run production build check
+# Run preflight verification for Arc Testnet / Mainnet
+npm run preflight:testnet
+npm run preflight:mainnet
+
+# Build optimized production bundle
 npm run build
+
+# Verify client bundles contain zero leaked secrets
+npm run scan:bundle
 ```
 
 ---

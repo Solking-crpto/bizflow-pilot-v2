@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createPublicClient, http, parseEventLogs, erc20Abi } from "viem";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { withDbTimeout } from "@/lib/db";
+import { validateApiNetwork } from "@/lib/api-guard";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { getSessionFromRequest, getSessionOrg } from "@/lib/auth/session";
-import { getActiveNetwork } from "@/lib/networks";
+import { getNetworkConfig } from "@/lib/networks";
 import { recordAuditEvent } from "@/lib/audit/ledger";
+import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -16,10 +18,12 @@ const VerifyReceiptSchema = z.object({
     .regex(/^0x[a-fA-F0-9]{64}$/, "Invalid transaction hash format"),
 });
 
-import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
-
 export async function POST(req: NextRequest) {
   try {
+    const netCtx = validateApiNetwork(req);
+    if (!netCtx.success) return netCtx.response;
+    const { network, db } = netCtx;
+
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized: Please connect your wallet" }, { status: 401 });
@@ -32,7 +36,7 @@ export async function POST(req: NextRequest) {
     const rlWallet = checkRateLimit(`payment:verify:wallet:${session.address}`, 20, 60_000);
     if (!rlWallet.allowed) return rateLimitExceededResponse(rlWallet.retryAfterSeconds);
 
-    const org = await getSessionOrg(session);
+    const org = await getSessionOrg(session, network);
     if (!org) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
@@ -48,7 +52,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Fetch PaymentIntent and verify multi-tenant isolation
     const intent = await withDbTimeout(() =>
-      prisma.paymentIntent.findUnique({
+      db.paymentIntent.findUnique({
         where: { id: intentId },
         include: {
           invoice: {
@@ -67,13 +71,14 @@ export async function POST(req: NextRequest) {
     // 2. Check if already completed (idempotent return)
     if (intent.status === "completed" && intent.txHash?.toLowerCase() === normalizedTxHash) {
       const existingPayment = await withDbTimeout(() =>
-        prisma.payment.findFirst({
+        db.payment.findFirst({
           where: { txHash: { equals: normalizedTxHash, mode: "insensitive" } },
         })
       );
       return NextResponse.json({
         success: true,
         isIdempotent: true,
+        network,
         message: "Payment already verified and confirmed on Arc.",
         payment: existingPayment,
       });
@@ -89,7 +94,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Replay Prevention: Ensure txHash has not been used anywhere else
     const duplicatePayment = await withDbTimeout(() =>
-      prisma.payment.findFirst({
+      db.payment.findFirst({
         where: {
           txHash: { equals: normalizedTxHash, mode: "insensitive" },
         },
@@ -104,10 +109,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 5. Connect to Arc RPC directly from the server to fetch and verify the receipt
-    const network = getActiveNetwork();
+    const networkConfig = getNetworkConfig(network);
     const publicClient = createPublicClient({
-      chain: network.chain,
-      transport: http(network.rpcUrl, { timeout: 15000 }),
+      chain: networkConfig.chain,
+      transport: http(networkConfig.rpcUrl, { timeout: 15000 }),
     });
 
     let receipt: any;
@@ -137,10 +142,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify recipient contract is Arc USDC
-    if (receipt.to?.toLowerCase() !== network.usdcAddress.toLowerCase()) {
+    // Verify recipient contract is Arc USDC for this network
+    if (receipt.to?.toLowerCase() !== networkConfig.usdcAddress.toLowerCase()) {
       return NextResponse.json(
-        { error: `Transaction target is not the Arc USDC token contract (${network.usdcAddress})` },
+        { error: `Transaction target is not the Arc USDC token contract (${networkConfig.usdcAddress})` },
         { status: 400 }
       );
     }
@@ -155,7 +160,7 @@ export async function POST(req: NextRequest) {
       });
 
       for (const log of transferLogs) {
-        const isCorrectToken = log.address.toLowerCase() === network.usdcAddress.toLowerCase();
+        const isCorrectToken = log.address.toLowerCase() === networkConfig.usdcAddress.toLowerCase();
         const isPayer = log.args.from.toLowerCase() === intent.payerAddress.toLowerCase();
         const isRecipient = log.args.to.toLowerCase() === intent.recipientAddress.toLowerCase();
         const isCorrectAmount = log.args.value === intent.amountAtomic;
@@ -165,7 +170,7 @@ export async function POST(req: NextRequest) {
           break;
         }
       }
-    } catch (parseErr) {
+    } catch {
       // Fallback manual topics parsing if parseEventLogs encounters custom log structures
       const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
       const expectedPayerTopic = `0x000000000000000000000000${intent.payerAddress.toLowerCase().replace("0x", "")}`;
@@ -173,7 +178,7 @@ export async function POST(req: NextRequest) {
 
       for (const log of receipt.logs) {
         if (
-          log.address.toLowerCase() === network.usdcAddress.toLowerCase() &&
+          log.address.toLowerCase() === networkConfig.usdcAddress.toLowerCase() &&
           log.topics[0]?.toLowerCase() === TRANSFER_TOPIC.toLowerCase() &&
           log.topics[1]?.toLowerCase() === expectedPayerTopic &&
           log.topics[2]?.toLowerCase() === expectedRecipientTopic
@@ -202,13 +207,13 @@ export async function POST(req: NextRequest) {
     const idempotencyKey = `noncustodial-${intent.id}-${normalizedTxHash}`;
 
     const [payment] = await withDbTimeout(() =>
-      prisma.$transaction([
-        prisma.payment.create({
+      db.$transaction([
+        db.payment.create({
           data: {
             orgId: org.id,
             invoiceId: intent.invoiceId,
             vendorId: intent.vendorId,
-            network: network.mode,
+            network,
             provider: "direct",
             idempotencyKey,
             amountAtomic: intent.amountAtomic,
@@ -225,11 +230,11 @@ export async function POST(req: NextRequest) {
             confirmedAt: new Date(),
           },
         }),
-        prisma.invoice.update({
+        db.invoice.update({
           where: { id: intent.invoiceId },
           data: { status: "paid" },
         }),
-        prisma.paymentIntent.update({
+        db.paymentIntent.update({
           where: { id: intent.id },
           data: {
             status: "completed",
@@ -253,13 +258,15 @@ export async function POST(req: NextRequest) {
         amountFormatted: formatUsdc(usdcAtomic(intent.amountAtomic)),
         txHash: normalizedTxHash,
         blockNumber,
-        network: network.mode,
+        network,
         intentId: intent.id,
       },
+      network,
     });
 
     return NextResponse.json({
       success: true,
+      network,
       message: "Non-custodial payment successfully confirmed and verified on Arc network.",
       payment: {
         id: payment.id,

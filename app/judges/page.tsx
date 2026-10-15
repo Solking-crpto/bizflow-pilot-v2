@@ -19,12 +19,14 @@ import {
   Github,
   Globe,
 } from "lucide-react";
-import { prisma, withDbTimeout } from "@/lib/db";
-import { getActiveNetwork } from "@/lib/networks";
+import { cookies } from "next/headers";
+import { getDb, withDbTimeout } from "@/lib/db";
+import { getServerActiveNetwork, NETWORKS } from "@/lib/networks";
 import { HashView } from "@/components/ui/StatusChip";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Judge Guide — 5-Minute Evaluation Path | BizFlow Pilot V2",
@@ -33,12 +35,15 @@ export const metadata: Metadata = {
 };
 
 export default async function JudgesPage() {
-  const network = getActiveNetwork();
+  const cookieStore = cookies();
+  const networkMode = getServerActiveNetwork(cookieStore.get("bizflow_network")?.value);
+  const network = NETWORKS[networkMode];
+  const db = getDb(networkMode);
 
   let confirmedPayment: any = null;
   try {
     confirmedPayment = await withDbTimeout(() =>
-      prisma.payment.findFirst({
+      db.payment.findFirst({
         where: { status: "confirmed" },
         include: { vendor: true, invoice: true, anchor: true },
         orderBy: { confirmedAt: "desc" },

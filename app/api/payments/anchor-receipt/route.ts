@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createPublicClient, http } from "viem";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { withDbTimeout } from "@/lib/db";
+import { validateApiNetwork } from "@/lib/api-guard";
 import { getSessionFromRequest, getSessionOrg } from "@/lib/auth/session";
-import { getActiveNetwork } from "@/lib/networks";
+import { getNetworkConfig } from "@/lib/networks";
 import { recordAuditEvent } from "@/lib/audit/ledger";
 import { sha256Bytes32 } from "@/lib/crypto";
 
@@ -18,12 +19,16 @@ const AnchorReceiptSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const netCtx = validateApiNetwork(req);
+    if (!netCtx.success) return netCtx.response;
+    const { network, db } = netCtx;
+
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized: Please connect your wallet" }, { status: 401 });
     }
 
-    const org = await getSessionOrg(session);
+    const org = await getSessionOrg(session, network);
     if (!org) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
@@ -39,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Fetch invoice and verify organization ownership (IDOR check)
     const invoice = await withDbTimeout(() =>
-      prisma.invoice.findUnique({
+      db.invoice.findUnique({
         where: { id: invoiceId },
         include: {
           payments: {
@@ -55,10 +60,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Query Arc RPC directly from server to verify anchor transaction receipt
-    const network = getActiveNetwork();
+    const networkConfig = getNetworkConfig(network);
     const publicClient = createPublicClient({
-      chain: network.chain,
-      transport: http(network.rpcUrl, { timeout: 15000 }),
+      chain: networkConfig.chain,
+      transport: http(networkConfig.rpcUrl, { timeout: 15000 }),
     });
 
     let receipt: any;
@@ -95,7 +100,7 @@ export async function POST(req: NextRequest) {
     if (latestPayment) {
       await withDbTimeout(() =>
         Promise.all([
-          prisma.payment.update({
+          db.payment.update({
             where: { id: latestPayment.id },
             data: {
               status: "anchored",
@@ -103,7 +108,7 @@ export async function POST(req: NextRequest) {
               anchoredAt: new Date(),
             },
           }),
-          prisma.anchor.upsert({
+          db.anchor.upsert({
             where: { paymentId: latestPayment.id },
             update: {
               anchorTxHash: normalizedTxHash,
@@ -136,12 +141,14 @@ export async function POST(req: NextRequest) {
         invoiceNumber: invoice.invoiceNumber,
         anchorTxHash: normalizedTxHash,
         blockNumber,
-        network: network.mode,
+        network,
       },
+      network,
     });
 
     return NextResponse.json({
       success: true,
+      network,
       message: "Audit anchor successfully confirmed and verified on Arc network.",
       anchorTxHash: normalizedTxHash,
       blockNumber,

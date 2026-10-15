@@ -1,6 +1,6 @@
 import { createPublicClient, http, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { prisma, withDbTimeout } from "../lib/db";
+import { getDb, withDbTimeout } from "../lib/db";
 import { isBlocklistedWallet } from "../lib/security/walletBlocklist";
 import { parseUsdc, formatUsdc, usdcAtomic } from "../lib/money";
 
@@ -151,8 +151,8 @@ async function runPreflight(): Promise<void> {
     const dbTimeoutMs = parseInt(process.env.DB_TIMEOUT_MS || "15000", 10);
     const org = await withDbTimeout(
       () =>
-        prisma.organization.findFirst({
-          include: { invoices: { where: { network: "mainnet" } }, settings: true },
+        getDb("mainnet").organization.findFirst({
+          include: { invoices: true, settings: true },
         }),
       dbTimeoutMs
     );

@@ -1,10 +1,13 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import React from "react";
 import type { Metadata } from "next";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { cookies } from "next/headers";
+import { getDb, withDbTimeout } from "@/lib/db";
+import { getServerActiveNetwork } from "@/lib/networks";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { PilotsClient, PilotOrgData } from "@/components/pilots/PilotsClient";
-
-export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Pilot Businesses & Real Production Traction | BizFlow Pilot V2",
@@ -12,11 +15,15 @@ export const metadata: Metadata = {
 };
 
 export default async function PilotsPage() {
+  const cookieStore = cookies();
+  const networkMode = getServerActiveNetwork(cookieStore.get("bizflow_network")?.value);
+  const db = getDb(networkMode);
+
   let orgs: any[] = [];
 
   try {
     orgs = await withDbTimeout(() =>
-      prisma.organization.findMany({
+      db.organization.findMany({
         where: { publicConsent: true },
         include: {
           invoices: {

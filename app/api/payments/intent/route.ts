@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { withDbTimeout } from "@/lib/db";
+import { validateApiNetwork } from "@/lib/api-guard";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { getSessionFromRequest, getSessionOrg } from "@/lib/auth/session";
 import { evaluatePolicy, PolicyContext } from "@/lib/policy/engine";
-import { getActiveNetwork } from "@/lib/networks";
+import { getNetworkConfig } from "@/lib/networks";
+import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -12,10 +14,12 @@ const CreateIntentSchema = z.object({
   invoiceId: z.string().min(1, "Invoice ID is required"),
 });
 
-import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
-
 export async function POST(req: NextRequest) {
   try {
+    const netCtx = validateApiNetwork(req);
+    if (!netCtx.success) return netCtx.response;
+    const { network, db } = netCtx;
+
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized: Please connect your wallet" }, { status: 401 });
@@ -28,7 +32,7 @@ export async function POST(req: NextRequest) {
     const rlWallet = checkRateLimit(`payment:intent:wallet:${session.address}`, 20, 60_000);
     if (!rlWallet.allowed) return rateLimitExceededResponse(rlWallet.retryAfterSeconds);
 
-    const org = await getSessionOrg(session);
+    const org = await getSessionOrg(session, network);
     if (!org) {
       return NextResponse.json({ error: "No organization found for this wallet" }, { status: 404 });
     }
@@ -43,7 +47,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Fetch invoice and verify organization ownership (IDOR check)
     const invoice = await withDbTimeout(() =>
-      prisma.invoice.findUnique({
+      db.invoice.findUnique({
         where: { id: invoiceId },
         include: {
           vendor: true,
@@ -68,7 +72,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invoice is already paid and settled" }, { status: 400 });
     }
 
-    const network = getActiveNetwork();
+    const networkConfig = getNetworkConfig(network);
     const settings = invoice.organization.settings[0] || {
       killSwitchActive: false,
       priceToleranceBps: 100,
@@ -81,7 +85,7 @@ export async function POST(req: NextRequest) {
     const startOfDay = new Date();
     startOfDay.setUTCHours(0, 0, 0, 0);
     const todaysPayments = await withDbTimeout(() =>
-      prisma.payment.findMany({
+      db.payment.findMany({
         where: {
           orgId: org.id,
           status: "confirmed",
@@ -96,16 +100,21 @@ export async function POST(req: NextRequest) {
       0n
     );
 
+    const maxCapEnv =
+      network === "mainnet"
+        ? process.env.APP_MAX_PAYMENT_USDC || "25"
+        : process.env.APP_MAX_PAYMENT_USDC_TESTNET || "100";
+
     // 3. Re-evaluate corporate deterministic 10-rule policy at intent creation
     const policyContext: PolicyContext = {
-      network: network.mode,
+      network,
       killSwitchActive: settings.killSwitchActive,
       availableTreasuryUsdc: usdcAtomic(100_000_000_000n), // Non-custodial: user wallet holds funds
       minReserveUsdc: usdcAtomic(settings.minReserveUsdc || 0n),
       dailySpentUsdc: usdcAtomic(dailySpentUsdc),
       dailyLimitUsdc: usdcAtomic(settings.dailyLimitUsdc || 25_000_000n),
       approvalThresholdUsdc: usdcAtomic(settings.requireApprovalAbove || 25_000_000n),
-      maxMainnetPaymentUsdc: usdcAtomic(BigInt(process.env.APP_MAX_PAYMENT_USDC || "25") * 1_000_000n),
+      maxMainnetPaymentUsdc: usdcAtomic(BigInt(maxCapEnv) * 1_000_000n),
       hasOwnerConfirmation: true, // Signed-in wallet user is confirming
       vendor: {
         id: invoice.vendor.id,
@@ -146,7 +155,7 @@ export async function POST(req: NextRequest) {
     // 4. Create verified PaymentIntent with 15-minute expiration
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     const intent = await withDbTimeout(() =>
-      prisma.paymentIntent.create({
+      db.paymentIntent.create({
         data: {
           orgId: org.id,
           invoiceId: invoice.id,
@@ -154,8 +163,8 @@ export async function POST(req: NextRequest) {
           payerAddress: session.address.toLowerCase(),
           recipientAddress: invoice.vendor.walletAddress.toLowerCase(),
           amountAtomic: invoice.totalUsdc,
-          tokenAddress: network.usdcAddress.toLowerCase(),
-          chainId: network.chainId,
+          tokenAddress: networkConfig.usdcAddress.toLowerCase(),
+          chainId: networkConfig.chainId,
           expiresAt,
           status: "pending",
         },
@@ -164,16 +173,17 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       allowed: true,
+      network,
       intent: {
         id: intent.id,
         invoiceId: invoice.id,
         invoiceNumber: invoice.invoiceNumber,
         supplierName: invoice.vendor.name,
         recipientAddress: invoice.vendor.walletAddress,
-        tokenAddress: network.usdcAddress,
-        chainId: network.chainId,
-        networkName: network.name,
-        explorerUrl: network.explorerUrl,
+        tokenAddress: networkConfig.usdcAddress,
+        chainId: networkConfig.chainId,
+        networkName: networkConfig.name,
+        explorerUrl: networkConfig.explorerUrl,
         amountAtomic: invoice.totalUsdc.toString(),
         amountFormatted: formatUsdc(usdcAtomic(invoice.totalUsdc)),
         expiresAt: expiresAt.toISOString(),

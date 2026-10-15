@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createPublicClient, http, erc20Abi, formatUnits } from "viem";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { withDbTimeout } from "@/lib/db";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { getSessionFromRequest, getSessionOrg } from "@/lib/auth/session";
-import { getActiveNetwork } from "@/lib/networks";
+import { NETWORKS } from "@/lib/networks";
+import { validateApiNetwork } from "@/lib/api-guard";
 import { runAgentAnalysis } from "@/lib/agent/recommender";
 import { evaluatePaymentTiming } from "@/lib/agent/timing";
 
@@ -16,6 +17,10 @@ import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/se
 
 export async function POST(req: NextRequest) {
   try {
+    const apiCheck = validateApiNetwork(req);
+    if (apiCheck.errorResponse) return apiCheck.errorResponse;
+    const { network: networkMode, db } = apiCheck;
+
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized: Please connect your wallet" }, { status: 401 });
@@ -28,16 +33,16 @@ export async function POST(req: NextRequest) {
     const rlWallet = checkRateLimit(`agent:analyze:wallet:${session.address}`, 20, 60_000);
     if (!rlWallet.allowed) return rateLimitExceededResponse(rlWallet.retryAfterSeconds);
 
-    const org = await getSessionOrg(session);
+    const org = await getSessionOrg(session, networkMode);
     if (!org) {
       return NextResponse.json({ error: "No organization found for this wallet" }, { status: 404 });
     }
 
-    const network = getActiveNetwork();
+    const networkConfig = NETWORKS[networkMode];
 
     // 1. Fetch Organization's Open (Unpaid) Invoices
     const invoices = await withDbTimeout(() =>
-      prisma.invoice.findMany({
+      db.invoice.findMany({
         where: {
           orgId: org.id,
           status: { in: ["verified", "review_required", "blocked"] },
@@ -57,8 +62,8 @@ export async function POST(req: NextRequest) {
 
     // 2. Query Connected Wallet USDC Balance and Gas Directly from Arc RPC
     const publicClient = createPublicClient({
-      chain: network.chain,
-      transport: http(network.rpcUrl, { timeout: 12000 }),
+      chain: networkConfig.chain,
+      transport: http(networkConfig.rpcUrl, { timeout: 12000 }),
     });
 
     let walletUsdcBalance = 0n;
@@ -67,7 +72,7 @@ export async function POST(req: NextRequest) {
     try {
       [walletUsdcBalance, nativeGasBalance] = await Promise.all([
         publicClient.readContract({
-          address: network.usdcAddress,
+          address: networkConfig.usdcAddress,
           abi: erc20Abi,
           functionName: "balanceOf",
           args: [session.address as `0x${string}`],
@@ -95,13 +100,13 @@ export async function POST(req: NextRequest) {
 
     const [globalLlmCount, orgLlmCount] = await withDbTimeout(() =>
       Promise.all([
-        prisma.agentDecision.count({
+        db.agentDecision.count({
           where: {
             source: "llm",
             timestamp: { gte: startOfDay },
           },
         }),
-        prisma.agentDecision.count({
+        db.agentDecision.count({
           where: {
             orgId: org.id,
             source: "llm",
@@ -182,7 +187,7 @@ export async function POST(req: NextRequest) {
 
       // Persist AgentDecision row scoped to this organization
       const decisionRow = await withDbTimeout(() =>
-        prisma.agentDecision.create({
+        db.agentDecision.create({
           data: {
             orgId: org.id,
             invoiceId: inv.id,

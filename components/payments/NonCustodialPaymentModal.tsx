@@ -55,6 +55,7 @@ export function NonCustodialPaymentModal({
   const [usdcBalance, setUsdcBalance] = useState<string | null>(null);
   const [hasSufficientBalance, setHasSufficientBalance] = useState<boolean>(true);
   const [confirmedPayment, setConfirmedPayment] = useState<any>(null);
+  const [isPaymentConfirmed, setIsPaymentConfirmed] = useState<boolean>(false);
 
   // Initialize and create intent when modal opens
   useEffect(() => {
@@ -67,6 +68,7 @@ export function NonCustodialPaymentModal({
     setTxHash(null);
     setAnchorTxHash(null);
     setConfirmedPayment(null);
+    setIsPaymentConfirmed(false);
 
     async function initIntent() {
       try {
@@ -398,6 +400,28 @@ export function NonCustodialPaymentModal({
                 </div>
               ) : null}
 
+              {/* Explicit User Confirmation Step */}
+              <div className="p-3 rounded-lg border border-border bg-canvas/40 space-y-2 text-xs">
+                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isPaymentConfirmed}
+                    onChange={(e) => setIsPaymentConfirmed(e.target.checked)}
+                    className="mt-0.5 rounded border-border text-navy focus:ring-navy h-4 w-4"
+                  />
+                  <span className="text-ink text-[11px] leading-relaxed">
+                    I confirm that I am authorizing an on-chain transfer of{" "}
+                    <strong>{intentData.amountFormatted}</strong> to{" "}
+                    <strong>{intentData.supplierName}</strong> on {intentData.networkName}.
+                    {activeNetwork.mode === "mainnet" && (
+                      <span className="block text-amber-800 font-medium mt-0.5">
+                        Notice: Arc Mainnet settlements are final, non-custodial, and irreversible.
+                      </span>
+                    )}
+                  </span>
+                </label>
+              </div>
+
               {/* Actions */}
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
@@ -408,11 +432,11 @@ export function NonCustodialPaymentModal({
                 </button>
                 <button
                   onClick={handleSignPayment}
-                  disabled={!isConnected || !isCorrectNetwork || !hasSufficientBalance}
+                  disabled={!isConnected || !isCorrectNetwork || !hasSufficientBalance || !isPaymentConfirmed}
                   className="px-4 py-2 rounded-md bg-navy text-white text-xs font-semibold hover:bg-navy-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs flex items-center gap-1.5"
                 >
                   <Wallet className="w-3.5 h-3.5 text-brand-teal" />
-                  <span>Sign & Settle on Arc</span>
+                  <span>Confirm & Sign in Wallet</span>
                 </button>
               </div>
             </div>

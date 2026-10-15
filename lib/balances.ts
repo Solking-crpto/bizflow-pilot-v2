@@ -1,7 +1,7 @@
 import { createPublicClient, http, parseAbi } from "viem";
 import { formatUsdc, usdcAtomic } from "./money";
 import { getTreasuryPublicAddress } from "./treasury";
-import { getActiveNetwork } from "./networks";
+import { NETWORKS, NetworkMode } from "./networks";
 
 const ERC20_ABI = parseAbi([
   "function balanceOf(address owner) view returns (uint256)",
@@ -17,22 +17,11 @@ export interface TreasuryBalanceResult {
 }
 
 /**
- * Fetches real on-chain balances for the treasury wallet on Arc Mainnet,
- * preventing hardcoded balances in production mode.
+ * Fetches real on-chain balances for the treasury wallet on Arc,
+ * preventing hardcoded or fake balances.
  */
-export async function getTreasuryBalances(): Promise<TreasuryBalanceResult> {
-  const network = getActiveNetwork();
-  const isMainnet = network.mode === "mainnet";
-
-  if (!isMainnet) {
-    return {
-      usdcFormatted: "100,000.00",
-      usdcAtomicValue: 100_000_000_000n,
-      gasFormatted: "10.0000",
-      gasAtomicValue: 10_000_000_000_000_000_000n,
-      isLive: false,
-    };
-  }
+export async function getTreasuryBalances(networkMode: NetworkMode = "mainnet"): Promise<TreasuryBalanceResult> {
+  const network = NETWORKS[networkMode];
 
   const treasuryAddress = getTreasuryPublicAddress();
   if (!treasuryAddress || treasuryAddress === "0x0000000000000000000000000000000000000000") {
@@ -47,18 +36,15 @@ export async function getTreasuryBalances(): Promise<TreasuryBalanceResult> {
   }
 
   try {
-    const rpcUrl = process.env.ARC_MAINNET_RPC_URL || "https://rpc.mainnet.arc.io";
-    const usdcAddress = (process.env.ARC_MAINNET_USDC_ADDRESS || "0x3600000000000000000000000000000000000000") as `0x${string}`;
-
     const client = createPublicClient({
       chain: network.chain,
-      transport: http(rpcUrl, { timeout: 4000 }),
+      transport: http(network.rpcUrl, { timeout: 4000 }),
     });
 
     const [gasBalance, usdcBalance] = await Promise.all([
       client.getBalance({ address: treasuryAddress as `0x${string}` }),
       client.readContract({
-        address: usdcAddress,
+        address: network.usdcAddress,
         abi: ERC20_ABI,
         functionName: "balanceOf",
         args: [treasuryAddress as `0x${string}`],

@@ -1,10 +1,13 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import React from "react";
 import type { Metadata } from "next";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { cookies } from "next/headers";
+import { getDb, withDbTimeout } from "@/lib/db";
+import { getServerActiveNetwork } from "@/lib/networks";
 import { PolicySimulatorClient } from "@/components/simulator/PolicySimulatorClient";
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
-
-export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Policy Simulator — Governance & Guardrail Playground | BizFlow Pilot V2",
@@ -12,37 +15,35 @@ export const metadata: Metadata = {
 };
 
 export default async function PolicySimulatorPage() {
-  const isMainnet = (process.env.NEXT_PUBLIC_NETWORK_MODE || process.env.NETWORK_MODE) === "mainnet";
+  const cookieStore = cookies();
+  const networkMode = getServerActiveNetwork(cookieStore.get("bizflow_network")?.value);
+  const db = getDb(networkMode);
+
   let invoices: any[] = [];
   let dbError: string | null = null;
 
   try {
     invoices = await withDbTimeout(
       () =>
-        prisma.invoice.findMany({
-          where: isMainnet ? { network: "mainnet" } : undefined,
+        db.invoice.findMany({
           include: { vendor: true },
           orderBy: { createdAt: "desc" },
         })
     );
   } catch (err: any) {
-    if (isMainnet) {
-      dbError = err.message || "Failed to load invoices from database.";
-    } else {
-      invoices = [];
-    }
+    dbError = err.message || "Failed to load invoices from database.";
   }
 
-  if (isMainnet && dbError) {
+  if (dbError) {
     return (
       <DatabaseErrorState
         title="Policy Simulator Database Error"
-        message="Could not load live mainnet invoices for simulation. Please verify connectivity and retry."
+        message="Could not load invoices for simulation. Please verify connectivity and retry."
       />
     );
   }
 
-  const defaultNetwork = (process.env.NEXT_PUBLIC_NETWORK_MODE || "testnet") as "testnet" | "mainnet";
+  const defaultNetwork = networkMode;
 
   const options =
     invoices.length > 0

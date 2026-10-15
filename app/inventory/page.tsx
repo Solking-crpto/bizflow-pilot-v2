@@ -1,6 +1,8 @@
 import React from "react";
 import type { Metadata } from "next";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { cookies } from "next/headers";
+import { getDb, withDbTimeout } from "@/lib/db";
+import { getServerActiveNetwork } from "@/lib/networks";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { getServerSession, getSessionOrg } from "@/lib/auth/session";
 import {
@@ -11,6 +13,7 @@ import {
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Inventory & POs | BizFlow Pilot V2",
@@ -18,7 +21,9 @@ export const metadata: Metadata = {
 };
 
 export default async function InventoryPage() {
-  const isMainnet = (process.env.NEXT_PUBLIC_NETWORK_MODE || process.env.NETWORK_MODE) === "mainnet";
+  const cookieStore = cookies();
+  const networkMode = getServerActiveNetwork(cookieStore.get("bizflow_network")?.value);
+  const db = getDb(networkMode);
   const session = await getServerSession();
   let items: SerializedItem[] = [];
   let purchaseOrders: SerializedPO[] = [];
@@ -26,18 +31,18 @@ export default async function InventoryPage() {
 
   if (session) {
     try {
-      const org = await getSessionOrg(session);
+      const org = await getSessionOrg(session, networkMode);
       if (org) {
         const [rawItems, rawPOs] = await withDbTimeout(() =>
           Promise.all([
-            prisma.item.findMany({
+            db.item.findMany({
               where: { orgId: org.id },
               include: {
                 stockMovements: { orderBy: { createdAt: "desc" }, take: 5 },
               },
               orderBy: { createdAt: "desc" },
             }),
-            prisma.purchaseOrder.findMany({
+            db.purchaseOrder.findMany({
               where: { orgId: org.id },
               include: {
                 vendor: true,
@@ -109,13 +114,11 @@ export default async function InventoryPage() {
         }));
       }
     } catch (err: any) {
-      if (isMainnet) {
-        dbError = err.message || "Failed to load inventory data from database.";
-      }
+      dbError = err.message || "Failed to load inventory data from database.";
     }
   }
 
-  if (isMainnet && dbError) {
+  if (dbError) {
     return (
       <DatabaseErrorState
         title="Inventory Database Error"

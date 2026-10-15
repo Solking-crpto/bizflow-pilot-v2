@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { withDbTimeout } from "@/lib/db";
 import { verifyOwnerPasscodeWithRateLimit, getClientIp } from "@/lib/security/auth";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { getSessionFromRequest, isAdminWallet } from "@/lib/auth/session";
+import { validateApiNetwork } from "@/lib/api-guard";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
+    const apiCheck = validateApiNetwork(req);
+    if (apiCheck.errorResponse) return apiCheck.errorResponse;
+    const { db } = apiCheck;
+
     const { searchParams } = new URL(req.url);
     const showAll = searchParams.get("all") === "true";
     const passcode = req.headers.get("x-owner-passcode") || searchParams.get("passcode") || "";
@@ -28,7 +33,7 @@ export async function GET(req: NextRequest) {
     const whereClause: any = isAuthorizedAdmin && showAll ? {} : { publicConsent: true };
 
     const orgs = await withDbTimeout(() =>
-      prisma.organization.findMany({
+      db.organization.findMany({
         where: whereClause,
         include: {
           invoices: {
@@ -116,6 +121,10 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const apiCheck = validateApiNetwork(req);
+    if (apiCheck.errorResponse) return apiCheck.errorResponse;
+    const { db } = apiCheck;
+
     const clientIp = getClientIp(req);
     const body = await req.json();
     const session = getSessionFromRequest(req);
@@ -139,7 +148,7 @@ export async function POST(req: NextRequest) {
     }
 
     const org = await withDbTimeout(() =>
-      prisma.organization.create({
+      db.organization.create({
         data: {
           name: body.name.trim(),
           currency: "USDC",
@@ -182,6 +191,10 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
+    const apiCheck = validateApiNetwork(req);
+    if (apiCheck.errorResponse) return apiCheck.errorResponse;
+    const { db } = apiCheck;
+
     const clientIp = getClientIp(req);
     const body = await req.json();
     const session = getSessionFromRequest(req);
@@ -213,7 +226,7 @@ export async function PATCH(req: NextRequest) {
     if (body.linkedinUrl !== undefined) updateData.linkedinUrl = body.linkedinUrl ? body.linkedinUrl.trim() : null;
 
     const updated = await withDbTimeout(() =>
-      prisma.organization.update({
+      db.organization.update({
         where: { id: body.orgId },
         data: updateData,
       })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { withDbTimeout } from "@/lib/db";
+import { validateApiNetwork } from "@/lib/api-guard";
 import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 
 export const dynamic = "force-dynamic";
@@ -13,19 +14,23 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const apiCheck = validateApiNetwork(req);
+    if (apiCheck.errorResponse) return apiCheck.errorResponse;
+    const { db } = apiCheck;
+
     const nonce = crypto.randomBytes(16).toString("hex");
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     // Asynchronously cleanup expired nonces
     withDbTimeout(() =>
-      prisma.authNonce.deleteMany({
+      db.authNonce.deleteMany({
         where: { expiresAt: { lt: new Date() } },
       })
     ).catch(() => {});
 
     // Save active nonce
     await withDbTimeout(() =>
-      prisma.authNonce.create({
+      db.authNonce.create({
         data: {
           nonce,
           expiresAt,

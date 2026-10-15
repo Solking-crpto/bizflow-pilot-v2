@@ -1,12 +1,15 @@
-import { cache } from "react";
-import { prisma, withDbTimeout } from "./db";
+import { getDb, withDbTimeout } from "./db";
 import { formatUsdc, usdcAtomic } from "./money";
+import { NetworkMode } from "./networks";
 
-export const getCommandCenterData = cache(async () => {
+export async function getCommandCenterData(networkMode?: NetworkMode) {
+  const mode = networkMode || "mainnet";
+  const db = getDb(mode);
+
   try {
     const org = await withDbTimeout(
       () =>
-        prisma.organization.findFirst({
+        db.organization.findFirst({
           include: {
             settings: true,
             invoices: {
@@ -69,7 +72,7 @@ export const getCommandCenterData = cache(async () => {
       const actionRequiredCount = reviewRequiredCount + blockedCount;
 
       const allDecisions = await withDbTimeout(
-        () => prisma.agentDecision.findMany({ where: { orgId: org.id }, include: { invoice: true } }),
+        () => db.agentDecision.findMany({ where: { orgId: org.id }, include: { invoice: true } }),
         2500,
         []
       );
@@ -172,4 +175,4 @@ export const getCommandCenterData = cache(async () => {
 
   // Production and testnet start empty when no org is registered
   return null;
-});
+}

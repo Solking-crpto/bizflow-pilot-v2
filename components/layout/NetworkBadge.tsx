@@ -1,40 +1,47 @@
 "use client";
 
 import React from "react";
-import { ShieldCheck, AlertTriangle } from "lucide-react";
+import { AlertTriangle, ShieldCheck } from "lucide-react";
+import { useNetwork } from "@/components/network/NetworkContext";
 
 export function NetworkBanner({
   mode,
   isPublicSandbox,
 }: {
-  mode: "testnet" | "mainnet";
+  mode?: "testnet" | "mainnet";
   isPublicSandbox?: boolean;
 }) {
-  if (isPublicSandbox && mode === "testnet") {
+  const { isTestnet, network } = useNetwork();
+  const currentIsTestnet = mode !== undefined ? mode === "testnet" : isTestnet;
+
+  if (isPublicSandbox && currentIsTestnet) {
     return (
       <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-1.5 text-center text-xs font-semibold text-amber-950 flex items-center justify-center gap-2">
         <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
         <span>
-          <strong>Sandbox: test USDC only</strong> — Visitor sandbox mode active (Circle Wallets, ARC-TESTNET). Rate-limited to 0.05 USDC test settlements.
+          <strong>TESTNET: test USDC has no value</strong> — Visitor sandbox active (Circle Wallets, ARC-TESTNET). Rate-limited to 0.05 USDC test settlements.
         </span>
       </div>
     );
   }
 
-  if (mode !== "testnet") return null;
+  if (!currentIsTestnet) return null;
 
   return (
-    <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-1 text-center text-xs font-medium text-amber-800 flex items-center justify-center gap-2">
-      <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+    <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-1.5 text-center text-xs font-semibold text-amber-950 flex items-center justify-center gap-2 shadow-2xs">
+      <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
       <span>
-        <strong>STAGING SIMULATION (ARC TESTNET)</strong> — No real funds are at risk. Gas and settlement denominated in Circle Testnet USDC.
+        <strong>TESTNET: test USDC has no value</strong> — Practise with free test USDC on Arc Chain 5042002. Nothing real is spent.
       </span>
     </div>
   );
 }
 
-export function NetworkBadge({ mode }: { mode: "testnet" | "mainnet" }) {
-  if (mode === "mainnet") {
+export function NetworkBadge({ mode }: { mode?: "testnet" | "mainnet" }) {
+  const { isMainnet } = useNetwork();
+  const currentIsMainnet = mode !== undefined ? mode === "mainnet" : isMainnet;
+
+  if (currentIsMainnet) {
     return (
       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-navy text-white text-xs font-mono font-medium shadow-sm border border-navy-light">
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -47,7 +54,7 @@ export function NetworkBadge({ mode }: { mode: "testnet" | "mainnet" }) {
   return (
     <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-xs font-mono font-medium">
       <span className="w-2 h-2 rounded-full bg-amber-500" />
-      <span>TESTNET: no real funds</span>
+      <span>TESTNET: test USDC has no value</span>
       <span className="text-[10px] text-amber-700 bg-amber-100 px-1 py-0.2 rounded">5042002</span>
     </div>
   );

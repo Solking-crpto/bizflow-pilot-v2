@@ -39,7 +39,7 @@ export function SupplierDeskClient({ suppliers }: { suppliers: SerializedSupplie
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-ink">Suppliers & Counterparties</h1>
           <p className="text-sm text-ink-muted mt-0.5">
-            Manage verified supplier recipient wallets, per-vendor spending limits, and OFAC compliance screening.
+            Manage verified supplier recipient wallets, per-vendor spending limits, and blocked-address checks (known test accounts).
           </p>
         </div>
         <button
@@ -131,8 +131,8 @@ export function SupplierDeskClient({ suppliers }: { suppliers: SerializedSupplie
                       </td>
                       <td className="py-3 px-4 font-mono text-ink">{s.perVendorLimitUsdc}</td>
                       <td className="py-3 px-4">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-800">
-                          <ShieldCheck className="w-3 h-3 text-emerald-600" /> OFAC Screened
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-800" title="Screened against known public test accounts. Not a regulatory sanctions screen.">
+                          <ShieldCheck className="w-3 h-3 text-emerald-600" /> Blocklist Verified
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right">

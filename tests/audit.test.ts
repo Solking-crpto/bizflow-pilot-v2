@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { prisma } from "../lib/db";
+import { getDb } from "../lib/db";
 import { recordAuditEvent, verifyAuditChain } from "../lib/audit/ledger";
+
+const prisma = getDb("testnet");
 
 describe("lib/audit - Cryptographic Hash Chain & Tamper Detection", () => {
   const testOrgId = "org-test-audit-01";
@@ -20,7 +22,7 @@ describe("lib/audit - Cryptographic Hash Chain & Tamper Detection", () => {
       orgId: testOrgId,
       eventType: "invoice_received",
       eventData: { invoiceNumber: "INV-001", totalUsdc: "1700.00" },
-    });
+    }, "testnet");
     expect(ev1.prevHash).toBe("0000000000000000000000000000000000000000000000000000000000000000");
 
     // Event 2
@@ -28,7 +30,7 @@ describe("lib/audit - Cryptographic Hash Chain & Tamper Detection", () => {
       orgId: testOrgId,
       eventType: "policy_evaluated",
       eventData: { decision: "approve", rulesPassed: 10 },
-    });
+    }, "testnet");
     expect(ev2.prevHash).toBe(ev1.eventHash); // Chains to ev1!
 
     // Event 3
@@ -36,11 +38,11 @@ describe("lib/audit - Cryptographic Hash Chain & Tamper Detection", () => {
       orgId: testOrgId,
       eventType: "payment_confirmed",
       eventData: { txHash: "0x1234567890abcdef" },
-    });
+    }, "testnet");
     expect(ev3.prevHash).toBe(ev2.eventHash); // Chains to ev2!
 
     // Verify whole chain
-    const verification = await verifyAuditChain(testOrgId);
+    const verification = await verifyAuditChain(testOrgId, "testnet");
     expect(verification.valid).toBe(true);
     expect(verification.totalEvents).toBe(3);
   });
@@ -51,12 +53,12 @@ describe("lib/audit - Cryptographic Hash Chain & Tamper Detection", () => {
       orgId: testOrgId,
       eventType: "invoice_received",
       eventData: { amount: "100.00" },
-    });
+    }, "testnet");
     const ev2 = await recordAuditEvent({
       orgId: testOrgId,
       eventType: "payment_confirmed",
       eventData: { amount: "100.00" },
-    });
+    }, "testnet");
 
     // Tamper with the eventData in the database
     await prisma.auditEvent.update({
@@ -65,7 +67,7 @@ describe("lib/audit - Cryptographic Hash Chain & Tamper Detection", () => {
     });
 
     // Verification must now fail!
-    const verification = await verifyAuditChain(testOrgId);
+    const verification = await verifyAuditChain(testOrgId, "testnet");
     expect(verification.valid).toBe(false);
     expect(verification.error).toContain("Data tampering detected");
   });

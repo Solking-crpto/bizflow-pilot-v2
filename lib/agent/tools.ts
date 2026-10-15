@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { prisma } from "../db";
+import { getDb } from "../db";
+import { NetworkMode } from "../networks";
 import { evaluateThreeWayMatch } from "../matching/threeWayMatch";
 import { detectDuplicateInvoice } from "../matching/duplicateDetector";
 import { inspectUntrustedInvoiceText } from "./sanitizer";
@@ -85,8 +86,9 @@ export const AGENT_TOOLS_DEFINITIONS = [
 ];
 
 // Tool implementations
-export async function getCashPositionTool(orgId: string) {
-  const org = await prisma.organization.findUnique({
+export async function getCashPositionTool(orgId: string, network: NetworkMode = "mainnet") {
+  const db = getDb(network);
+  const org = await db.organization.findUnique({
     where: { id: orgId },
     include: { settings: true },
   });
@@ -108,8 +110,9 @@ export async function getCashPositionTool(orgId: string) {
   };
 }
 
-export async function listObligationsTool(orgId: string) {
-  const openInvoices = await prisma.invoice.findMany({
+export async function listObligationsTool(orgId: string, network: NetworkMode = "mainnet") {
+  const db = getDb(network);
+  const openInvoices = await db.invoice.findMany({
     where: {
       orgId,
       status: { in: ["pending_verification", "verified", "review_required", "approved"] },
@@ -140,8 +143,9 @@ export async function listObligationsTool(orgId: string) {
   };
 }
 
-export async function getInvoiceVerificationTool(invoiceId: string) {
-  const invoice = await prisma.invoice.findUnique({
+export async function getInvoiceVerificationTool(invoiceId: string, network: NetworkMode = "mainnet") {
+  const db = getDb(network);
+  const invoice = await db.invoice.findUnique({
     where: { id: invoiceId },
     include: {
       vendor: true,

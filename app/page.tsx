@@ -12,8 +12,9 @@ import {
   CheckCircle2,
   Lock,
 } from "lucide-react";
+import { cookies } from "next/headers";
 import { getCommandCenterData } from "@/lib/data";
-import { getActiveNetwork } from "@/lib/networks";
+import { getServerActiveNetwork, getNetworkConfig, NETWORK_COOKIE_NAME, NetworkMode } from "@/lib/networks";
 import { getTreasuryPublicAddress, getSanitizedPaymentProvider } from "@/lib/treasury";
 import { getTreasuryBalances } from "@/lib/balances";
 import { StatusChip, HashView } from "@/components/ui/StatusChip";
@@ -30,11 +31,13 @@ export const metadata: Metadata = {
 };
 
 export default async function CommandCenterPage() {
-  const data = await getCommandCenterData();
-  const network = getActiveNetwork();
+  const cookieStore = cookies();
+  const networkMode = getServerActiveNetwork(cookieStore.get(NETWORK_COOKIE_NAME)?.value);
+  const data = await getCommandCenterData(networkMode);
+  const network = getNetworkConfig(networkMode);
   const treasuryAddress = getTreasuryPublicAddress();
   const paymentProvider = getSanitizedPaymentProvider();
-  const treasuryBalances = await getTreasuryBalances();
+  const treasuryBalances = await getTreasuryBalances(networkMode);
 
   if (!data) {
     return (

@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { getTreasuryPublicAddress } from "../lib/treasury";
-import { prisma } from "../lib/db";
+import { getDb } from "../lib/db";
 
 async function main() {
   console.log("Generating Addresses and Proof table for README.md...");
@@ -26,7 +26,7 @@ async function main() {
   let vendorWallet = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
   let vendorName = "Dangote Cement Distribution";
   try {
-    const v = await prisma.vendor.findFirst({
+    const v = await getDb("mainnet").vendor.findFirst({
       where: { status: "active" },
       orderBy: { createdAt: "desc" },
     });

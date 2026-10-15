@@ -1,16 +1,17 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import React from "react";
 import type { Metadata } from "next";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { cookies } from "next/headers";
+import { getDb, withDbTimeout } from "@/lib/db";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { evaluatePolicy, PolicyContext } from "@/lib/policy/engine";
-import { getActiveNetwork } from "@/lib/networks";
+import { getServerActiveNetwork, NETWORKS } from "@/lib/networks";
 import { PaymentDeskClient, PayableInvoiceItem } from "@/components/payments/PaymentDeskClient";
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 import { getTreasuryBalances } from "@/lib/balances";
-
 import { getServerSession, getSessionOrg } from "@/lib/auth/session";
-
-export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Payment Desk — Idempotent Arc Settlement | BizFlow Pilot V2",
@@ -18,10 +19,13 @@ export const metadata: Metadata = {
 };
 
 export default async function PaymentsPage() {
-  const networkConfig = getActiveNetwork();
-  const isMainnet = networkConfig.mode === "mainnet";
+  const cookieStore = cookies();
+  const networkMode = getServerActiveNetwork(cookieStore.get("bizflow_network")?.value);
+  const networkConfig = NETWORKS[networkMode];
+  const db = getDb(networkMode);
+
   const isDryRun = process.env.DRY_RUN === "true" || process.env.NEXT_PUBLIC_DRY_RUN === "true";
-  const treasuryBalances = await getTreasuryBalances();
+  const treasuryBalances = await getTreasuryBalances(networkMode);
 
   const session = await getServerSession();
   let invoices: any[] = [];
@@ -29,13 +33,12 @@ export default async function PaymentsPage() {
 
   if (session) {
     try {
-      const org = await getSessionOrg(session);
+      const org = await getSessionOrg(session, networkMode);
       if (org) {
         invoices = await withDbTimeout(() =>
-          prisma.invoice.findMany({
+          db.invoice.findMany({
             where: {
               orgId: org.id,
-              ...(isMainnet ? { network: "mainnet" } : {}),
             },
             include: {
               vendor: true,
@@ -47,19 +50,15 @@ export default async function PaymentsPage() {
         );
       }
     } catch (err: any) {
-      if (isMainnet) {
-        dbError = err.message || "Failed to load payment queue from database.";
-      } else {
-        invoices = [];
-      }
+      dbError = err.message || "Failed to load payment queue from database.";
     }
   }
 
-  if (isMainnet && dbError) {
+  if (dbError) {
     return (
       <DatabaseErrorState
         title="Payment Desk Database Error"
-        message="Could not load live mainnet payment records from the database. Please ensure your database is accessible and retry."
+        message="Could not load payment records from the database. Please ensure your database is accessible and retry."
       />
     );
   }
@@ -74,7 +73,7 @@ export default async function PaymentsPage() {
     };
     const latestPayment = inv.payments?.[0];
 
-    // Evaluate policy using live on-chain treasury balance on mainnet
+    // Evaluate policy using live on-chain treasury balance
     const policyContext: PolicyContext = {
       network: networkConfig.mode,
       killSwitchActive: settings.killSwitchActive,
@@ -113,8 +112,8 @@ export default async function PaymentsPage() {
     return {
       id: inv.id,
       invoiceNumber: inv.invoiceNumber,
-      vendorName: inv.vendor?.name || "Northgate Cement Supply (demo vendor)",
-      vendorWallet: inv.vendor?.walletAddress || "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      vendorName: inv.vendor?.name || "Unknown Supplier",
+      vendorWallet: inv.vendor?.walletAddress || "",
       amountFormatted: formatUsdc(usdcAtomic(inv.totalUsdc)),
       amountAtomic: inv.totalUsdc.toString(),
       status: inv.status,

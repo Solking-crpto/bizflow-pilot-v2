@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { withDbTimeout } from "@/lib/db";
+import { validateApiNetwork } from "@/lib/api-guard";
 import { parseUsdc, formatUsdc, usdcAtomic } from "@/lib/money";
 import { sha256 } from "@/lib/crypto";
 import { getSessionFromRequest, getSessionOrg } from "@/lib/auth/session";
@@ -9,6 +10,7 @@ import { detectDuplicateInvoice } from "@/lib/matching/duplicateDetector";
 import { evaluateThreeWayMatch } from "@/lib/matching/threeWayMatch";
 import { recordAuditEvent } from "@/lib/audit/ledger";
 import { parseInvoiceRawText } from "@/lib/invoices/parser";
+import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -37,18 +39,22 @@ const CreateInvoiceSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
+    const netCtx = validateApiNetwork(req);
+    if (!netCtx.success) return netCtx.response;
+    const { network, db } = netCtx;
+
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const org = await getSessionOrg(session);
+    const org = await getSessionOrg(session, network);
     if (!org) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
 
     const invoices = await withDbTimeout(() =>
-      prisma.invoice.findMany({
+      db.invoice.findMany({
         where: { orgId: org.id },
         include: {
           vendor: true,
@@ -64,6 +70,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      network,
       invoices: invoices.map((inv) => ({
         id: inv.id,
         invoiceNumber: inv.invoiceNumber,
@@ -86,10 +93,12 @@ export async function GET(req: NextRequest) {
   }
 }
 
-import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
-
 export async function POST(req: NextRequest) {
   try {
+    const netCtx = validateApiNetwork(req);
+    if (!netCtx.success) return netCtx.response;
+    const { network, db } = netCtx;
+
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized: Please sign in" }, { status: 401 });
@@ -99,7 +108,7 @@ export async function POST(req: NextRequest) {
     const rlIp = checkRateLimit(`invoice:create:ip:${ip}`, 30, 60_000);
     if (!rlIp.allowed) return rateLimitExceededResponse(rlIp.retryAfterSeconds);
 
-    const org = await getSessionOrg(session);
+    const org = await getSessionOrg(session, network);
     if (!org) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
@@ -136,7 +145,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Verify vendor belongs to this organization (IDOR check)
     const vendor = await withDbTimeout(() =>
-      prisma.vendor.findUnique({
+      db.vendor.findUnique({
         where: { id: vendorId },
       })
     );
@@ -152,7 +161,7 @@ export async function POST(req: NextRequest) {
     let po: any = null;
     if (purchaseOrderId) {
       po = await withDbTimeout(() =>
-        prisma.purchaseOrder.findUnique({
+        db.purchaseOrder.findUnique({
           where: { id: purchaseOrderId },
           include: {
             lines: { include: { item: true } },
@@ -184,7 +193,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Duplicate Detection (scoped strictly to this organization)
     const existingInvoices = await withDbTimeout(() =>
-      prisma.invoice.findMany({
+      db.invoice.findMany({
         where: { orgId: org.id },
         select: {
           id: true,
@@ -263,7 +272,7 @@ export async function POST(req: NextRequest) {
 
     // 7. Store Invoice in Database
     const invoice = await withDbTimeout(() =>
-      prisma.invoice.create({
+      db.invoice.create({
         data: {
           orgId: org.id,
           vendorId: vendor.id,
@@ -306,10 +315,12 @@ export async function POST(req: NextRequest) {
         matchStatus,
         status: invoiceStatus,
       },
+      network,
     }).catch(() => {});
 
     return NextResponse.json({
       success: true,
+      network,
       invoice: {
         id: invoice.id,
         invoiceNumber: invoice.invoiceNumber,

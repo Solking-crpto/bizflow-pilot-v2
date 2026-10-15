@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { withDbTimeout } from "@/lib/db";
+import { validateApiNetwork } from "@/lib/api-guard";
 import { parseUsdc, usdcAtomic } from "@/lib/money";
 import {
   getSessionFromRequest,
@@ -9,8 +10,6 @@ import {
 } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
-
-const BETA_HARD_CAP_USDC = usdcAtomic(BigInt(process.env.APP_MAX_PAYMENT_USDC || "25") * 1_000_000n);
 
 const OnboardingSchema = z.object({
   name: z.string().min(2, "Business name must be at least 2 characters").max(100),
@@ -33,6 +32,10 @@ const OnboardingSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const netCtx = validateApiNetwork(req);
+    if (!netCtx.success) return netCtx.response;
+    const { network, db } = netCtx;
+
     const session = getSessionFromRequest(req);
     if (!session || !session.address) {
       return NextResponse.json(
@@ -50,6 +53,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const maxPaymentEnv =
+      network === "mainnet"
+        ? process.env.APP_MAX_PAYMENT_USDC || "25"
+        : process.env.APP_MAX_PAYMENT_USDC_TESTNET || "100";
+    const betaHardCapUsdc = usdcAtomic(BigInt(maxPaymentEnv) * 1_000_000n);
+
     const {
       name,
       country,
@@ -65,8 +74,8 @@ export async function POST(req: NextRequest) {
 
     // 1. Calculate governance limits capped by Public Beta safety limits
     let autoApproveAtomic = parseUsdc(settings?.autoApproveLimitUsdc || "0.50");
-    if (autoApproveAtomic > BETA_HARD_CAP_USDC) {
-      autoApproveAtomic = BETA_HARD_CAP_USDC;
+    if (autoApproveAtomic > betaHardCapUsdc) {
+      autoApproveAtomic = betaHardCapUsdc;
     }
 
     const requireApprovalAtomic = parseUsdc(settings?.requireApprovalAbove || "5.00");
@@ -74,9 +83,9 @@ export async function POST(req: NextRequest) {
     const dailyLimitAtomic = parseUsdc(settings?.dailyLimitUsdc || "25.00");
     const toleranceBps = settings?.priceToleranceBps ?? 100;
 
-    // 2. Upsert Organization for this wallet
+    // 2. Upsert Organization for this wallet in the target network's schema
     const existingOrg = await withDbTimeout(() =>
-      prisma.organization.findFirst({
+      db.organization.findFirst({
         where: { walletAddress: { equals: normalizedAddress, mode: "insensitive" } },
         include: { settings: true },
       })
@@ -88,7 +97,7 @@ export async function POST(req: NextRequest) {
     if (existingOrg) {
       orgId = existingOrg.id;
       createdOrUpdatedOrg = await withDbTimeout(() =>
-        prisma.organization.update({
+        db.organization.update({
           where: { id: existingOrg.id },
           data: {
             name: name.trim(),
@@ -105,7 +114,7 @@ export async function POST(req: NextRequest) {
       // Update or create settings
       if (existingOrg.settings.length > 0) {
         await withDbTimeout(() =>
-          prisma.setting.update({
+          db.setting.update({
             where: { id: existingOrg.settings[0].id },
             data: {
               priceToleranceBps: toleranceBps,
@@ -118,7 +127,7 @@ export async function POST(req: NextRequest) {
         );
       } else {
         await withDbTimeout(() =>
-          prisma.setting.create({
+          db.setting.create({
             data: {
               orgId: existingOrg.id,
               killSwitchActive: false,
@@ -133,7 +142,7 @@ export async function POST(req: NextRequest) {
       }
     } else {
       createdOrUpdatedOrg = await withDbTimeout(() =>
-        prisma.organization.create({
+        db.organization.create({
           data: {
             name: name.trim(),
             country: country.trim(),
@@ -178,7 +187,8 @@ export async function POST(req: NextRequest) {
 
     const response = NextResponse.json({
       success: true,
-      message: `Organization "${name}" successfully registered for ${normalizedAddress}.`,
+      message: `Organization "${name}" successfully registered for ${normalizedAddress} on ${network}.`,
+      network,
       org: {
         id: orgId,
         name: createdOrUpdatedOrg.name,

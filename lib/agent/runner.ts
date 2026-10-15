@@ -1,11 +1,11 @@
-import { prisma } from "../db";
+import { getDb } from "../db";
 import { sha256, canonicalJson } from "../crypto";
 import { formatUsdc, usdcAtomic, parseUsdc } from "../money";
 import { evaluatePolicy, PolicyContext } from "../policy/engine";
 import { evaluatePaymentTiming } from "./timing";
-import { getCashPositionTool, listObligationsTool, getInvoiceVerificationTool } from "./tools";
+import { getCashPositionTool, listObligationsTool } from "./tools";
 import { executePaymentTransaction } from "../payments/executor";
-import { getActiveNetwork } from "../networks";
+import { getNetworkConfig, NetworkMode } from "../networks";
 import { isBlocklistedWallet } from "../security/walletBlocklist";
 
 export interface AgentRunResult {
@@ -26,22 +26,46 @@ export interface AgentRunResult {
 export async function runAutonomousAgentLoop(params?: {
   orgId?: string;
   dryRun?: boolean;
+  network?: NetworkMode;
 }): Promise<AgentRunResult> {
+  const networkMode: NetworkMode = params?.network || "mainnet";
+
+  // Requirement A.7: Autonomous agent loop is strictly builder/admin on Arc Mainnet
+  if (networkMode !== "mainnet") {
+    return {
+      success: false,
+      runId: "err-testnet-refused",
+      timestamp: new Date().toISOString(),
+      mode: "autonomous",
+      invoicesEvaluated: 0,
+      processedCount: 0,
+      autoExecutedCount: 0,
+      scheduledCount: 0,
+      heldCount: 0,
+      escalatedCount: 0,
+      totalVolumeExecutedUsdc: "0",
+      decisions: [],
+      error: "Autonomous agent execution loop is restricted to Arc Mainnet builder-admin mode only.",
+    } as any;
+  }
+
+  const db = getDb(networkMode);
+
   // 1. Get organization and settings
   const org = params?.orgId
-    ? await prisma.organization.findUnique({
+    ? await db.organization.findUnique({
         where: { id: params.orgId },
         include: { settings: true },
       })
-    : await prisma.organization.findFirst({
+    : await db.organization.findFirst({
         include: { settings: true },
       });
 
   if (!org) {
-    throw new Error("No organization found to run autonomous agent loop");
+    throw new Error(`No organization found to run autonomous agent loop on ${networkMode}`);
   }
 
-  const networkConfig = getActiveNetwork();
+  const networkConfig = getNetworkConfig(networkMode);
   const settings = org.settings[0] || {
     id: "default-settings",
     orgId: org.id,
@@ -63,7 +87,7 @@ export async function runAutonomousAgentLoop(params?: {
   const startOfDay = new Date();
   startOfDay.setUTCHours(0, 0, 0, 0);
 
-  const todayPayments = await prisma.payment.findMany({
+  const todayPayments = await db.payment.findMany({
     where: {
       orgId: org.id,
       network: networkConfig.mode,
@@ -79,7 +103,7 @@ export async function runAutonomousAgentLoop(params?: {
   );
 
   // 3. Fetch open invoices
-  const openInvoices = await prisma.invoice.findMany({
+  const openInvoices = await db.invoice.findMany({
     where: {
       orgId: org.id,
       status: { in: ["pending_verification", "verified", "review_required", "approved"] },
@@ -92,8 +116,8 @@ export async function runAutonomousAgentLoop(params?: {
   });
 
   // Tools data
-  const cashPos = await getCashPositionTool(org.id);
-  const obligations = await listObligationsTool(org.id);
+  const cashPos = await getCashPositionTool(org.id, networkMode);
+  const obligations = await listObligationsTool(org.id, networkMode);
 
   let autoExecutedCount = 0;
   let scheduledCount = 0;
@@ -101,8 +125,6 @@ export async function runAutonomousAgentLoop(params?: {
   let escalatedCount = 0;
   let totalVolumeExecutedAtomic = 0n;
   const decisionRecords: any[] = [];
-
-  const providerName = process.env.LLM_PROVIDER || "deterministic";
 
   for (const inv of openInvoices) {
     const totalAtomic = BigInt(inv.totalUsdc);
@@ -126,12 +148,11 @@ export async function runAutonomousAgentLoop(params?: {
     };
     const observationHash = sha256(canonicalJson(contextSnapshot));
 
-    // 1. Verification checks
+    // Verification checks
     const isBlocklisted = isBlocklistedWallet(inv.vendor.walletAddress);
     const hasMatch = inv.matchStatus === "exact_match";
-    const isSafe = !inv.isInjectionSuspect && inv.duplicateScore < 90 && !isBlocklisted;
 
-    // 2. Timing intelligence
+    // Timing intelligence
     const timing = evaluatePaymentTiming({
       invoiceId: inv.id,
       invoiceNumber: inv.invoiceNumber,
@@ -162,7 +183,7 @@ export async function runAutonomousAgentLoop(params?: {
       reasoning = `Reconciliation mismatch: status is '${inv.matchStatus}'. Line discrepancies require finance review.`;
     }
 
-    // 3. Policy Pre-Evaluation
+    // Policy Pre-Evaluation
     const policyContext: PolicyContext = {
       network: networkConfig.mode,
       killSwitchActive: settings.killSwitchActive,
@@ -206,7 +227,7 @@ export async function runAutonomousAgentLoop(params?: {
       reasoning = `Policy override: Proposed pay_now, but policy gate returned '${policyEval.decision}'. Reason: ${policyEval.summary}`;
     }
 
-    // 4. Autonomous Execution Evaluation
+    // Autonomous Execution Evaluation
     let outcome = "held";
     let escalated = false;
     let txHash: string | null = null;
@@ -227,6 +248,7 @@ export async function runAutonomousAgentLoop(params?: {
           isAutonomous: true,
           hasOwnerConfirmation: true,
           dryRun: params?.dryRun,
+          network: networkMode,
         });
 
         if (execResult.success) {
@@ -279,7 +301,7 @@ export async function runAutonomousAgentLoop(params?: {
     }
 
     // 5. Persist AgentDecision record
-    const decision = await prisma.agentDecision.create({
+    const decision = await db.agentDecision.create({
       data: {
         orgId: org.id,
         invoiceId: inv.id,

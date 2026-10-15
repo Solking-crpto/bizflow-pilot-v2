@@ -131,3 +131,20 @@ During the Public Beta release on Arc Mainnet, the following defensive parameter
 3. **Treasury Reserve Floor**: Small businesses configure a minimum cash reserve floor (default 10.00 USDC). Payments that would breach the reserve floor are automatically flagged for review.
 4. **Emergency Kill-Switch**: Each organization has an instantaneous emergency pause control in their settings that halts all payment intent generation immediately.
 5. **No Sandbox on Mainnet**: `assertValidSandboxMode()` ensures that `PUBLIC_SANDBOX=true` can never execute against Arc Mainnet (`5042`).
+
+---
+
+## 7. Runtime Network Isolation & Stale-Tab Attack Prevention
+
+BizFlow Pilot V2 provides a single unified deployment supporting runtime switching between Arc Mainnet (`5042`) and Arc Testnet (`5042002`). To guarantee zero cross-contamination and prevent accidental mainnet expenditures from stale browser tabs:
+
+1. **Physical Database Schema Isolation**:
+   - Mainnet operations route through `DATABASE_URL_MAINNET` enforcing `schema=v2_mainnet`.
+   - Testnet operations route through `DATABASE_URL_TESTNET` enforcing `schema=v2_testnet`.
+   - The application enforces that the global unscoped `prisma` client is eliminated; code must call `getDb(network)`.
+2. **State Mutation Header Guard (`X-Bizflow-Network`)**:
+   - All state-changing endpoints (`POST`, `PUT`, `PATCH`, `DELETE`) require the `X-Bizflow-Network` header matching the active `bizflow_network` cookie.
+   - If a user changes networks in Tab A while Tab B is still open, any submission from Tab B results in an immediate **HTTP 409 Conflict**, preventing cross-network data corruption or misdirected payments.
+3. **Client Bundle Secret Leak Scanner**:
+   - Post-build bundle scanner (`npm run scan:bundle` via `scripts/scan-client-bundle.ts`) statically audits all client `.next/static` chunks for database credentials (`postgres://`), private keys, Alchemy/Infura credentials, and internal administrative passcodes.
+   - Verified clean with zero leaked secrets.

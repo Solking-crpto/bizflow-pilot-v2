@@ -1,13 +1,15 @@
 import React from "react";
 import type { Metadata } from "next";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { cookies } from "next/headers";
+import { getDb, withDbTimeout } from "@/lib/db";
+import { getServerActiveNetwork } from "@/lib/networks";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { InvoiceDeskClient, SerializedInvoice } from "@/components/invoices/InvoiceDeskClient";
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
-
 import { getServerSession, getSessionOrg } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Invoice Desk & Match Queue | BizFlow Pilot V2",
@@ -15,20 +17,21 @@ export const metadata: Metadata = {
 };
 
 export default async function InvoiceDeskPage() {
-  const isMainnet = (process.env.NEXT_PUBLIC_NETWORK_MODE || process.env.NETWORK_MODE) === "mainnet";
+  const cookieStore = cookies();
+  const networkMode = getServerActiveNetwork(cookieStore.get("bizflow_network")?.value);
+  const db = getDb(networkMode);
   const session = await getServerSession();
   let invoices: any[] = [];
   let dbError: string | null = null;
 
   if (session) {
     try {
-      const org = await getSessionOrg(session);
+      const org = await getSessionOrg(session, networkMode);
       if (org) {
         invoices = await withDbTimeout(() =>
-          prisma.invoice.findMany({
+          db.invoice.findMany({
             where: {
               orgId: org.id,
-              ...(isMainnet ? { network: "mainnet" } : {}),
             },
             include: {
               vendor: true,
@@ -46,19 +49,15 @@ export default async function InvoiceDeskPage() {
         );
       }
     } catch (err: any) {
-      if (isMainnet) {
-        dbError = err.message || "Failed to load invoices from database.";
-      } else {
-        invoices = [];
-      }
+      dbError = err.message || "Failed to load invoices from database.";
     }
   }
 
-  if (isMainnet && dbError) {
+  if (dbError) {
     return (
       <DatabaseErrorState
         title="Invoice Desk Database Error"
-        message="Could not load live mainnet invoices from the database. Please verify database connectivity and retry."
+        message="Could not load invoices from the database. Please verify connectivity and retry."
       />
     );
   }

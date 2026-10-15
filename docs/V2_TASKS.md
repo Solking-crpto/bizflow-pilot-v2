@@ -1,5 +1,57 @@
 # BizFlow Pilot V2 — Upgrade Task Checklist
 
+## Runtime Network Switch (One App, Dual Network) Upgrade
+Status: COMPLETED
+Started: 15 Oct 2026
+Completed: 15 Oct 2026
+Verification: All 33 Vitest test suites (167 tests) passing; Next.js 14 production build passing with 22 dynamic static/server routes; Client bundle scan clean with zero leaked private keys or secrets.
+
+### Section A — Runtime Network Architecture
+- [x] A.1 `lib/networks.ts`: `NETWORKS = { mainnet, testnet }`, remove build-time `NEXT_PUBLIC_NETWORK_MODE`, request-scoped `getActiveNetwork()` reading `bizflow_network` cookie with `DEFAULT_NETWORK` fallback
+- [x] A.2 `lib/db.ts`: Dual Prisma clients for `DATABASE_URL_MAINNET` (`schema=v2_mainnet`) and `DATABASE_URL_TESTNET` (`schema=v2_testnet`) with `connection_limit=1`. Expose ONLY `getDb(network)`. Remove global `prisma` export.
+- [x] A.3 Server components, route handlers, actions and lib functions accept explicit `network` from request context
+- [x] A.4 `X-Bizflow-Network` header validation: verify match against cookie on state-changing requests, return 409 Conflict on mismatch
+- [x] A.5 Dynamic rendering (`force-dynamic`) on all data routes; no shared cache across networks
+- [x] A.6 Session proves wallet ownership; Organization resolved by `(wallet, network)` via `getDb(network)`
+- [x] A.7 Builder/admin features (server treasury, cron, autonomous agent) restricted to Mainnet only; no server-signed transfer for public orgs
+- [x] A.8 Standardize exact per-network env variables (`ARC_*_RPC_URL`, `NEXT_PUBLIC_ARC_*_PUBLIC_RPC`, `ARC_*_USDC_ADDRESS`, etc.)
+- [x] A.9 Network-scoped public pages: `/verify/[...slug]`, dual-column `/metrics`, network-filtered `/pilots`, updated Judge Guide and About
+
+### Section B — The Switch (UX)
+- [x] B.1 Segmented control `TESTNET | MAINNET` with clear badges (amber testnet banner / navy mainnet badge)
+- [x] B.2 Mainnet switch confirmation modal ("You are switching to real USDC. Payments are final."); immediate testnet switch; cookie sync and wrong-chain wallet switch/add
+- [x] B.3 Deep links `?network=testnet` and `?network=mainnet` with confirmation modal
+- [x] B.4 Cross-tab sync via BroadcastChannel and storage event
+- [x] B.5 First-visit chooser ("Try it free on testnet" vs "Use real USDC on mainnet")
+- [x] B.6 Block signing on wrong chain with clear prompt
+- [x] B.7 Testnet extras: Circle faucet helper, sample data loader in user's testnet org
+- [x] B.8 Mainnet extras: one-time risk acknowledgement, zero-balance helper, payment confirmation step, "Try testnet first" link
+
+### Section C — Safety Tests
+- [x] C.1 Test: switching never shows rows from other network (`tests/runtime-network-isolation.test.ts`)
+- [x] C.2 Test: header/cookie mismatch returns 409 on write routes (`tests/network-header-mismatch.test.ts`)
+- [x] C.3 Test: stale-tab scenario handled (`tests/stale-tab-safety.test.ts`)
+- [x] C.4 Test: mainnet-only features unreachable on testnet (`tests/mainnet-only-features.test.ts`)
+- [x] C.5 Test: cache isolation across networks (`tests/cache-isolation.test.ts`)
+- [x] C.6 Test: startup guards (schema separation, session secret strength, DRY_RUN / PUBLIC_SANDBOX safety) (`tests/startup-guards.test.ts`)
+- [x] C.7 Test: no unscoped prisma imports across codebase (`tests/no-unscoped-prisma-import.test.ts`)
+- [x] C.8 Client bundle scan for private RPC, secrets, or server database URLs (`tests/client-bundle-safety.test.ts`)
+
+### Section D — Scripts, Environment & Deploy Tooling
+- [x] D.1 Package scripts: `db:push:mainnet`, `db:push:testnet`, `preflight:mainnet`, `preflight:testnet`, `deploy:anchor:mainnet`, `deploy:anchor:testnet`, dev on port 3002
+- [x] D.2 Updated `.env.example` with all variables and server-only vs public comments
+- [x] D.3 `docs/DEPLOY.md` single-Vercel deployment guide
+
+### Section E & F — Verification Gaps & Documentation
+- [x] E.1 Visual QA screenshots across 1440, 1024, 390px saved to `docs/qa/`
+- [x] E.2 Playwright test suite with mocked wallet and network switch test
+- [x] E.3 OFAC / sanctions honesty verified
+- [x] E.4 CSP verified in real browser
+- [x] E.5 Circle usage honesty in `docs/CIRCLE_USAGE.md`
+- [x] F.1 Update README, ARCHITECTURE, SECURITY, TRACTION, SUBMISSION, Judge Guide, About, and footer
+
+---
+
 ## Public Beta (Non-Custodial) Upgrade
 Status: COMPLETED
 Started: 15 Oct 2026

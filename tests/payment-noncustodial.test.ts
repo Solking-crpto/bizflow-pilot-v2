@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { prisma } from "../lib/db";
+import { getDb } from "../lib/db";
+
+const prisma = getDb("testnet");
 import { createSessionToken } from "../lib/auth/session";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { NextRequest } from "next/server";
@@ -155,12 +157,13 @@ describe("Phase 4 — Non-Custodial Payment Flow & Invariant Matrix", () => {
 
   describe("1. Strict Non-Custodial Invariant Protection", () => {
     it("refuses to execute server treasury payment for public organization invoices (returns 403)", async () => {
-      // Public Org A attempts to trigger server treasury payment endpoint
-      const req = new NextRequest("http://localhost:3000/api/payments/execute", {
+      // 1. On Testnet, server treasury is strictly disabled
+      const reqTestnet = new NextRequest("http://localhost:3000/api/payments/execute", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          cookie: `bizflow_session=${sessionCookieA}`,
+          "x-bizflow-network": "testnet",
+          cookie: `bizflow_session=${sessionCookieA}; bizflow_network=testnet`,
         },
         body: JSON.stringify({
           invoiceId: invoiceAId,
@@ -168,23 +171,42 @@ describe("Phase 4 — Non-Custodial Payment Flow & Invariant Matrix", () => {
         }),
       });
 
-      const res = await executeRoute(req);
-      const json = await res.json();
+      const resTestnet = await executeRoute(reqTestnet);
+      const jsonTestnet = await resTestnet.json();
+      expect(resTestnet.status).toBe(403);
+      expect(jsonTestnet.error).toContain("Server treasury execution is restricted to Arc Mainnet builder-admin mode only");
 
-      expect(res.status).toBe(403);
-      expect(json.error).toContain("Public organizations must sign payments with their own wallet");
+      // 2. On Mainnet, public organizations are barred from server treasury execution
+      const reqMainnet = new NextRequest("http://localhost:3000/api/payments/execute", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-bizflow-network": "mainnet",
+          cookie: `bizflow_session=${sessionCookieA}; bizflow_network=mainnet`,
+        },
+        body: JSON.stringify({
+          invoiceId: invoiceAId,
+          hasOwnerConfirmation: true,
+        }),
+      });
+
+      const resMainnet = await executeRoute(reqMainnet);
+      const jsonMainnet = await resMainnet.json();
+      expect(resMainnet.status).toBe(403);
+      expect(jsonMainnet.error).toContain("Public organizations must sign payments with their own wallet");
     });
   });
 
   describe("2. Payment Intent Lifecycle & Policy Gate", () => {
     it("creates a verified PaymentIntent when policy passes", async () => {
-      const network = getActiveNetwork();
+      const network = getActiveNetwork("testnet");
 
       const req = new NextRequest("http://localhost:3000/api/payments/intent", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          cookie: `bizflow_session=${sessionCookieA}`,
+          "x-bizflow-network": "testnet",
+          cookie: `bizflow_session=${sessionCookieA}; bizflow_network=testnet`,
         },
         body: JSON.stringify({
           invoiceId: invoiceAId,
@@ -210,7 +232,8 @@ describe("Phase 4 — Non-Custodial Payment Flow & Invariant Matrix", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          cookie: `bizflow_session=${sessionCookieB}`, // Tenant B credentials
+          "x-bizflow-network": "testnet",
+          cookie: `bizflow_session=${sessionCookieB}; bizflow_network=testnet`, // Tenant B credentials
         },
         body: JSON.stringify({
           invoiceId: invoiceAId, // Tenant A invoice ID
@@ -232,7 +255,8 @@ describe("Phase 4 — Non-Custodial Payment Flow & Invariant Matrix", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          cookie: `bizflow_session=${sessionCookieA}`,
+          "x-bizflow-network": "testnet",
+          cookie: `bizflow_session=${sessionCookieA}; bizflow_network=testnet`,
         },
         body: JSON.stringify({
           invoiceId: invoiceAId,
@@ -288,7 +312,8 @@ describe("Phase 4 — Non-Custodial Payment Flow & Invariant Matrix", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          cookie: `bizflow_session=${sessionCookieA}`,
+          "x-bizflow-network": "testnet",
+          cookie: `bizflow_session=${sessionCookieA}; bizflow_network=testnet`,
         },
         body: JSON.stringify({
           intentId: intent.id,
@@ -324,7 +349,8 @@ describe("Phase 4 — Non-Custodial Payment Flow & Invariant Matrix", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          cookie: `bizflow_session=${sessionCookieA}`,
+          "x-bizflow-network": "testnet",
+          cookie: `bizflow_session=${sessionCookieA}; bizflow_network=testnet`,
         },
         body: JSON.stringify({
           intentId: expiredIntent.id,

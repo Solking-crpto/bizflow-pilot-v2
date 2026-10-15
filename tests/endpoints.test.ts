@@ -8,8 +8,9 @@ describe("P1 Public Endpoints: /api/proof and /api/health", () => {
     try {
       res = await fetch(`${APP_URL}/api/proof`);
     } catch {
+      const { NextRequest } = await import("next/server");
       const { GET } = await import("../app/api/proof/route");
-      res = await GET();
+      res = await GET(new NextRequest("http://localhost:3001/api/proof"));
     }
     expect(res.status).toBe(200);
 
@@ -26,8 +27,9 @@ describe("P1 Public Endpoints: /api/proof and /api/health", () => {
     try {
       res = await fetch(`${APP_URL}/api/health`);
     } catch {
+      const { NextRequest } = await import("next/server");
       const { GET } = await import("../app/api/health/route");
-      res = await GET();
+      res = await GET(new NextRequest("http://localhost:3001/api/health"));
     }
     const duration = Date.now() - start;
 

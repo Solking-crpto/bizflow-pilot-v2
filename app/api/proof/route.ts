@@ -1,19 +1,23 @@
-import { NextResponse } from "next/server";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { NextRequest, NextResponse } from "next/server";
+import { withDbTimeout } from "@/lib/db";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
-import { getActiveNetwork } from "@/lib/networks";
+import { NETWORKS } from "@/lib/networks";
+import { validateApiNetwork } from "@/lib/api-guard";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const network = getActiveNetwork();
-  const explorerBase = network.explorerUrl || "https://explorer.arc.io";
-
+export async function GET(req: NextRequest) {
   try {
+    const apiCheck = validateApiNetwork(req);
+    if (apiCheck.errorResponse) return apiCheck.errorResponse;
+    const { network: networkMode, db } = apiCheck;
+
+    const network = NETWORKS[networkMode];
+    const explorerBase = network.explorerUrl;
+
     const payment = await withDbTimeout(() =>
-      prisma.payment.findFirst({
+      db.payment.findFirst({
         where: {
-          network: "mainnet",
           status: "confirmed",
         },
         include: {
@@ -28,33 +32,20 @@ export async function GET() {
     );
 
     if (!payment) {
-      // Fallback check: any payment on current network
-      const anyPayment = await withDbTimeout(() =>
-        prisma.payment.findFirst({
-          where: { status: "confirmed" },
-          include: { vendor: true, invoice: true, anchor: true },
-          orderBy: { confirmedAt: "desc" },
-        })
-      );
-
-      if (!anyPayment) {
-        return NextResponse.json(
-          {
-            status: "none_recorded",
-            message: "No confirmed payments recorded on Arc Mainnet yet.",
-            network: network.name,
-            chainId: network.chainId,
+      return NextResponse.json(
+        {
+          status: "none_recorded",
+          message: `No confirmed payments recorded on ${network.name} yet.`,
+          network: network.name,
+          chainId: network.chainId,
+        },
+        {
+          status: 200,
+          headers: {
+            "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
           },
-          {
-            status: 200,
-            headers: {
-              "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
-            },
-          }
-        );
-      }
-
-      return formatPaymentResponse(anyPayment, explorerBase, network);
+        }
+      );
     }
 
     return formatPaymentResponse(payment, explorerBase, network);
@@ -79,12 +70,12 @@ function formatPaymentResponse(payment: any, explorerBase: string, network: any)
       status: "confirmed",
       id: payment.id,
       invoiceNumber: payment.invoice?.invoiceNumber || "UNKNOWN",
-      vendor: payment.vendor?.name || "Northgate Cement Supply (demo vendor)",
+      vendor: payment.vendor?.name || "Unknown Supplier",
       vendorWallet: payment.destination || payment.vendor?.walletAddress || "",
       amountAtomic: payment.amountAtomic.toString(),
       amountFormatted: formatUsdc(usdcAtomic(payment.amountAtomic)),
       timestamp: payment.confirmedAt ? payment.confirmedAt.toISOString() : payment.initiatedAt.toISOString(),
-      network: payment.network || network.mode,
+      network: network.mode,
       chainId: network.chainId,
       txHash,
       anchorTxHash,
@@ -92,7 +83,7 @@ function formatPaymentResponse(payment: any, explorerBase: string, network: any)
         paymentTx: txHash ? `${explorerBase}/tx/${txHash}` : null,
         anchorTx: anchorTxHash ? `${explorerBase}/tx/${anchorTxHash}` : null,
       },
-      verifyPassportUrl: `/verify/${payment.id}`,
+      verifyPassportUrl: `/verify/${network.mode}/${payment.id}`,
     },
     {
       status: 200,

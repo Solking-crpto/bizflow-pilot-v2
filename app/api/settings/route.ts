@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma, withDbTimeout } from "@/lib/db";
+import { withDbTimeout } from "@/lib/db";
 import { verifyOwnerPasscodeWithRateLimit, getClientIp } from "@/lib/security/auth";
 import { getSessionFromRequest, getSessionOrg, isAdminWallet } from "@/lib/auth/session";
+import { validateApiNetwork } from "@/lib/api-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,10 @@ const BETA_HARD_CAP_USDC = BigInt(process.env.APP_MAX_PAYMENT_USDC || "25") * 1_
 
 export async function POST(req: NextRequest) {
   try {
+    const apiCheck = validateApiNetwork(req);
+    if (apiCheck.errorResponse) return apiCheck.errorResponse;
+    const { network: networkMode, db } = apiCheck;
+
     const clientIp = getClientIp(req);
     const body = await req.json();
     const session = getSessionFromRequest(req);
@@ -17,7 +22,7 @@ export async function POST(req: NextRequest) {
 
     if (session) {
       // Authenticated via SIWE wallet session
-      targetOrg = await getSessionOrg(session);
+      targetOrg = await getSessionOrg(session, networkMode);
       if (!targetOrg) {
         return NextResponse.json(
           { error: "No organization associated with this wallet. Please complete business onboarding first." },
@@ -48,7 +53,7 @@ export async function POST(req: NextRequest) {
       }
 
       targetOrg = await withDbTimeout(
-        () => prisma.organization.findFirst({ include: { settings: true } }),
+        () => db.organization.findFirst({ include: { settings: true } }),
         2000
       );
     }
@@ -61,7 +66,7 @@ export async function POST(req: NextRequest) {
     if (!setting) {
       // Create initial settings if missing
       setting = await withDbTimeout(() =>
-        prisma.setting.create({
+        db.setting.create({
           data: {
             orgId: targetOrg.id,
             killSwitchActive: false,
@@ -118,7 +123,7 @@ export async function POST(req: NextRequest) {
 
     const updated = await withDbTimeout(
       () =>
-        prisma.setting.update({
+        db.setting.update({
           where: { id: setting.id },
           data: updateData,
         }),

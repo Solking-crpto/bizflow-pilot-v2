@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { prisma } from "../lib/db";
+import { getDb } from "../lib/db";
+
+const prisma = getDb("testnet");
 import {
   createSessionToken,
   verifySessionToken,
@@ -153,7 +155,7 @@ describe("Phase 2 — Wallet Authentication & Multi-User Isolation Matrix", () =
     });
 
     it("verifies wallet signature and invalidates nonce to prevent replay attacks", async () => {
-      const activeNetwork = getActiveNetwork();
+      const activeNetwork = getActiveNetwork("testnet");
       const nonce = "replayed-nonce-999";
 
       // 1. Store nonce
@@ -177,7 +179,11 @@ describe("Phase 2 — Wallet Authentication & Multi-User Isolation Matrix", () =
       // First verification: should succeed
       const req1 = new NextRequest("http://localhost:3001/api/auth/verify", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Bizflow-Network": "testnet",
+          cookie: "bizflow_network=testnet",
+        },
         body: JSON.stringify({ message, signature, address: accountA.address }),
       });
 
@@ -190,7 +196,11 @@ describe("Phase 2 — Wallet Authentication & Multi-User Isolation Matrix", () =
       // Replay attempt with same nonce: MUST fail with 401
       const req2 = new NextRequest("http://localhost:3001/api/auth/verify", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Bizflow-Network": "testnet",
+          cookie: "bizflow_network=testnet",
+        },
         body: JSON.stringify({ message, signature, address: accountA.address }),
       });
 
@@ -201,7 +211,7 @@ describe("Phase 2 — Wallet Authentication & Multi-User Isolation Matrix", () =
     });
 
     it("rejects signature signed by a different wallet address", async () => {
-      const activeNetwork = getActiveNetwork();
+      const activeNetwork = getActiveNetwork("testnet");
       const nonce = "valid-nonce-abc";
 
       await prisma.authNonce.create({
@@ -224,7 +234,11 @@ describe("Phase 2 — Wallet Authentication & Multi-User Isolation Matrix", () =
 
       const req = new NextRequest("http://localhost:3001/api/auth/verify", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Bizflow-Network": "testnet",
+          cookie: "bizflow_network=testnet",
+        },
         body: JSON.stringify({ message, signature: maliciousSignature, address: accountA.address }),
       });
 
@@ -248,7 +262,8 @@ describe("Phase 2 — Wallet Authentication & Multi-User Isolation Matrix", () =
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Cookie: `${SESSION_COOKIE_NAME}=${sessionTokenA}`,
+          "X-Bizflow-Network": "testnet",
+          Cookie: `${SESSION_COOKIE_NAME}=${sessionTokenA}; bizflow_network=testnet`,
         },
         body: JSON.stringify({
           orgId: orgIdB,
@@ -314,7 +329,8 @@ describe("Phase 2 — Wallet Authentication & Multi-User Isolation Matrix", () =
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Cookie: `${SESSION_COOKIE_NAME}=${sessionTokenA}`,
+          "X-Bizflow-Network": "testnet",
+          Cookie: `${SESSION_COOKIE_NAME}=${sessionTokenA}; bizflow_network=testnet`,
         },
         body: JSON.stringify({
           decisionId: decisionB.id,
@@ -375,7 +391,8 @@ describe("Phase 2 — Wallet Authentication & Multi-User Isolation Matrix", () =
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Cookie: `${SESSION_COOKIE_NAME}=${sessionTokenA}`,
+          "X-Bizflow-Network": "testnet",
+          Cookie: `${SESSION_COOKIE_NAME}=${sessionTokenA}; bizflow_network=testnet`,
         },
         body: JSON.stringify({
           decisionId: decisionA.id,

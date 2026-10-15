@@ -40,7 +40,7 @@ export function SupplierModal({ isOpen, onClose, onSuccess, supplier }: Supplier
     }
 
     if (isBlocklistedWallet(walletAddress)) {
-      setError("Security refusal: Wallet address failed OFAC compliance screening.");
+      setError("Security refusal: Wallet address failed blocked-address check (known public test account).");
       return;
     }
 
@@ -118,7 +118,7 @@ export function SupplierModal({ isOpen, onClose, onSuccess, supplier }: Supplier
               className="w-full px-3 py-2 rounded-lg border border-border bg-canvas focus:bg-white focus:outline-none focus:border-navy font-mono text-[11px]"
             />
             <span className="text-[10px] text-ink-muted block">
-              Checked in real time against OFAC compliance blocklists.
+              Checked against known test-wallet blocklist. Note: not an official regulatory sanctions screen.
             </span>
           </div>
 

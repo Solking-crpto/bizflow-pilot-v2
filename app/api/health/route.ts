@@ -1,15 +1,24 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getActiveNetwork } from "@/lib/networks";
+import { NextRequest, NextResponse } from "next/server";
+import { getDb } from "@/lib/db";
+import { getServerActiveNetwork, NETWORKS, NetworkMode } from "@/lib/networks";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const startTime = Date.now();
-  const network = getActiveNetwork();
+  const searchParamNetwork = req?.nextUrl?.searchParams?.get("network");
+  const cookieNetwork = req?.cookies?.get("bizflow_network")?.value;
+  const networkMode: NetworkMode = (searchParamNetwork === "mainnet" || searchParamNetwork === "testnet")
+    ? searchParamNetwork
+    : getServerActiveNetwork(cookieNetwork);
+
+  const network = NETWORKS[networkMode];
+  const db = getDb(networkMode);
+
   const anchorAddress =
     process.env.AUDIT_ANCHOR_ADDRESS ||
     process.env.NEXT_PUBLIC_AUDIT_ANCHOR_ADDRESS ||
+    network.anchorAddress ||
     "0x2b18fe9d3a63710da242092571744520ea8effe0";
 
   let dbOk = false;
@@ -22,7 +31,7 @@ export async function GET() {
   const dbPromise = (async () => {
     try {
       await Promise.race([
-        prisma.$queryRaw`SELECT 1`,
+        db.$queryRaw`SELECT 1`,
         new Promise((_, reject) => setTimeout(() => reject(new Error("DB timeout")), 1500)),
       ]);
       return true;
