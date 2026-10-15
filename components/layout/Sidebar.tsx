@@ -17,12 +17,15 @@ import {
   ShieldCheck,
   Award,
   CheckCircle2,
+  Building2,
 } from "lucide-react";
 import { Logo } from "../ui/Logo";
+import { OrgSwitcher } from "./OrgSwitcher";
 
 const NAV_ITEMS = [
   { name: "Command Center", href: "/", icon: LayoutDashboard },
   { name: "Judge Guide", href: "/judges", icon: Award },
+  { name: "Pilot Businesses", href: "/pilots", icon: Building2 },
   { name: "Inventory & POs", href: "/inventory", icon: Boxes },
   { name: "Invoice Desk", href: "/invoices", icon: ReceiptText },
   { name: "AI Finance Agent", href: "/agent", icon: Bot },
@@ -39,9 +42,10 @@ export function Sidebar() {
 
   return (
     <aside className="w-64 bg-surface border-r border-border flex flex-col h-screen sticky top-0 select-none">
-      {/* Brand Header */}
-      <div className="p-4 border-b border-border">
+      {/* Brand Header & Org Switcher */}
+      <div className="p-4 border-b border-border space-y-3">
         <Logo />
+        <OrgSwitcher />
       </div>
 
       {/* Navigation Links */}

@@ -46,12 +46,14 @@ export function PaymentDeskClient({
   explorerUrl,
   maxMainnetPayment,
   isDryRun = false,
+  isPublicSandbox = false,
 }: {
   items: PayableInvoiceItem[];
   networkMode: "testnet" | "mainnet";
   explorerUrl: string;
   maxMainnetPayment: string;
   isDryRun?: boolean;
+  isPublicSandbox?: boolean;
 }) {
   const [selectedId, setSelectedId] = useState<string>(items[0]?.id || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -141,13 +143,40 @@ export function PaymentDeskClient({
         )}
       </div>
 
-      {/* Read-only / Visitor Notice */}
-      <div className="p-3 rounded-lg bg-blue-50/70 border border-blue-200 text-xs text-blue-900 flex items-center gap-2">
-        <Lock className="w-4 h-4 text-navy shrink-0" />
-        <span>
-          <strong>Read-only for visitors.</strong> Payments require the owner passcode. Reviewers can freely inspect the verified matching records, AI decision trails, and on-chain settlement proofs without any login.
+      {/* Builder-Operated Treasury Notice */}
+      <div className="p-3 rounded-lg bg-surface border border-border text-xs text-ink flex items-center justify-between gap-2 shadow-2xs">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-brand-teal shrink-0" />
+          <span>
+            <strong>Builder-operated treasury, funded by the business.</strong> Settlements execute directly via the single server treasury on Arc. No external private keys stored.
+          </span>
+        </div>
+        <span className="text-[10px] bg-canvas text-ink-muted border border-border px-1.5 py-0.5 rounded font-mono shrink-0">
+          verifiable escrow
         </span>
       </div>
+
+      {/* Sandbox Banner vs Visitor Passcode Notice */}
+      {isPublicSandbox ? (
+        <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-900 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 font-medium">
+            <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Sandbox: test USDC only.</strong> Visitors can test execution without a passcode. Rate-limited with a 0.05 USDC sandbox settlement cap via Circle Wallets.
+            </span>
+          </div>
+          <span className="text-[10px] bg-amber-500/20 text-amber-800 border border-amber-500/30 px-2 py-0.5 rounded font-mono font-bold shrink-0">
+            PUBLIC_SANDBOX
+          </span>
+        </div>
+      ) : (
+        <div className="p-3 rounded-lg bg-blue-50/70 border border-blue-200 text-xs text-blue-900 flex items-center gap-2">
+          <Lock className="w-4 h-4 text-navy shrink-0" />
+          <span>
+            <strong>Read-only for visitors.</strong> Payments require the owner passcode. Reviewers can freely inspect the verified matching records, AI decision trails, and on-chain settlement proofs without any login.
+          </span>
+        </div>
+      )}
 
       {/* Main Split: Queue on Left, Payment Drawer on Right */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

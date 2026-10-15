@@ -27,7 +27,34 @@ export async function POST(req: NextRequest) {
       // Empty body allowed if cron bearer token provided
     }
 
-    // 2. Check Owner Passcode if not already authorized via cron
+    const isMainnet = (process.env.NEXT_PUBLIC_NETWORK_MODE || process.env.NETWORK_MODE) === "mainnet";
+    const isPublicSandbox =
+      process.env.PUBLIC_SANDBOX === "true" || process.env.NEXT_PUBLIC_PUBLIC_SANDBOX === "true";
+
+    if (isMainnet && isPublicSandbox) {
+      return NextResponse.json(
+        { error: "FATAL SECURITY REFUSAL: PUBLIC_SANDBOX cannot be enabled on Arc Mainnet!" },
+        { status: 500 }
+      );
+    }
+
+    // 2. Check Sandbox Authorization on Testnet
+    if (!isAuthorized && isPublicSandbox && !isMainnet) {
+      const { checkRateLimit } = await import("@/lib/security/auth");
+      const rateLimitCheck = checkRateLimit(`sandbox_agent:${clientIp}`);
+      if (!rateLimitCheck.allowed) {
+        return NextResponse.json(
+          { error: "Sandbox rate limit reached. Please wait before running the agent again." },
+          {
+            status: 429,
+            headers: { "Retry-After": (rateLimitCheck.retryAfterSeconds || 60).toString() },
+          }
+        );
+      }
+      isAuthorized = true;
+    }
+
+    // 3. Check Owner Passcode if not already authorized via cron or sandbox
     if (!isAuthorized) {
       const passcode = body?.passcode;
       const authCheck = verifyOwnerPasscodeWithRateLimit(passcode, clientIp);

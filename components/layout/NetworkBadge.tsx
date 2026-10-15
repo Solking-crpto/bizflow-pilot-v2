@@ -3,7 +3,24 @@
 import React from "react";
 import { ShieldCheck, AlertTriangle } from "lucide-react";
 
-export function NetworkBanner({ mode }: { mode: "testnet" | "mainnet" }) {
+export function NetworkBanner({
+  mode,
+  isPublicSandbox,
+}: {
+  mode: "testnet" | "mainnet";
+  isPublicSandbox?: boolean;
+}) {
+  if (isPublicSandbox && mode === "testnet") {
+    return (
+      <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-1.5 text-center text-xs font-semibold text-amber-950 flex items-center justify-center gap-2">
+        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+        <span>
+          <strong>Sandbox: test USDC only</strong> — Visitor sandbox mode active (Circle Wallets, ARC-TESTNET). Rate-limited to 0.05 USDC test settlements.
+        </span>
+      </div>
+    );
+  }
+
   if (mode !== "testnet") return null;
 
   return (

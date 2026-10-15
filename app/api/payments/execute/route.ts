@@ -23,23 +23,60 @@ export async function POST(req: NextRequest) {
 
     const { invoiceId, hasOwnerConfirmation, passcode } = parsed.data;
 
-    // Enforce owner passcode with rate limiting on Mainnet
-    const authCheck = verifyOwnerPasscodeWithRateLimit(passcode, clientIp);
-    if (!authCheck.authorized) {
+    const network = getActiveNetwork();
+    const isMainnet = network.mode === "mainnet";
+    const isPublicSandbox =
+      process.env.PUBLIC_SANDBOX === "true" || process.env.NEXT_PUBLIC_PUBLIC_SANDBOX === "true";
+
+    if (isMainnet && isPublicSandbox) {
       return NextResponse.json(
-        { error: authCheck.error },
-        {
-          status: authCheck.status || 401,
-          headers: authCheck.retryAfterSeconds
-            ? { "Retry-After": authCheck.retryAfterSeconds.toString() }
-            : {},
-        }
+        { error: "FATAL SECURITY REFUSAL: PUBLIC_SANDBOX cannot be enabled on Arc Mainnet!" },
+        { status: 500 }
       );
+    }
+
+    if (isPublicSandbox && !isMainnet) {
+      // In sandbox mode: rate limit visitor IP and cap invoice amount
+      const { checkRateLimit } = await import("@/lib/security/auth");
+      const rateLimitCheck = checkRateLimit(`sandbox:${clientIp}`);
+      if (!rateLimitCheck.allowed) {
+        return NextResponse.json(
+          { error: "Sandbox rate limit reached. Please wait before testing another payment." },
+          {
+            status: 429,
+            headers: { "Retry-After": (rateLimitCheck.retryAfterSeconds || 60).toString() },
+          }
+        );
+      }
+
+      // Check tiny sandbox cap (<= 0.05 USDC = 50,000 atomic)
+      const { prisma } = await import("@/lib/db");
+      const inv = await prisma.invoice.findUnique({ where: { id: invoiceId } });
+      if (inv && inv.totalUsdc > 50000n) {
+        return NextResponse.json(
+          { error: "Sandbox cap exceeded: Public sandbox testing is restricted to <= 0.05 USDC." },
+          { status: 403 }
+        );
+      }
+    } else {
+      // Enforce owner passcode with rate limiting
+      const authCheck = verifyOwnerPasscodeWithRateLimit(passcode, clientIp);
+      if (!authCheck.authorized) {
+        return NextResponse.json(
+          { error: authCheck.error },
+          {
+            status: authCheck.status || 401,
+            headers: authCheck.retryAfterSeconds
+              ? { "Retry-After": authCheck.retryAfterSeconds.toString() }
+              : {},
+          }
+        );
+      }
     }
 
     const result = await executePaymentTransaction({
       invoiceId,
-      actor: "human",
+      actor: isPublicSandbox && !isMainnet ? "sandbox_visitor" : "human",
       hasOwnerConfirmation: hasOwnerConfirmation ?? true,
     });
 

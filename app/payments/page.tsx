@@ -124,6 +124,10 @@ export default async function PaymentsPage() {
     };
   });
 
+  const isPublicSandbox =
+    networkConfig.mode === "testnet" &&
+    (process.env.PUBLIC_SANDBOX === "true" || process.env.NEXT_PUBLIC_PUBLIC_SANDBOX === "true");
+
   return (
     <PaymentDeskClient
       items={payableItems}
@@ -131,6 +135,7 @@ export default async function PaymentsPage() {
       explorerUrl={networkConfig.explorerUrl}
       maxMainnetPayment={networkConfig.maxPaymentUsdc}
       isDryRun={isDryRun}
+      isPublicSandbox={isPublicSandbox}
     />
   );
 }

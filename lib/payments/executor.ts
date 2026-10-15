@@ -10,7 +10,7 @@ import { usdcAtomic, parseUsdc } from "../money";
 
 export interface ExecutePaymentParams {
   invoiceId: string;
-  actor: "agent" | "human";
+  actor: "agent" | "human" | "sandbox_visitor";
   hasOwnerConfirmation?: boolean;
   isAutonomous?: boolean;
   dryRun?: boolean;

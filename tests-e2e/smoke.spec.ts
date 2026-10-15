@@ -13,6 +13,8 @@ const ROUTES = [
   { path: "/about", name: "About Architecture" },
   { path: "/verify/demo", name: "Public Passport" },
   { path: "/agent/decisions", name: "Agent Decisions" },
+  { path: "/pilots", name: "Pilot Businesses" },
+  { path: "/settings/pilots", name: "Pilot Admin" },
 ];
 
 test.describe("P0-A Playwright Navigation & Interactive Smoke Suite", () => {
@@ -168,5 +170,12 @@ test.describe("P0-A Playwright Navigation & Interactive Smoke Suite", () => {
     if (await cancelBtn.isVisible()) {
       await cancelBtn.click();
     }
+  });
+
+  test("tests Public /pilots Directory page", async ({ page }) => {
+    await page.goto("/pilots", { waitUntil: "domcontentloaded" });
+
+    await expect(page.locator("h1", { hasText: "Pilot Businesses Directory" })).toBeVisible();
+    await expect(page.locator("text=Builder-Operated Treasury Model")).toBeVisible();
   });
 });

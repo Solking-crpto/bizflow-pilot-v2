@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { TopNav } from "@/components/layout/TopNav";
 import { NetworkBanner } from "@/components/layout/NetworkBadge";
 import { Footer } from "@/components/layout/Footer";
+import { assertValidSandboxMode } from "@/lib/networks";
 
 export const metadata: Metadata = {
   title: "BizFlow Pilot V2 — Policy-Approved USDC Settlement on Arc",
@@ -16,12 +17,15 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  assertValidSandboxMode();
   const networkMode = (process.env.NEXT_PUBLIC_NETWORK_MODE || "testnet") as "testnet" | "mainnet";
+  const isPublicSandbox =
+    process.env.PUBLIC_SANDBOX === "true" || process.env.NEXT_PUBLIC_PUBLIC_SANDBOX === "true";
 
   return (
     <html lang="en">
       <body className="min-h-screen bg-canvas text-ink flex flex-col font-sans">
-        <NetworkBanner mode={networkMode} />
+        <NetworkBanner mode={networkMode} isPublicSandbox={isPublicSandbox} />
         <div className="flex flex-1 min-h-0">
           <Sidebar />
           <div className="flex-1 flex flex-col min-w-0">

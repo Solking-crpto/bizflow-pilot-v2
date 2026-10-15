@@ -17,6 +17,8 @@ const ROUTES = [
   "/about",
   "/verify/demo",
   "/agent/decisions",
+  "/pilots",
+  "/settings/pilots",
 ];
 
 const API_ROUTES = [
@@ -28,6 +30,7 @@ const API_ROUTES = [
   "/api/payments/execute",
   "/api/agent/run",
   "/api/agent/decisions",
+  "/api/pilots",
 ];
 
 function assertNoSecrets(content: string) {

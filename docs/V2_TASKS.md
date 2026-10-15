@@ -61,20 +61,20 @@ Started: 15 Oct 2026
   - [x] All tests passing (`npm test`), build passing (`next build`), local git commit
 
 ## Tier 2 — Traction & Judge Hands-on
-- [ ] **11. Pilot Organizations**
-  - [ ] Update `Organization` schema: `isPilot`, `proofUrls` (website, X, LinkedIn), `publicConsent`, `createdAt`
-  - [ ] Owner-passcode admin page "Pilot businesses" to create/manage orgs
-  - [ ] Org switcher and org-scoping for queries and payments
-  - [ ] Public read-only `/pilots` page showing ONLY orgs with `publicConsent=true` with real per-org metrics
-  - [ ] Builder-operated treasury label ("builder-operated treasury, funded by the business")
-- [ ] **12. Judge Sandbox Mode**
-  - [ ] `PUBLIC_SANDBOX=true` mode on testnet with Circle Wallets (`ARC-TESTNET`)
-  - [ ] Hard refuse at startup if `PUBLIC_SANDBOX=true` on mainnet
-  - [ ] Rate limiting and tiny cap for sandbox visitors
-  - [ ] Banner: "Sandbox: test USDC only"
-  - [ ] Verified Circle Wallets testnet flow documented in `docs/CIRCLE_USAGE.md`
-- [ ] **13. Tier 2 Verification & Commit**
-  - [ ] Tests and build pass; local git commit
+- [x] **11. Pilot Organizations**
+  - [x] Update `Organization` schema: `isPilot`, `proofUrls` (website, X, LinkedIn), `publicConsent`, `createdAt`
+  - [x] Owner-passcode admin page "Pilot businesses" to create/manage orgs
+  - [x] Org switcher and org-scoping for queries and payments
+  - [x] Public read-only `/pilots` page showing ONLY orgs with `publicConsent=true` with real per-org metrics
+  - [x] Builder-operated treasury label ("builder-operated treasury, funded by the business")
+- [x] **12. Judge Sandbox Mode**
+  - [x] `PUBLIC_SANDBOX=true` mode on testnet with Circle Wallets (`ARC-TESTNET`)
+  - [x] Hard refuse at startup if `PUBLIC_SANDBOX=true` on mainnet
+  - [x] Rate limiting and tiny cap for sandbox visitors
+  - [x] Banner: "Sandbox: test USDC only"
+  - [x] Verified Circle Wallets testnet flow documented in `docs/CIRCLE_USAGE.md`
+- [x] **13. Tier 2 Verification & Commit**
+  - [x] Tests and build pass; local git commit
 
 ## Tier 3 — Extensions behind Feature Flags
 - [ ] **14. Arc App Kit Send Provider**

@@ -72,9 +72,25 @@ export const NETWORKS: Record<NetworkMode, NetworkConfig> = {
 };
 
 /**
+ * Hard guard refusing startup if PUBLIC_SANDBOX is enabled on Arc Mainnet.
+ */
+export function assertValidSandboxMode(): void {
+  const mode = (process.env.NEXT_PUBLIC_NETWORK_MODE || process.env.NETWORK_MODE || "testnet") as NetworkMode;
+  const isPublicSandbox =
+    process.env.PUBLIC_SANDBOX === "true" || process.env.NEXT_PUBLIC_PUBLIC_SANDBOX === "true";
+
+  if (mode === "mainnet" && isPublicSandbox) {
+    throw new Error(
+      "CRITICAL SECURITY VIOLATION: PUBLIC_SANDBOX is strictly prohibited on Arc Mainnet! Refusing startup."
+    );
+  }
+}
+
+/**
  * Returns the currently active network configuration based on NEXT_PUBLIC_NETWORK_MODE
  */
 export function getActiveNetwork(): NetworkConfig {
+  assertValidSandboxMode();
   const mode = (process.env.NEXT_PUBLIC_NETWORK_MODE || "testnet") as NetworkMode;
   return NETWORKS[mode] || NETWORKS.testnet;
 }
