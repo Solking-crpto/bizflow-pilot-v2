@@ -83,5 +83,14 @@ describe("Database Schema Isolation & Startup Guard", () => {
       assertTestDatabaseSafety("file:./dev.db");
     }).not.toThrow();
   });
+
+  it("assertTestDatabaseSafety aborts if TEST_NETWORK is set to mainnet during tests", () => {
+    process.env.VITEST = "true";
+    process.env.TEST_NETWORK = "mainnet";
+    expect(() => {
+      assertTestDatabaseSafety("file:./dev.db");
+    }).toThrow(/FATAL TEST SAFETY VIOLATION: TEST_NETWORK must be 'testnet'/);
+    process.env.TEST_NETWORK = "testnet";
+  });
 });
 

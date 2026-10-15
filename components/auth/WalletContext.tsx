@@ -181,7 +181,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           setChainId(activeNetwork.chainId);
           return true;
         } catch (addError: any) {
-          setError(addError.message || "Failed to add Arc network to wallet.");
+          setError(
+            addError.message
+              ? `${addError.message} (See official Arc setup docs: https://docs.arc.network)`
+              : "Failed to add Arc network to wallet. See official setup docs: https://docs.arc.network"
+          );
           return false;
         }
       }

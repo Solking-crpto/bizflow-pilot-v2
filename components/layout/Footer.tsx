@@ -4,12 +4,15 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Copy, Check, ExternalLink, ShieldCheck, Github, Layers } from "lucide-react";
 import { truncateHash } from "@/lib/utils";
+import { useNetwork } from "@/components/network/NetworkContext";
 
 interface FooterProps {
   networkMode?: "testnet" | "mainnet";
 }
 
-export function Footer({ networkMode = "testnet" }: FooterProps) {
+export function Footer({ networkMode }: FooterProps) {
+  const { network } = useNetwork();
+  const activeMode = networkMode || network;
   const [copied, setCopied] = useState(false);
 
   const anchorAddress =
@@ -20,7 +23,7 @@ export function Footer({ networkMode = "testnet" }: FooterProps) {
     process.env.NEXT_PUBLIC_REPO_URL || "https://github.com/Solking-crpto/bizflow-pilot-v2";
 
   const explorerUrl =
-    networkMode === "mainnet"
+    activeMode === "mainnet"
       ? `https://explorer.arc.io/address/${anchorAddress}`
       : `https://testnet.arcscan.app/address/${anchorAddress}`;
 
@@ -98,7 +101,7 @@ export function Footer({ networkMode = "testnet" }: FooterProps) {
 
           {/* Network tag */}
           <span className="font-mono text-[11px] px-2 py-1 rounded bg-canvas border border-border font-medium text-ink">
-            Arc {networkMode === "mainnet" ? "5042" : "5042002"}
+            Arc {activeMode === "mainnet" ? "5042" : "5042002"}
           </span>
 
           {/* Repo Link */}

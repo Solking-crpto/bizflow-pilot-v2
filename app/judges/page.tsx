@@ -99,7 +99,7 @@ export default async function JudgesPage() {
             Executive Summary
           </h2>
           <p className="text-sm text-ink leading-relaxed font-sans">
-            <strong>BizFlow Pilot V2</strong> is an autonomous financial operations layer for enterprise treasury that bridges real-world procurement to native USDC settlement on <strong>Arc Mainnet</strong>. By decoupling untrusted LLM extraction from a deterministic 10-point policy engine, it prevents prompt-injection fraud, duplicate billing, and quantity discrepancies before triggering idempotent on-chain payments and anchoring immutable SHA-256 audit proofs to <code>AuditAnchor.sol</code>.
+            <strong>BizFlow Pilot V2</strong> is an autonomous, non-custodial financial operations layer for enterprise treasury that bridges real-world procurement to native USDC settlement on <strong>Arc Mainnet</strong>. Evaluators can switch between <strong>Arc Testnet</strong> (risk-free sandbox practice with free test USDC) and <strong>Arc Mainnet</strong> (real USDC settlement) anytime using the global switcher in the top bar. By decoupling untrusted LLM extraction from a deterministic 10-point policy engine, it prevents prompt-injection fraud, duplicate billing, and quantity discrepancies before triggering idempotent on-chain payments and anchoring immutable SHA-256 audit proofs to <code>AuditAnchor.sol</code>.
           </p>
         </div>
       </div>

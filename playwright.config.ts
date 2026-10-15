@@ -7,7 +7,7 @@ export default defineConfig({
   fullyParallel: false,
   reporter: "list",
   use: {
-    baseURL: process.env.APP_URL || "http://localhost:3001",
+    baseURL: process.env.APP_URL || "http://localhost:3002",
     trace: "off",
   },
   projects: [

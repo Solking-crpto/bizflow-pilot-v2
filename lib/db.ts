@@ -86,6 +86,13 @@ export function assertTestDatabaseSafety(overrideUrl?: string): void {
   const isVitest = process.env.VITEST === "true" || process.env.NODE_ENV === "test";
   if (!isVitest && overrideUrl === undefined) return;
 
+  // Enforce that tests run strictly against testnet through TEST_NETWORK
+  if (isVitest && process.env.TEST_NETWORK && process.env.TEST_NETWORK !== "testnet") {
+    throw new Error(
+      `FATAL TEST SAFETY VIOLATION: TEST_NETWORK must be 'testnet', detected '${process.env.TEST_NETWORK}'. Tests must never target mainnet!`
+    );
+  }
+
   const urlsToCheck = [
     overrideUrl,
     process.env.DATABASE_URL,

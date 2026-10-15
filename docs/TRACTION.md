@@ -16,9 +16,9 @@
 
 ---
 
-## 2. Platform Architecture: Two Distinct Operational Tracks
+## 2. Platform Architecture: Single Deployment with Two Operational Tracks
 
-To ensure complete clarity for judges and auditors, BizFlow Pilot V2 distinguishes between two operational models:
+BizFlow Pilot V2 provides a single unified deployment where users switch between Arc Testnet and Arc Mainnet at runtime. Within the platform, two operational tracks are clearly maintained:
 
 ### Track A: Builder-Operated Admin Org (Engineering Verification & Pilot Benchmark)
 - **Purpose**: Operational benchmark demonstrating end-to-end autonomous policy execution, Arc Mainnet settlement, and on-chain anchoring.
@@ -29,7 +29,7 @@ To ensure complete clarity for judges and auditors, BizFlow Pilot V2 distinguish
     - Recipient Vendor: `0x3B5D2009e6c2d05413AB77853158fE3f445A174d`
   - **AuditAnchor.sol Deployment**: [`0x2b18fe9d3a63710da242092571744520ea8effe0`](https://explorer.arc.io/address/0x2b18fe9d3a63710da242092571744520ea8effe0)
   - **Audit Anchor Commitment Tx**: [`0x600e31431faba6022dbc5d259961ddc4fbd89e7c2867b1e590ca76f8d74b83e4`](https://explorer.arc.io/tx/0x600e31431faba6022dbc5d259961ddc4fbd89e7c2867b1e590ca76f8d74b83e4)
-- **Public Verification Passport**: [Verify Invoice inv-mainnet-101](https://bizflow-pilot.vercel.app/verify/inv-mainnet-101)
+- **Public Verification Passport**: [Verify Invoice inv-mainnet-101](/verify/mainnet/inv-mainnet-101)
 
 ### Track B: Public Non-Custodial Beta (Small Business Self-Service)
 - **Purpose**: Real self-service onboarding for independent small businesses transacting in USDC on Arc Mainnet.

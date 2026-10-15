@@ -15,6 +15,9 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: "About & Trust Architecture | BizFlow Pilot V2",
   description: "Cryptographic trust model, decentralized settlement guarantees, and decoupled AI execution on Arc.",
@@ -154,6 +157,33 @@ export default function AboutPage() {
               <span className="font-semibold text-ink block mb-1">ERC-20 USDC Token Interface (6 Decimals)</span>
               <p className="text-[11px]">
                 Standard ERC-20 interface at <code className="font-mono text-navy">0x3600000000000000000000000000000000000000</code>. Measured in 1e-6 units. Handled strictly via <code className="font-mono text-navy">UsdcAtomic</code>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Runtime Network Switch & Data Isolation */}
+      <div className="rounded-xl border border-border bg-surface shadow-card p-6 space-y-4">
+        <h2 className="text-base font-bold text-ink flex items-center gap-2">
+          <Layers className="w-5 h-5 text-brand-teal" />
+          <span>Single Deployment Runtime Network Switch & Physical Schema Isolation</span>
+        </h2>
+        <div className="space-y-3 text-xs leading-relaxed text-ink-muted">
+          <p>
+            BizFlow Pilot V2 runs as a <strong>single unified deployment</strong> that allows users to toggle between <strong>Arc Testnet (Chain 5042002)</strong> and <strong>Arc Mainnet (Chain 5042)</strong> at runtime:
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div className="p-3 rounded-lg bg-canvas border border-border">
+              <span className="font-semibold text-ink block mb-1">Physical Database Separation</span>
+              <p className="text-[11px]">
+                Mainnet and Testnet data are strictly separated into two PostgreSQL schemas (<code className="font-mono text-navy">v2_mainnet</code> vs <code className="font-mono text-navy">v2_testnet</code>) accessed via dedicated Prisma clients (<code className="font-mono text-navy">getDb(network)</code>). Tests and sandbox runs are hard-blocked from ever writing to or reading from mainnet.
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-canvas border border-border">
+              <span className="font-semibold text-ink block mb-1">State Mutation Safety & Stale Tab Guard</span>
+              <p className="text-[11px]">
+                Network state is managed via an authenticated <code className="font-mono text-navy">bizflow_network</code> cookie synchronized across browser tabs via <code className="font-mono text-navy">BroadcastChannel</code>. Mutating API endpoints require a matching <code className="font-mono text-navy">X-Bizflow-Network</code> header, returning HTTP 409 Conflict if a tab attempts an operation on a stale network context.
               </p>
             </div>
           </div>

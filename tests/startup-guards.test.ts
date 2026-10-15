@@ -61,4 +61,23 @@ describe("Startup Guards & Production Safety Invariants", () => {
     // On testnet, it is permitted
     expect(() => assertValidSandboxMode("testnet")).not.toThrow();
   });
+
+  it("logs a startup warning in dev when DRY_RUN is set", () => {
+    delete (globalThis as any).__dryRunWarned;
+    process.env.NODE_ENV = "development";
+    process.env.DRY_RUN = "true";
+
+    let warnedMsg = "";
+    const origWarn = console.warn;
+    console.warn = (msg: string) => {
+      warnedMsg = msg;
+    };
+
+    try {
+      assertValidSandboxMode("testnet");
+      expect(warnedMsg).toContain("DRY_RUN is currently active");
+    } finally {
+      console.warn = origWarn;
+    }
+  });
 });

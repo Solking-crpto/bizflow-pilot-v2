@@ -96,6 +96,9 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
               });
             } catch (addError) {
               console.warn("Failed to add network to wallet:", addError);
+              setCrossTabNotice(
+                "Notice: Arc chain addition failed. Follow the official setup guide: https://docs.arc.network"
+              );
             }
           }
         }

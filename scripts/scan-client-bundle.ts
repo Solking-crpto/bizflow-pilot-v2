@@ -15,8 +15,8 @@ function getAllJsFiles(dir: string, fileList: string[] = []): string[] {
   return fileList;
 }
 
-export function scanClientBundle(): { clean: boolean; leaks: { file: string; pattern: string }[] } {
-  const staticDir = path.resolve(__dirname, "..", ".next", "static");
+export function scanClientBundle(targetDir?: string): { clean: boolean; leaks: { file: string; pattern: string }[] } {
+  const staticDir = targetDir || process.env.SCAN_DIR || path.resolve(__dirname, "..", ".next", "static");
   if (!fs.existsSync(staticDir)) {
     return { clean: true, leaks: [] }; // Build not yet run, skipped in pre-build
   }
