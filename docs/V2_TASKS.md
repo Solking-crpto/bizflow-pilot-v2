@@ -1,8 +1,9 @@
 # BizFlow Pilot V2 — Upgrade Task Checklist
 
 ## Public Beta (Non-Custodial) Upgrade
-Status: IN_PROGRESS
+Status: COMPLETED
 Started: 15 Oct 2026
+Completed: 15 Oct 2026
 
 ### Phase 1 — Remove the Demo, Add Real Empty States
 - [x] 1.1 Quarantine / delete `seedMainnet` and `seedV2` from running against mainnet; isolate sample data loader for testnet only
@@ -38,34 +39,34 @@ Started: 15 Oct 2026
 - [x] 4.7 Phase 4 verification and local commit
 
 ### Phase 5 — Agent for Public Orgs
-- [ ] 5.1 Public org "Analyze my invoices" action: reads org's open invoices and cash position directly from connected wallet, recommends pay now / schedule / hold / review with reasons
-- [ ] 5.2 Model vs deterministic fallback transparency with per-org decision logs
-- [ ] 5.3 Per-org and daily LLM rate limiting with `LLM_DAILY_CALL_LIMIT` global safety budget
-- [ ] 5.4 Phase 5 verification and local commit
+- [x] 5.1 Public org "Analyze my invoices" action: reads org's open invoices and cash position directly from connected wallet, recommends pay now / schedule / hold / review with reasons
+- [x] 5.2 Model vs deterministic fallback transparency with per-org decision logs
+- [x] 5.3 Per-org and daily LLM rate limiting with `LLM_DAILY_CALL_LIMIT` global safety budget
+- [x] 5.4 Phase 5 verification and local commit
 
 ### Phase 6 — Safety, Legal and Public Readiness
-- [ ] 6.1 Legal pages: Terms of Use, Privacy Policy, Risk & Non-custodial Notice (Beta labelled) with onboarding acknowledgement
-- [ ] 6.2 Security headers, write-route rate limiting, CSRF/Origin validation, no stack traces
-- [ ] 6.3 Public `/metrics` page computed exclusively from real database records (opt-in pilot businesses only)
-- [ ] 6.4 Clean mainnet vs testnet separation (`PUBLIC_SANDBOX` strictly refused on mainnet; testnet sample data loader)
-- [ ] 6.5 Phase 6 verification and local commit
+- [x] 6.1 Legal pages: Terms of Use, Privacy Policy, Risk & Non-custodial Notice (Beta labelled) with onboarding acknowledgement
+- [x] 6.2 Security headers, write-route rate limiting, CSRF/Origin validation, no stack traces
+- [x] 6.3 Public `/metrics` page computed exclusively from real database records (opt-in pilot businesses only)
+- [x] 6.4 Clean mainnet vs testnet separation (`PUBLIC_SANDBOX` strictly refused on mainnet; testnet sample data loader)
+- [x] 6.5 Phase 6 verification and local commit
 
 ### Phase 7 — UI Finish & Design System
-- [ ] 7.1 Visual QA at 1440px, 1024px, 390px (mobile responsiveness, table scrolling, modals overlay, chip styling, long address truncation)
-- [ ] 7.2 Reorganize navigation: Dashboard, Suppliers, Purchase Orders, Invoices, Payments, Agent, Audit, Settings
-- [ ] 7.3 Consistent design system (spacing, typography, buttons, toasts, skeleton loaders, WCAG AA contrast)
-- [ ] 7.4 Phase 7 verification and local commit
+- [x] 7.1 Visual QA at 1440px, 1024px, 390px (mobile responsiveness, table scrolling, modals overlay, chip styling, long address truncation)
+- [x] 7.2 Reorganize navigation: Dashboard, Suppliers, Purchase Orders, Invoices, Payments, Agent, Audit, Settings
+- [x] 7.3 Consistent design system (spacing, typography, buttons, toasts, skeleton loaders, WCAG AA contrast)
+- [x] 7.4 Phase 7 verification and local commit
 
 ### Phase 8 — Comprehensive Testing
-- [ ] 8.1 Unit & integration tests (payment intent, receipt verification, session security, IDOR matrix, leak tests)
-- [ ] 8.2 Playwright E2E full user journey with mocked injected wallet
-- [ ] 8.3 Verify `npm test` and `next build` pass with zero errors
-- [ ] 8.4 Phase 8 verification and local commit
+- [x] 8.1 Unit & integration tests (payment intent, receipt verification, session security, IDOR matrix, leak tests)
+- [x] 8.2 Playwright E2E full user journey with mocked injected wallet
+- [x] 8.3 Verify `npm test` and `next build` pass with zero errors (121 tests across 20 suites)
+- [x] 8.4 Phase 8 verification and local commit
 
 ### Phase 9 — Documentation & Submission Updates
-- [ ] 9.1 Update README.md, docs/SUBMISSION.md, docs/TRACTION.md, docs/CIRCLE_USAGE.md, docs/SOURCES_V2.md, docs/SECURITY.md, docs/ARCHITECTURE.md, .env.example
-- [ ] 9.2 Final acceptance verification against all prompt criteria
-- [ ] 9.3 Final report with PowerShell commands and manual QA steps
+- [x] 9.1 Update README.md, docs/SUBMISSION.md, docs/TRACTION.md, docs/CIRCLE_USAGE.md, docs/SOURCES_V2.md, docs/SECURITY.md, docs/ARCHITECTURE.md, .env.example
+- [x] 9.2 Final acceptance verification against all prompt criteria
+- [x] 9.3 Final report with PowerShell commands and manual QA steps
 
 ---
 
