@@ -11,6 +11,20 @@
 
 import { PrismaClient } from "@prisma/client";
 import { NetworkMode } from "./networks";
+import fs from "fs";
+import path from "path";
+import dotenv from "dotenv";
+
+if (typeof window === "undefined") {
+  try {
+    const v2Path = path.resolve(process.cwd(), ".env.v2.local");
+    if (fs.existsSync(v2Path)) {
+      dotenv.config({ path: v2Path, override: false });
+    }
+  } catch {
+    // Non-fatal if fs not accessible
+  }
+}
 
 const globalForDb = globalThis as unknown as {
   prismaMainnet?: PrismaClient;

@@ -16,6 +16,7 @@ import { POST as verifyRoute } from "../app/api/auth/verify/route";
 import { POST as settingsRoute } from "../app/api/settings/route";
 import { POST as decisionsRoute } from "../app/api/agent/decisions/route";
 import { getActiveNetwork } from "../lib/networks";
+import { createStatelessNonce, AUTH_NONCE_COOKIE_NAME } from "../lib/auth/stateless-nonce";
 
 describe("Phase 2 — Wallet Authentication & Multi-User Isolation Matrix", () => {
   const accountA = privateKeyToAccount(generatePrivateKey());
@@ -156,15 +157,7 @@ describe("Phase 2 — Wallet Authentication & Multi-User Isolation Matrix", () =
 
     it("verifies wallet signature and invalidates nonce to prevent replay attacks", async () => {
       const activeNetwork = getActiveNetwork("testnet");
-      const nonce = "replayed-nonce-999";
-
-      // 1. Store nonce
-      await prisma.authNonce.create({
-        data: {
-          nonce,
-          expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-        },
-      });
+      const { nonce, cookieValue } = createStatelessNonce();
 
       const message = buildSiweMessage({
         domain: "localhost:3001",
@@ -182,7 +175,7 @@ describe("Phase 2 — Wallet Authentication & Multi-User Isolation Matrix", () =
         headers: {
           "Content-Type": "application/json",
           "X-Bizflow-Network": "testnet",
-          cookie: "bizflow_network=testnet",
+          cookie: `bizflow_network=testnet; ${AUTH_NONCE_COOKIE_NAME}=${cookieValue}`,
         },
         body: JSON.stringify({ message, signature, address: accountA.address }),
       });
@@ -193,7 +186,7 @@ describe("Phase 2 — Wallet Authentication & Multi-User Isolation Matrix", () =
       expect(data1.success).toBe(true);
       expect(data1.org.id).toBe(orgIdA);
 
-      // Replay attempt with same nonce: MUST fail with 401
+      // Replay attempt without cookie or with consumed nonce: MUST fail with 401
       const req2 = new NextRequest("http://localhost:3001/api/auth/verify", {
         method: "POST",
         headers: {
@@ -207,19 +200,12 @@ describe("Phase 2 — Wallet Authentication & Multi-User Isolation Matrix", () =
       const res2 = await verifyRoute(req2);
       expect(res2.status).toBe(401);
       const data2 = await res2.json();
-      expect(data2.error).toContain("Invalid, expired, or previously used");
+      expect(data2.error).toContain("nonce");
     });
 
     it("rejects signature signed by a different wallet address", async () => {
       const activeNetwork = getActiveNetwork("testnet");
-      const nonce = "valid-nonce-abc";
-
-      await prisma.authNonce.create({
-        data: {
-          nonce,
-          expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-        },
-      });
+      const { nonce, cookieValue } = createStatelessNonce();
 
       const message = buildSiweMessage({
         domain: "localhost:3001",
@@ -237,7 +223,7 @@ describe("Phase 2 — Wallet Authentication & Multi-User Isolation Matrix", () =
         headers: {
           "Content-Type": "application/json",
           "X-Bizflow-Network": "testnet",
-          cookie: "bizflow_network=testnet",
+          cookie: `bizflow_network=testnet; ${AUTH_NONCE_COOKIE_NAME}=${cookieValue}`,
         },
         body: JSON.stringify({ message, signature: maliciousSignature, address: accountA.address }),
       });

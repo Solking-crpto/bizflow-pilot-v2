@@ -210,6 +210,25 @@ Completed: 15 Oct 2026
   - [x] Interface for vendor sanctions screening
   - [x] Clear UI disclaimer when official provider is not connected
 - [x] **17. Final Preflight & Acceptance Report**
-  - [x] Unit/Acceptance tests passing (16 test suites, 96 tests)
+  - [x] Unit/Acceptance tests passing (34 test suites, 172 tests)
   - [x] Mainnet preflight passing against `v2_mainnet` schema and live Arc Mainnet RPC
   - [x] Local git commit with clean tree
+
+---
+
+## Section G — Defect Remediation & Comprehensive Verification (16 Oct 2026)
+Status: COMPLETED
+- [x] **Defect 1**: Created `lib/apiFetch.ts` auto-injecting `X-Bizflow-Network` and `credentials: same-origin`. Replaced all client-side `fetch("/api/...")` calls. Exempted `/api/auth/*` and `/api/network`. Static test `tests/no-direct-api-fetch.test.ts` passing.
+- [x] **Defect 2**: Resolved Mainnet crashes and auth nonce issues. Loaded `.env.v2.local` safely in `next.config.mjs` and `lib/db.ts`. Verified all 20 tables exist in `v2_mainnet` schema. Replaced database nonce dependency with stateless HMAC-signed, single-use httpOnly cookie nonces (5-min TTL) in `lib/auth/stateless-nonce.ts`.
+- [x] **Defect 3**: Enforced signed-out visitor isolation. All private pages (`/`, `/inventory`, `/invoices`, `/payments`, `/suppliers`, `/agent`, `/audit`, `/settings`) show designed "Connect your wallet to begin" empty states. Public pages (`/judges`, `/metrics`, `/verify`, `/pilots`, `/terms`, `/privacy`, `/risk`, `/about`) remain open. Purged hardcoded org names ("BuildPro", "Public Beta Org", "Default Org", "Dangote", "Northgate"). Authored `scripts/clean-testnet-seed.ts` (requires `--yes`, refuses mainnet).
+- [x] **Defect 4**: Elevated modal and overlay z-indices to `z-[100]` with `bg-black/60 backdrop-blur-sm`, focus trapping, click-outside dismissal, and Escape key listener across all modals.
+- [x] **Defect 5**: Updated Sidebar footer version to "BizFlow Pilot V2 · Tameion edition" reading `version` directly from `package.json`.
+- [x] **Defect 6**: Updated footer anchor address resolution to read ONLY from `AUDIT_ANCHOR_ADDRESS_TESTNET` / `AUDIT_ANCHOR_ADDRESS_MAINNET`. Unset addresses cleanly display "Audit anchor: not deployed yet" with disabled link and clear title tooltip.
+- [x] **Defect 7**: Converted wallet sign-in errors to clean floating toasts near button with dismiss `X`. Resolved responsive header layout for 1024px and 390px viewports (dedicated second row for mobile network switcher, zero horizontal overflow).
+- [x] **Defect 8**: Keyed mainnet risk notice banner dismissal per wallet (`bizflow_mainnet_risk_ack_${address.toLowerCase()}`).
+- [x] **Verification**:
+  - Playwright E2E suite (`tests-e2e/e2e-journey.spec.ts`) passing 4/4 tests against `http://localhost:3002`.
+  - Visual QA script (`scripts/capture-qa-screenshots.ts`) captured 102 screenshots across Testnet and Mainnet (1440px, 1024px, 390px) into `docs/qa/` with 0 defects.
+  - Full Vitest suite passing 34/34 suites (172/172 tests).
+  - Production build (`npm run build`) passing cleanly.
+  - Client bundle scan (`npm run scan:bundle`) verified clean with negative testing verified.

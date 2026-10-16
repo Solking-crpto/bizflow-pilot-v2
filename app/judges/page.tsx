@@ -81,7 +81,7 @@ export default async function JudgesPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono font-bold uppercase tracking-wider text-brand-teal">
-                DoraHacks Arc Microgrants
+                Tameion Agents Hackathon (Canteen x Circle x Arc)
               </span>
               <span className="text-[10px] font-mono bg-canvas px-2 py-0.5 rounded border border-border">
                 Chain ID {network.chainId}

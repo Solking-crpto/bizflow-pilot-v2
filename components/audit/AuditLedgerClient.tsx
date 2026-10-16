@@ -15,6 +15,7 @@ import {
 import { HashView } from "@/components/ui/StatusChip";
 import { truncateHash } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { apiFetch } from "@/lib/apiFetch";
 
 export interface SerializedAuditEvent {
   id: string;
@@ -43,7 +44,7 @@ export function AuditLedgerClient({
   const handleVerifyChain = async () => {
     setVerifying(true);
     try {
-      const res = await fetch("/api/audit/verify");
+      const res = await apiFetch("/api/audit/verify");
       const data = await res.json();
       setVerificationResult(data);
     } catch (err) {

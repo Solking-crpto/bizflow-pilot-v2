@@ -8,6 +8,8 @@ import { runAgentAnalysis } from "@/lib/agent/recommender";
 import { AgentDashboardClient } from "@/components/agent/AgentDashboardClient";
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 import { getServerSession, getSessionOrg, isAdminWallet } from "@/lib/auth/session";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Bot, Wallet } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,9 +22,37 @@ export const metadata: Metadata = {
 export default async function AgentPage() {
   const cookieStore = cookies();
   const networkMode = getServerActiveNetwork(cookieStore.get("bizflow_network")?.value);
-  const db = getDb(networkMode);
   const session = await getServerSession();
 
+  if (!session || !session.address) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-border">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-ink">AI Finance Agent</h1>
+            <p className="text-sm text-ink-muted mt-0.5">
+              Advisory Copilot proposing non-custodial settlements within policy and budget bounds.
+            </p>
+          </div>
+        </div>
+        <EmptyState
+          icon={Wallet}
+          title="Connect your wallet to begin"
+          description="Connect your Web3 wallet to activate the AI advisory copilot, evaluate invoice recommendations, and authorize non-custodial settlements."
+          action={{
+            label: "Explore Public Metrics",
+            href: "/metrics",
+          }}
+          secondaryAction={{
+            label: "Judge Guide",
+            href: "/judges",
+          }}
+        />
+      </div>
+    );
+  }
+
+  const db = getDb(networkMode);
   let invoices: any[] = [];
   let dbError: string | null = null;
   let runsToday = 0;

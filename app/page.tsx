@@ -21,7 +21,8 @@ import { StatusChip, HashView } from "@/components/ui/StatusChip";
 import type { Metadata } from "next";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LiveProofCard } from "@/components/common/LiveProofCard";
-import { Building2 } from "lucide-react";
+import { getServerSession } from "@/lib/auth/session";
+import { Building2, Wallet } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,38 @@ export const metadata: Metadata = {
 export default async function CommandCenterPage() {
   const cookieStore = cookies();
   const networkMode = getServerActiveNetwork(cookieStore.get(NETWORK_COOKIE_NAME)?.value);
-  const data = await getCommandCenterData(networkMode);
+  const session = await getServerSession();
+
+  // If visitor is signed out, show clean signed-out state with NO organization data
+  if (!session || !session.address) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-border">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-ink">Command Center</h1>
+            <p className="text-sm text-ink-muted mt-0.5">
+              Real-time corporate treasury overview, policy guardrails, and Arc settlement activity.
+            </p>
+          </div>
+        </div>
+        <EmptyState
+          icon={Wallet}
+          title="Connect your wallet to begin"
+          description="BizFlow Pilot V2 provides non-custodial automated accounts payable. Connect your Web3 wallet to manage corporate treasury, verify invoices, and authorize on-chain settlements on Arc."
+          action={{
+            label: "Explore Live Metrics",
+            href: "/metrics",
+          }}
+          secondaryAction={{
+            label: "Judge Guide",
+            href: "/judges",
+          }}
+        />
+      </div>
+    );
+  }
+
+  const data = await getCommandCenterData(networkMode, session.address);
   const network = getNetworkConfig(networkMode);
   const treasuryAddress = getTreasuryPublicAddress();
   const paymentProvider = getSanitizedPaymentProvider();
@@ -53,7 +85,7 @@ export default async function CommandCenterPage() {
         <EmptyState
           icon={Building2}
           title="Welcome to BizFlow Pilot V2"
-          description="Get started by connecting your Web3 wallet, setting up your business profile, and registering suppliers for verified USDC settlement on Arc."
+          description="Get started by setting up your business profile, adding verified suppliers, and automating accounts payable reconciliation on Arc."
           action={{
             label: "Onboard Business",
             href: "/onboarding",

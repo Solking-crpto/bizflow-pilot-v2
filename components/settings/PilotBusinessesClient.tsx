@@ -17,6 +17,7 @@ import {
   Layers,
   Sparkles,
 } from "lucide-react";
+import { apiFetch } from "@/lib/apiFetch";
 
 export function PilotBusinessesClient() {
   const [passcode, setPasscode] = useState("");
@@ -37,6 +38,16 @@ export function PilotBusinessesClient() {
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && showCreateModal) {
+        setShowCreateModal(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showCreateModal]);
+
   const loadOrganizations = async (adminPasscode?: string) => {
     setLoading(true);
     try {
@@ -44,7 +55,7 @@ export function PilotBusinessesClient() {
       if (adminPasscode) {
         headers["x-owner-passcode"] = adminPasscode;
       }
-      const res = await fetch(`/api/pilots?all=true`, { headers });
+      const res = await apiFetch(`/api/pilots?all=true`, { headers });
       const data = await res.json();
       if (data.success) {
         setOrgs(data.data || []);
@@ -74,7 +85,7 @@ export function PilotBusinessesClient() {
     setLoading(true);
 
     try {
-      const res = await fetch(`/api/pilots?all=true`, {
+      const res = await apiFetch(`/api/pilots?all=true`, {
         headers: { "x-owner-passcode": passcode },
       });
       const data = await res.json();
@@ -101,7 +112,7 @@ export function PilotBusinessesClient() {
     setCreateSubmitting(true);
     setCreateError("");
     try {
-      const res = await fetch("/api/pilots", {
+      const res = await apiFetch("/api/pilots", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -137,7 +148,7 @@ export function PilotBusinessesClient() {
   const handleToggleConsent = async (orgId: string, currentConsent: boolean) => {
     if (!isAuthenticated) return;
     try {
-      const res = await fetch("/api/pilots", {
+      const res = await apiFetch("/api/pilots", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -361,7 +372,7 @@ export function PilotBusinessesClient() {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/40 backdrop-blur-xs">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-xl bg-surface border border-border shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-border">
               <h3 className="font-bold text-base text-ink flex items-center gap-2">
@@ -381,7 +392,7 @@ export function PilotBusinessesClient() {
                 <label className="font-semibold text-ink block mb-1">Company / Organization Name *</label>
                 <input
                   type="text"
-                  placeholder="e.g. BuildPro Infrastructure Ltd"
+                  placeholder="e.g. Apex Global Logistics Ltd"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-border bg-canvas text-ink focus:outline-none focus:ring-1 focus:ring-brand-teal"

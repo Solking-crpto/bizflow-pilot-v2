@@ -27,6 +27,16 @@ export function FirstVisitChoiceModal({ networkMode }: { networkMode?: "testnet"
     setIsOpen(false);
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        handleDismiss();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
+
   const handleSelectNetwork = (mode: "testnet" | "mainnet") => {
     handleDismiss();
     if (mode !== network) {
@@ -37,7 +47,7 @@ export function FirstVisitChoiceModal({ networkMode }: { networkMode?: "testnet"
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-2xl bg-surface rounded-xl border border-border shadow-2xl p-6 sm:p-8 overflow-hidden">
         {/* Close Button */}
         <button

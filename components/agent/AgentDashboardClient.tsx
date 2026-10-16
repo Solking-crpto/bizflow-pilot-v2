@@ -29,6 +29,7 @@ import { useWallet } from "@/components/auth/WalletContext";
 import { NonCustodialPaymentModal } from "@/components/payments/NonCustodialPaymentModal";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { truncateHash } from "@/lib/utils";
+import { apiFetch } from "@/lib/apiFetch";
 
 export interface InvoiceAgentView {
   id: string;
@@ -88,6 +89,16 @@ export function AgentDashboardClient({
   const [adminRunError, setAdminRunError] = useState<string | null>(null);
   const [adminRunResult, setAdminRunResult] = useState<any | null>(null);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && showAdminModal) {
+        setShowAdminModal(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showAdminModal]);
+
   const selected = invoices.find((i) => i.id === selectedInvoiceId) || invoices[0];
   const rec = selected?.recommendation;
 
@@ -135,7 +146,7 @@ export function AgentDashboardClient({
     setBudgetNotice(null);
 
     try {
-      const res = await fetch("/api/agent/analyze", {
+      const res = await apiFetch("/api/agent/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
@@ -200,7 +211,7 @@ export function AgentDashboardClient({
     setAdminRunResult(null);
 
     try {
-      const res = await fetch("/api/agent/run", {
+      const res = await apiFetch("/api/agent/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -636,7 +647,7 @@ export function AgentDashboardClient({
 
       {/* Admin Autonomous Loop Runner Modal (Builder Only) */}
       {showAdminModal && (
-        <div className="fixed inset-0 bg-navy/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
           <div className="bg-surface border border-border rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2">

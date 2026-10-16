@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useWallet } from "@/components/auth/WalletContext";
 import { truncateHash } from "@/lib/utils";
+import { apiFetch } from "@/lib/apiFetch";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -61,7 +62,7 @@ export default function OnboardingPage() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch("/api/onboarding", {
+      const res = await apiFetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

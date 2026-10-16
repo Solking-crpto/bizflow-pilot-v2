@@ -21,6 +21,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useWallet } from "@/components/auth/WalletContext";
 import { NonCustodialPaymentModal } from "./NonCustodialPaymentModal";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/apiFetch";
 
 export interface PayableInvoiceItem {
   id: string;
@@ -86,7 +87,7 @@ export function PaymentDeskClient({
     setExecutionResult(null);
 
     try {
-      const res = await fetch("/api/payments/execute", {
+      const res = await apiFetch("/api/payments/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -440,8 +441,8 @@ export function PaymentDeskClient({
 
       {/* Mainnet Safety Confirmation Modal */}
       {isMainnetModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-surface border border-border p-6 shadow-modal space-y-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-md rounded-xl bg-surface border border-border p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-3 text-warning border-b border-border pb-3">
               <AlertTriangle className="w-5 h-5 text-warning" />
               <h3 className="text-sm font-bold text-ink">Arc Mainnet Settlement Confirmation</h3>

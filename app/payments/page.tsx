@@ -12,6 +12,8 @@ import { PaymentDeskClient, PayableInvoiceItem } from "@/components/payments/Pay
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
 import { getTreasuryBalances } from "@/lib/balances";
 import { getServerSession, getSessionOrg } from "@/lib/auth/session";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { CreditCard, Wallet } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Payment Desk — Idempotent Arc Settlement | BizFlow Pilot V2",
@@ -21,13 +23,42 @@ export const metadata: Metadata = {
 export default async function PaymentsPage() {
   const cookieStore = cookies();
   const networkMode = getServerActiveNetwork(cookieStore.get("bizflow_network")?.value);
+  const session = await getServerSession();
+
+  if (!session || !session.address) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-border">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-ink">Payment Desk — Idempotent Arc Settlement</h1>
+            <p className="text-sm text-ink-muted mt-0.5">
+              Execute policy-approved USDC settlements on Arc with on-chain audit anchoring.
+            </p>
+          </div>
+        </div>
+        <EmptyState
+          icon={Wallet}
+          title="Connect your wallet to begin"
+          description="BizFlow Pilot V2 is strictly non-custodial. Connect your Web3 wallet to authorize policy-compliant settlements and anchor audit receipts on Arc."
+          action={{
+            label: "Explore Public Metrics",
+            href: "/metrics",
+          }}
+          secondaryAction={{
+            label: "Judge Guide",
+            href: "/judges",
+          }}
+        />
+      </div>
+    );
+  }
+
   const networkConfig = NETWORKS[networkMode];
   const db = getDb(networkMode);
 
   const isDryRun = process.env.DRY_RUN === "true" || process.env.NEXT_PUBLIC_DRY_RUN === "true";
   const treasuryBalances = await getTreasuryBalances(networkMode);
 
-  const session = await getServerSession();
   let invoices: any[] = [];
   let dbError: string | null = null;
 

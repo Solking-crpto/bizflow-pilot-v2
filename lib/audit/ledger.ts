@@ -15,14 +15,22 @@ const GENESIS_PREV_HASH = "00000000000000000000000000000000000000000000000000000
 /**
  * Appends a tamper-evident audit event to the cryptographic hash chain
  */
-export async function recordAuditEvent(params: {
-  orgId: string;
-  eventType: string;
-  referenceId?: string;
-  eventData: Record<string, any>;
-  network?: NetworkMode;
-}): Promise<{ eventId: string; eventHash: string; prevHash: string }> {
-  const db = getDb(params.network || "mainnet");
+export async function recordAuditEvent(
+  params: {
+    orgId: string;
+    eventType: string;
+    referenceId?: string;
+    eventData: Record<string, any>;
+    network?: NetworkMode;
+  },
+  networkArg?: NetworkMode
+): Promise<{ eventId: string; eventHash: string; prevHash: string }> {
+  const targetNetwork =
+    networkArg ||
+    params.network ||
+    (process.env.TEST_NETWORK as NetworkMode) ||
+    "mainnet";
+  const db = getDb(targetNetwork);
 
   // 1. Fetch latest event in org to obtain prev_hash
   const lastEvent = await db.auditEvent.findFirst({
@@ -57,7 +65,7 @@ export async function recordAuditEvent(params: {
  */
 export async function verifyAuditChain(
   orgId: string,
-  network: NetworkMode = "mainnet"
+  network: NetworkMode = (process.env.TEST_NETWORK as NetworkMode) || "mainnet"
 ): Promise<AuditVerificationResult> {
   const db = getDb(network);
   const events = await db.auditEvent.findMany({

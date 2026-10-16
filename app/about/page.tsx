@@ -218,7 +218,7 @@ export default function AboutPage() {
             rel="noopener noreferrer"
             className="flex items-center gap-1 hover:text-brand-teal transition-colors font-medium"
           >
-            <span>DoraHacks Arc Microgrants</span>
+            <span>Tameion Agents Hackathon</span>
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>

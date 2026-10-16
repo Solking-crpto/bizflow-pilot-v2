@@ -22,8 +22,9 @@ import {
 } from "lucide-react";
 import { Logo } from "../ui/Logo";
 import { OrgSwitcher } from "./OrgSwitcher";
+import packageJson from "@/package.json";
 
-const NAV_ITEMS = [
+export const NAV_ITEMS = [
   { name: "Command Center", href: "/", icon: LayoutDashboard },
   { name: "Suppliers", href: "/suppliers", icon: Users },
   { name: "Inventory & POs", href: "/inventory", icon: Boxes },
@@ -43,7 +44,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 bg-surface border-r border-border flex flex-col h-screen sticky top-0 select-none">
+    <aside className="hidden lg:flex w-64 bg-surface border-r border-border flex-col h-screen sticky top-0 select-none shrink-0">
       {/* Brand Header & Org Switcher */}
       <div className="p-4 border-b border-border space-y-3">
         <Logo />
@@ -102,8 +103,12 @@ export function Sidebar() {
 
       {/* Footer / Trust Badge */}
       <div className="p-4 border-t border-border flex items-center justify-between text-xs text-ink-muted">
-        <span className="font-mono text-[11px]">Arc Microgrants</span>
-        <span className="text-[10px] font-mono bg-canvas px-1.5 py-0.5 rounded border border-border">v1.0.0</span>
+        <span className="font-mono text-[11px] truncate" title="BizFlow Pilot V2 · Tameion edition">
+          BizFlow Pilot V2 · Tameion edition
+        </span>
+        <span className="text-[10px] font-mono bg-canvas px-1.5 py-0.5 rounded border border-border ml-1 shrink-0">
+          v{packageJson.version}
+        </span>
       </div>
     </aside>
   );

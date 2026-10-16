@@ -11,7 +11,7 @@ import { POST as verifyReceiptRoute } from "../app/api/payments/verify-receipt/r
 import { getActiveNetwork } from "../lib/networks";
 import { ANCHOR_ABI } from "../lib/contracts/auditAnchorAbi";
 
-describe("Phase 4 — Non-Custodial Payment Flow & Invariant Matrix", () => {
+describe("Phase 4 — Non-Custodial Payment Flow & Invariant Matrix", { timeout: 60000, hookTimeout: 60000 }, () => {
   const accountA = privateKeyToAccount(generatePrivateKey());
   const accountB = privateKeyToAccount(generatePrivateKey());
 

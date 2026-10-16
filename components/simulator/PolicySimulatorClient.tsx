@@ -69,7 +69,7 @@ export function PolicySimulatorClient({
 
     vendor: {
       id: "vendor-sim",
-      name: selectedInv?.vendorName || "Dangote Cement Distribution (demo)",
+      name: selectedInv?.vendorName || "Verified Equipment & Logistics Supplier",
       status: vendorStatus,
       recordedWallet: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
       perVendorLimitUsdc: parseUsdc("15000.00"),

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { CheckCircle2, AlertTriangle, RefreshCw, Copy, Check, ExternalLink, Cpu } from "lucide-react";
 import { truncateHash } from "@/lib/utils";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface RpcVerificationWidgetProps {
   txHash: string;
@@ -27,7 +28,7 @@ export function RpcVerificationWidget({ txHash, explorerUrl }: RpcVerificationWi
     if (!txHash || !txHash.startsWith("0x")) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/audit/verify-rpc?txHash=${encodeURIComponent(txHash)}`);
+      const res = await apiFetch(`/api/audit/verify-rpc?txHash=${encodeURIComponent(txHash)}`);
       const json = await res.json();
       setData(json);
     } catch (err: any) {

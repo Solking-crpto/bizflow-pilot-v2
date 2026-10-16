@@ -47,10 +47,21 @@ export function validateApiNetwork(req: NextRequest | Request): ApiNetworkResult
   const cookieNetwork = getServerActiveNetwork(cookieVal);
 
   // 2. State-changing requests MUST send X-Bizflow-Network header matching cookie
+  // (Exempt /api/auth/* and /api/network: session proves wallet identity only)
+  let pathname = "";
+  if ("nextUrl" in req && (req as NextRequest).nextUrl) {
+    pathname = (req as NextRequest).nextUrl.pathname;
+  } else if ("url" in req && req.url) {
+    try {
+      pathname = new URL(req.url, "http://localhost").pathname;
+    } catch {}
+  }
+
+  const isExempted = pathname.startsWith("/api/auth/") || pathname === "/api/network";
   const method = req.method.toUpperCase();
   const isStateChanging = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
 
-  if (isStateChanging) {
+  if (isStateChanging && !isExempted) {
     const headerVal =
       req.headers.get(NETWORK_HEADER_NAME) ||
       req.headers.get("x-bizflow-network") ||

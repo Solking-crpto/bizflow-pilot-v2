@@ -12,6 +12,7 @@ import {
   Loader2,
   Lock,
   PlusCircle,
+  X,
 } from "lucide-react";
 import { useWallet } from "./WalletContext";
 import { truncateHash } from "@/lib/utils";
@@ -35,34 +36,58 @@ export function WalletConnectButton() {
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [actionPending, setActionPending] = useState(false);
+  const [dismissedError, setDismissedError] = useState<string | null>(null);
 
   if (isLoading) {
     return (
-      <div className="h-8 w-28 rounded-lg bg-canvas border border-border animate-pulse" />
+      <div className="h-8 w-24 sm:w-28 rounded-lg bg-canvas border border-border animate-pulse" />
     );
   }
+
+  const activeError = error && error !== dismissedError ? error : null;
+
+  // Floating Toast Notification for errors
+  const errorToast = activeError && (
+    <div className="absolute right-0 top-full mt-2 z-50 w-72 p-2.5 rounded-xl bg-surface border border-danger/40 shadow-xl text-xs text-ink flex items-start gap-2 animate-scale-in">
+      <AlertTriangle className="w-4 h-4 shrink-0 text-danger mt-0.5" />
+      <div className="flex-1 text-[11px] leading-tight">
+        <span className="font-bold text-danger block">Notice</span>
+        <span className="text-ink-muted">{activeError}</span>
+      </div>
+      <button
+        onClick={() => setDismissedError(error)}
+        className="text-ink-muted hover:text-ink text-xs p-0.5 rounded"
+        title="Dismiss notice"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
 
   // State 1: Not connected to window.ethereum
   if (!isConnected) {
     return (
-      <div className="flex flex-col items-end">
+      <div className="relative">
         <button
           onClick={async () => {
             setActionPending(true);
+            setDismissedError(null);
             await connect();
             setActionPending(false);
           }}
           disabled={actionPending}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-navy hover:bg-navy-light text-white text-xs font-semibold shadow-xs transition-colors"
+          className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-navy hover:bg-navy-light text-white text-xs font-semibold shadow-xs transition-colors shrink-0"
+          title="Connect Web3 Wallet"
         >
           {actionPending ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : (
             <Wallet className="w-3.5 h-3.5 text-brand-teal" />
           )}
-          <span>Connect Wallet</span>
+          <span className="hidden sm:inline">Connect Wallet</span>
+          <span className="inline sm:hidden">Connect</span>
         </button>
-        {error && <span className="text-[10px] text-danger mt-1 max-w-[200px] text-right truncate" title={error}>{error}</span>}
+        {errorToast}
       </div>
     );
   }
@@ -70,20 +95,23 @@ export function WalletConnectButton() {
   // State 2: Connected but on wrong network
   if (!isCorrectNetwork) {
     return (
-      <div className="flex flex-col items-end">
+      <div className="relative">
         <button
           onClick={async () => {
             setActionPending(true);
+            setDismissedError(null);
             await switchNetwork();
             setActionPending(false);
           }}
           disabled={actionPending}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold shadow-xs transition-colors animate-pulse"
+          className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold shadow-xs transition-colors animate-pulse shrink-0"
+          title={`Switch to ${activeNetwork.name}`}
         >
           <AlertTriangle className="w-3.5 h-3.5" />
-          <span>Switch to {activeNetwork.name}</span>
+          <span className="hidden sm:inline">Switch to {activeNetwork.name}</span>
+          <span className="inline sm:hidden">Switch</span>
         </button>
-        {error && <span className="text-[10px] text-danger mt-1 max-w-[200px] text-right truncate" title={error}>{error}</span>}
+        {errorToast}
       </div>
     );
   }
@@ -91,24 +119,27 @@ export function WalletConnectButton() {
   // State 3: Connected on Arc, but not yet signed-in via SIWE
   if (!isAuthenticated) {
     return (
-      <div className="flex flex-col items-end">
+      <div className="relative">
         <button
           onClick={async () => {
             setActionPending(true);
+            setDismissedError(null);
             await signIn();
             setActionPending(false);
           }}
           disabled={actionPending}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-teal hover:bg-brand-hover text-white text-xs font-semibold shadow-xs transition-colors"
+          className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-brand-teal hover:bg-brand-hover text-white text-xs font-semibold shadow-xs transition-colors shrink-0"
+          title="Sign in with SIWE"
         >
           {actionPending ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : (
             <Lock className="w-3.5 h-3.5" />
           )}
-          <span>Sign In With Wallet</span>
+          <span className="hidden sm:inline">Sign In With Wallet</span>
+          <span className="inline sm:hidden">Sign In</span>
         </button>
-        {error && <span className="text-[10px] text-danger mt-1 max-w-[200px] text-right truncate" title={error}>{error}</span>}
+        {errorToast}
       </div>
     );
   }
@@ -118,18 +149,19 @@ export function WalletConnectButton() {
     <div className="relative">
       <button
         onClick={() => setDropdownOpen(!dropdownOpen)}
-        className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-canvas hover:bg-white border border-border text-ink text-xs font-medium transition shadow-xs"
+        className="inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1.5 rounded-lg bg-canvas hover:bg-white border border-border text-ink text-xs font-medium transition shadow-xs shrink-0"
+        aria-label="Account details"
       >
-        <span className="w-2 h-2 rounded-full bg-emerald-500" />
-        <div className="flex flex-col text-left leading-tight">
-          <span className="text-[10px] text-ink-muted uppercase font-mono font-semibold">
-            {org ? org.name : "Unregistered Business"}
+        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+        <div className="flex flex-col text-left leading-tight min-w-0">
+          <span className="text-[9px] sm:text-[10px] text-ink-muted uppercase font-mono font-semibold truncate max-w-[80px] sm:max-w-[120px]">
+            {org ? org.name : "Active Wallet"}
           </span>
-          <span className="font-mono text-[11px] font-bold text-navy">
-            {truncateHash(address || "", 6, 4)}
+          <span className="font-mono text-[10px] sm:text-[11px] font-bold text-navy truncate">
+            {truncateHash(address || "", 4, 3)}
           </span>
         </div>
-        <ChevronDown className="w-3.5 h-3.5 text-ink-muted" />
+        <ChevronDown className="w-3 h-3 text-ink-muted shrink-0" />
       </button>
 
       {dropdownOpen && (

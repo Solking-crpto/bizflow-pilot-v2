@@ -10,6 +10,8 @@ import { getTreasuryPublicAddress } from "@/lib/treasury";
 import { getServerSession, getSessionOrg } from "@/lib/auth/session";
 import { SettingsClient, SerializedSettings, SerializedVendor } from "@/components/settings/SettingsClient";
 import { DatabaseErrorState } from "@/components/common/DatabaseErrorState";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Sliders, Wallet } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Rules & Settings — Governance & Security Controls | BizFlow Pilot V2",
@@ -19,28 +21,43 @@ export const metadata: Metadata = {
 export default async function SettingsPage() {
   const cookieStore = cookies();
   const networkMode = getServerActiveNetwork(cookieStore.get("bizflow_network")?.value);
-  const db = getDb(networkMode);
   const session = await getServerSession();
 
+  if (!session || !session.address) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-border">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-ink">Rules & Settings — Governance Controls</h1>
+            <p className="text-sm text-ink-muted mt-0.5">
+              Configure policy limits, corporate approval thresholds, approved vendors, and emergency halts.
+            </p>
+          </div>
+        </div>
+        <EmptyState
+          icon={Wallet}
+          title="Connect your wallet to begin"
+          description="Connect your Web3 wallet to manage corporate treasury limits, configure approval thresholds, and manage emergency kill switch controls."
+          action={{
+            label: "Explore Public Metrics",
+            href: "/metrics",
+          }}
+          secondaryAction={{
+            label: "Judge Guide",
+            href: "/judges",
+          }}
+        />
+      </div>
+    );
+  }
+
+  const db = getDb(networkMode);
   let org: any = null;
   let dbError: string | null = null;
 
   try {
-    if (session) {
-      org = await getSessionOrg(session, networkMode);
-    }
-    if (!org) {
-      org = await withDbTimeout(
-        () =>
-          db.organization.findFirst({
-            include: {
-              settings: true,
-              vendors: true,
-            },
-          })
-      );
-    } else {
-      // Fetch settings and vendors for the session org
+    org = await getSessionOrg(session, networkMode);
+    if (org) {
       const [settings, vendors] = await withDbTimeout(() =>
         Promise.all([
           db.setting.findMany({ where: { orgId: org.id } }),

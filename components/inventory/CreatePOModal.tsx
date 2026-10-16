@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { X, Boxes, Plus, Trash2, ShieldCheck, AlertCircle, Loader2 } from "lucide-react";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface CreatePOModalProps {
   isOpen: boolean;
@@ -21,9 +22,19 @@ export function CreatePOModal({ isOpen, onClose, onSuccess }: CreatePOModalProps
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
     if (!isOpen) return;
     setError(null);
-    fetch("/api/suppliers")
+    apiFetch("/api/suppliers")
       .then((r) => (r.ok ? r.json() : { suppliers: [] }))
       .then((data) => {
         setSuppliers(data.suppliers || []);
@@ -63,7 +74,7 @@ export function CreatePOModal({ isOpen, onClose, onSuccess }: CreatePOModalProps
     setIsSubmitting(true);
 
     try {
-      const res = await fetch("/api/purchase-orders", {
+      const res = await apiFetch("/api/purchase-orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -92,8 +103,8 @@ export function CreatePOModal({ isOpen, onClose, onSuccess }: CreatePOModalProps
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/40 backdrop-blur-xs">
-      <div className="relative w-full max-w-lg rounded-2xl bg-surface border border-border shadow-elevated p-6 space-y-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div className="relative w-full max-w-lg rounded-2xl bg-surface border border-border shadow-2xl p-6 space-y-4">
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-navy text-white">

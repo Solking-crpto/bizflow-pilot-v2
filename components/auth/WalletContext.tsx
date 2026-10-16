@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { getActiveNetwork, NetworkConfig } from "@/lib/networks";
 import { buildSiweMessage } from "@/lib/auth/siwe";
+import { apiFetch } from "@/lib/apiFetch";
 
 declare global {
   interface Window {
@@ -52,7 +53,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   // 1. Check existing session on mount
   const refreshSession = useCallback(async () => {
     try {
-      const res = await fetch("/api/auth/me");
+      const res = await apiFetch("/api/auth/me");
       if (res.ok) {
         const data = await res.json();
         if (data.authenticated && data.address) {
@@ -214,7 +215,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
     try {
       // A. Fetch one-time nonce
-      const nonceRes = await fetch("/api/auth/nonce");
+      const nonceRes = await apiFetch("/api/auth/nonce");
       if (!nonceRes.ok) throw new Error("Could not acquire authentication nonce");
       const { nonce } = await nonceRes.json();
 
@@ -237,7 +238,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       });
 
       // D. Verify signature on backend
-      const verifyRes = await fetch("/api/auth/verify", {
+      const verifyRes = await apiFetch("/api/auth/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -269,7 +270,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   // 6. Logout
   const logout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await apiFetch("/api/auth/logout", { method: "POST" });
     } catch {
       // Ignore network errors on logout
     }

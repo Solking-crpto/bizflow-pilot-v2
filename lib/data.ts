@@ -2,14 +2,27 @@ import { getDb, withDbTimeout } from "./db";
 import { formatUsdc, usdcAtomic } from "./money";
 import { NetworkMode } from "./networks";
 
-export async function getCommandCenterData(networkMode?: NetworkMode) {
+export async function getCommandCenterData(networkMode?: NetworkMode, walletAddressOrOrgId?: string) {
+  if (!walletAddressOrOrgId) return null;
+
   const mode = networkMode || "mainnet";
   const db = getDb(mode);
 
   try {
+    const isWallet = walletAddressOrOrgId.startsWith("0x");
+    const whereClause = isWallet
+      ? {
+          OR: [
+            { walletAddress: { equals: walletAddressOrOrgId, mode: "insensitive" as const } },
+            { members: { some: { walletAddress: { equals: walletAddressOrOrgId, mode: "insensitive" as const } } } },
+          ],
+        }
+      : { id: walletAddressOrOrgId };
+
     const org = await withDbTimeout(
       () =>
         db.organization.findFirst({
+          where: whereClause,
           include: {
             settings: true,
             invoices: {

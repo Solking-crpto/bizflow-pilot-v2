@@ -8,6 +8,7 @@ import {
   createSessionToken,
   SESSION_COOKIE_NAME,
 } from "@/lib/auth/session";
+import { verifyStatelessNonce, AUTH_NONCE_COOKIE_NAME } from "@/lib/auth/stateless-nonce";
 
 import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 
@@ -80,26 +81,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. One-time nonce validation and atomic invalidation
-    const nonceRecord = await withDbTimeout(() =>
-      db.authNonce.findUnique({
-        where: { nonce: parsed.nonce },
-      })
-    );
-
-    if (!nonceRecord || nonceRecord.expiresAt < new Date()) {
+    // 4. Stateless one-time nonce validation from HMAC-signed httpOnly cookie
+    const nonceCookie = req.cookies.get(AUTH_NONCE_COOKIE_NAME)?.value;
+    const nonceCheck = verifyStatelessNonce(parsed.nonce, nonceCookie);
+    if (!nonceCheck.valid) {
       return NextResponse.json(
-        { error: "Invalid, expired, or previously used authentication nonce" },
+        { error: nonceCheck.error || "Invalid, expired, or previously used authentication nonce" },
         { status: 401 }
       );
     }
-
-    // Delete nonce immediately to prevent any replay attempt
-    await withDbTimeout(() =>
-      db.authNonce.delete({
-        where: { nonce: parsed.nonce },
-      })
-    ).catch(() => {});
 
     // 5. Cryptographic signature verification with Viem
     const isValidSignature = await verifyMessage({
@@ -115,17 +105,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 6. Resolve tenant organization belonging to this wallet on the active network
-    const org = await withDbTimeout(() =>
-      db.organization.findFirst({
-        where: {
-          OR: [
-            { walletAddress: { equals: normalizedAddress, mode: "insensitive" } },
-            { members: { some: { walletAddress: { equals: normalizedAddress, mode: "insensitive" } } } },
-          ],
-        },
-      })
-    );
+    // 6. Resolve tenant organization belonging to this wallet on the active network (safe fallback)
+    let org: any = null;
+    try {
+      org = await withDbTimeout(() =>
+        db.organization.findFirst({
+          where: {
+            OR: [
+              { walletAddress: { equals: normalizedAddress, mode: "insensitive" } },
+              { members: { some: { walletAddress: { equals: normalizedAddress, mode: "insensitive" } } } },
+            ],
+          },
+        })
+      );
+    } catch {
+      // Organization lookup is non-fatal: user can onboard or connect without prior org
+      org = null;
+    }
 
     // 7. Create signed session token
     const sessionExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -136,7 +132,7 @@ export async function POST(req: NextRequest) {
       expiresAt: sessionExpiry,
     });
 
-    // 8. Set secure, httpOnly session cookie
+    // 8. Set secure, httpOnly session cookie and clear the single-use nonce cookie
     const response = NextResponse.json({
       success: true,
       address: normalizedAddress,
@@ -147,6 +143,15 @@ export async function POST(req: NextRequest) {
             currency: org.currency,
           }
         : null,
+    });
+
+    // Clear single-use nonce cookie
+    response.cookies.set(AUTH_NONCE_COOKIE_NAME, "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 0,
+      path: "/",
     });
 
     response.cookies.set({

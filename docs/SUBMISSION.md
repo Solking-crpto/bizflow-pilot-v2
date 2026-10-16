@@ -48,7 +48,7 @@ All transactions and contract deployments below are confirmed on live **Arc Main
 * **Zero Fake Volume Invariant**: Absolutely no hardcoded placeholder amounts, fake balances, or synthetic seeds exist in production paths. All metrics on `/metrics` are queried live from PostgreSQL rows.
 * **Public Beta (Non-Custodial)**: Opened to real small businesses. Businesses connect their own wallets via Sign-In With Ethereum (SIWE), onboard their profile, configure risk parameters, and pay their vendors with their own funds.
 * **$25 Beta Safety Ceiling**: To ensure prudent risk management during public beta, transactions are capped at 25.00 USDC per payment.
-* **Verified Pilot**: Includes benchmark pilot engagement with BuildPro Infrastructure Ltd for construction materials procurement.
+* **Verified Pilot**: Includes benchmark pilot engagement with the Builder Admin Org for procurement operations and engineering verification.
 
 ### 3.3 Circle Tool Usage (20%)
 * **Circle Developer-Controlled Wallets SDK**: Integrated via `@circle-fin/developer-controlled-wallets` to manage programmatic treasury wallets on Arc Testnet (`ARC-TESTNET`).

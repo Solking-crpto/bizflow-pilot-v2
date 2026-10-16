@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { X, Users, ShieldCheck, AlertCircle, Loader2, Clock } from "lucide-react";
 import { isAddress } from "viem";
 import { isBlocklistedWallet } from "@/lib/security/walletBlocklist";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface SupplierModalProps {
   isOpen: boolean;
@@ -28,6 +29,16 @@ export function SupplierModal({ isOpen, onClose, onSuccess, supplier }: Supplier
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,7 +61,7 @@ export function SupplierModal({ isOpen, onClose, onSuccess, supplier }: Supplier
       const url = isEditing ? `/api/suppliers/${supplier.id}` : "/api/suppliers";
       const method = isEditing ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -75,8 +86,8 @@ export function SupplierModal({ isOpen, onClose, onSuccess, supplier }: Supplier
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/40 backdrop-blur-xs">
-      <div className="relative w-full max-w-md rounded-2xl bg-surface border border-border shadow-elevated p-6 space-y-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div className="relative w-full max-w-md rounded-2xl bg-surface border border-border shadow-2xl p-6 space-y-4">
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-navy text-white">
@@ -100,7 +111,7 @@ export function SupplierModal({ isOpen, onClose, onSuccess, supplier }: Supplier
             <input
               type="text"
               required
-              placeholder="e.g. Dangote Distribution"
+              placeholder="e.g. Industrial Supplies Ltd"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-border bg-canvas focus:bg-white focus:outline-none focus:border-navy"

@@ -213,6 +213,18 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
     };
   }, [network]);
 
+  // Dismiss confirmation modal on Escape key
+  useEffect(() => {
+    if (!isConfirmingMainnet) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        cancelSwitchToMainnet();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isConfirmingMainnet, cancelSwitchToMainnet]);
+
   return (
     <NetworkContext.Provider
       value={{
@@ -232,7 +244,14 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
 
       {/* Mainnet Switch Confirmation Modal */}
       {isConfirmingMainnet && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) cancelSwitchToMainnet();
+          }}
+          role="dialog"
+          aria-modal="true"
+        >
           <div className="bg-surface border border-border rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-scale-in">
             <div className="w-12 h-12 rounded-xl bg-navy-50 text-navy flex items-center justify-center border border-navy/20">
               <span className="text-xl font-bold font-mono">!</span>

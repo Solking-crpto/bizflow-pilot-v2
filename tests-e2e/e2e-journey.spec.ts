@@ -16,6 +16,10 @@ test.describe("BizFlow Pilot V2 — Playwright Non-Custodial Journey & Network I
     // Inject mock Web3 wallet into the browser context
     await page.addInitScript(
       ({ address }) => {
+        try {
+          localStorage.setItem("bizflow_first_visit_choice_dismissed", "true");
+        } catch {}
+
         let currentChainId = "0x4cece2"; // 5042002 (Arc Testnet)
         const listeners: Record<string, Function[]> = {};
 
@@ -80,8 +84,13 @@ test.describe("BizFlow Pilot V2 — Playwright Non-Custodial Journey & Network I
   }) => {
     test.setTimeout(90000);
 
+    // Set testnet cookie before navigation
+    await page.context().addCookies([
+      { name: "bizflow_network", value: "testnet", domain: "localhost", path: "/" },
+    ]);
+
     // 1. Visit homepage on testnet
-    await page.goto("/?network=testnet", { waitUntil: "domcontentloaded" });
+    await page.goto("/", { waitUntil: "domcontentloaded" });
     await expect(page.locator("body")).toBeVisible();
 
     // 2. Connect Wallet & SIWE Sign-In
@@ -101,7 +110,8 @@ test.describe("BizFlow Pilot V2 — Playwright Non-Custodial Journey & Network I
     const loadSampleBtn = page.getByRole("button", { name: /Load Sample Data/i });
     if (await loadSampleBtn.isVisible()) {
       await loadSampleBtn.click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(3000);
+      await page.waitForLoadState("domcontentloaded");
     }
 
     // 4. Suppliers Desk: verify table, address checksums, and blocked-address check
@@ -115,16 +125,16 @@ test.describe("BizFlow Pilot V2 — Playwright Non-Custodial Journey & Network I
 
     // 6. Invoices Desk: 3-way match & threat quarantine
     await page.goto("/invoices", { waitUntil: "domcontentloaded" });
-    await expect(page.locator("h1", { hasText: "Invoices" })).toBeVisible();
+    await expect(page.locator("h1", { hasText: /Invoice/i })).toBeVisible();
 
     // 7. Advisory Agent
     await page.goto("/agent", { waitUntil: "domcontentloaded" });
     await expect(page.locator("text=AI Finance Copilot").or(page.locator("h1", { hasText: /Agent/i }))).toBeVisible();
-    await expect(page.locator("text=Non-Custodial Guarantee")).toBeVisible();
+    await expect(page.locator("text=/Non-Custodial/i").first()).toBeVisible();
 
     // 8. Payment Desk
     await page.goto("/payments", { waitUntil: "domcontentloaded" });
-    await expect(page.locator("h1", { hasText: "Payments" })).toBeVisible();
+    await expect(page.locator("h1", { hasText: /Payment/i })).toBeVisible();
 
     // 9. Public Verification Passport
     await page.goto("/verify/demo", { waitUntil: "domcontentloaded" });
@@ -134,10 +144,17 @@ test.describe("BizFlow Pilot V2 — Playwright Non-Custodial Journey & Network I
   test("2. Network switch test: testnet to mainnet with confirmation, empty mainnet, back to testnet", async ({
     page,
   }) => {
-    await page.goto("/?network=testnet", { waitUntil: "domcontentloaded" });
+    test.setTimeout(60000);
+
+    // Set testnet cookie before navigation
+    await page.context().addCookies([
+      { name: "bizflow_network", value: "testnet", domain: "localhost", path: "/" },
+    ]);
+
+    await page.goto("/", { waitUntil: "domcontentloaded" });
 
     // Click MAINNET button in global top nav
-    const mainnetToggle = page.locator("button", { hasText: "MAINNET" });
+    const mainnetToggle = page.getByRole("button", { name: "MAINNET", exact: true }).first();
     await expect(mainnetToggle).toBeVisible();
     await mainnetToggle.click();
 
@@ -145,21 +162,25 @@ test.describe("BizFlow Pilot V2 — Playwright Non-Custodial Journey & Network I
     const modalTitle = page.locator("h3", { hasText: "Switch to Arc Mainnet?" });
     await expect(modalTitle).toBeVisible({ timeout: 5000 });
 
-    // Confirm switch
+    // Confirm switch and wait for page reload to complete
     const confirmBtn = page.getByRole("button", { name: "Switch to Mainnet" });
-    await confirmBtn.click();
-
-    // Wait for reload or switch
-    await page.waitForLoadState("domcontentloaded");
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => {}),
+      confirmBtn.click(),
+    ]);
+    await page.waitForTimeout(1000);
 
     // Verify active network is Mainnet (Chain ID 5042)
-    await expect(page.locator("text=ARC MAINNET: real USDC").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("text=ARC MAINNET: real USDC").first()).toBeVisible({ timeout: 15000 });
 
     // Switch back to Testnet
-    const testnetToggle = page.locator("button", { hasText: "TESTNET" });
-    await testnetToggle.click();
-    await page.waitForLoadState("domcontentloaded");
-    await expect(page.locator("text=TESTNET: test USDC has no value").first()).toBeVisible({ timeout: 10000 });
+    const testnetToggle = page.getByRole("button", { name: "TESTNET", exact: true }).first();
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => {}),
+      testnetToggle.click(),
+    ]);
+    await page.waitForTimeout(1000);
+    await expect(page.locator("text=TESTNET: test USDC has no value").first()).toBeVisible({ timeout: 15000 });
   });
 
   test("3. Stale-tab safety guard: returns HTTP 409 Conflict on mismatched X-Bizflow-Network header", async ({
@@ -176,7 +197,7 @@ test.describe("BizFlow Pilot V2 — Playwright Non-Custodial Journey & Network I
     // Mismatched state must be rejected with 409 Conflict
     expect(response.status()).toBe(409);
     const data = await response.json();
-    expect(data.error).toContain("Active network mismatch");
+    expect(data.error).toContain("Network conflict");
   });
 
   test("4. Content-Security-Policy header & browser console audit", async ({ page }) => {

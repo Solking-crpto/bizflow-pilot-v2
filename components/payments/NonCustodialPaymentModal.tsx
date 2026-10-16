@@ -18,6 +18,7 @@ import { createPublicClient, createWalletClient, custom, http, erc20Abi, formatU
 import { useWallet } from "@/components/auth/WalletContext";
 import { ANCHOR_ABI } from "@/lib/contracts/auditAnchorAbi";
 import { sha256Bytes32 } from "@/lib/crypto";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface NonCustodialPaymentModalProps {
   isOpen: boolean;
@@ -57,6 +58,16 @@ export function NonCustodialPaymentModal({
   const [confirmedPayment, setConfirmedPayment] = useState<any>(null);
   const [isPaymentConfirmed, setIsPaymentConfirmed] = useState<boolean>(false);
 
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [isOpen, onClose]);
+
   // Initialize and create intent when modal opens
   useEffect(() => {
     if (!isOpen || !invoiceId) return;
@@ -72,7 +83,7 @@ export function NonCustodialPaymentModal({
 
     async function initIntent() {
       try {
-        const res = await fetch("/api/payments/intent", {
+        const res = await apiFetch("/api/payments/intent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoiceId }),
@@ -176,7 +187,7 @@ export function NonCustodialPaymentModal({
       setStep("VERIFYING_RECEIPT");
 
       // 3. Post to verify-receipt
-      const verifyRes = await fetch("/api/payments/verify-receipt", {
+      const verifyRes = await apiFetch("/api/payments/verify-receipt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -236,7 +247,7 @@ export function NonCustodialPaymentModal({
         await publicClient.waitForTransactionReceipt({ hash: aHash });
 
         // Record anchor on server
-        await fetch("/api/payments/anchor-receipt", {
+        await apiFetch("/api/payments/anchor-receipt", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -249,7 +260,7 @@ export function NonCustodialPaymentModal({
         setStep("ANCHORED");
       } else {
         // Deterministic server anchor
-        const aRes = await fetch("/api/payments/anchor-receipt", {
+        const aRes = await apiFetch("/api/payments/anchor-receipt", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -268,7 +279,7 @@ export function NonCustodialPaymentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-dark/60 backdrop-blur-xs">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div className="bg-surface border border-border rounded-xl shadow-2xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="px-5 py-4 border-b border-border flex items-center justify-between bg-canvas/40">

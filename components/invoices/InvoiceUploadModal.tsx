@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Sparkles,
 } from "lucide-react";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface InvoiceUploadModalProps {
   isOpen: boolean;
@@ -38,14 +39,24 @@ export function InvoiceUploadModal({ isOpen, onClose, onSuccess }: InvoiceUpload
   const [resultNotice, setResultNotice] = useState<string | null>(null);
 
   useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
     if (!isOpen) return;
     setLoadingLookups(true);
     setError(null);
     setResultNotice(null);
 
     Promise.all([
-      fetch("/api/suppliers").then((r) => (r.ok ? r.json() : { suppliers: [] })),
-      fetch("/api/purchase-orders").then((r) => (r.ok ? r.json() : { purchaseOrders: [] })),
+      apiFetch("/api/suppliers").then((r) => (r.ok ? r.json() : { suppliers: [] })),
+      apiFetch("/api/purchase-orders").then((r) => (r.ok ? r.json() : { purchaseOrders: [] })),
     ])
       .then(([supData, poData]) => {
         setSuppliers(supData.suppliers || []);
@@ -115,7 +126,7 @@ export function InvoiceUploadModal({ isOpen, onClose, onSuccess }: InvoiceUpload
         payload.rawText = rawText;
       }
 
-      const res = await fetch("/api/invoices", {
+      const res = await apiFetch("/api/invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -148,8 +159,8 @@ export function InvoiceUploadModal({ isOpen, onClose, onSuccess }: InvoiceUpload
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/40 backdrop-blur-xs">
-      <div className="relative w-full max-w-lg rounded-2xl bg-surface border border-border shadow-elevated p-6 space-y-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div className="relative w-full max-w-lg rounded-2xl bg-surface border border-border shadow-2xl p-6 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2">

@@ -5,6 +5,7 @@ import { AlertTriangle, Droplets, Database, ExternalLink, Check, Copy, ChevronDo
 import { useWallet } from "@/components/auth/WalletContext";
 import { getWalletAddChainParams, ARC_DOCS_URLS } from "@/lib/networks";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/apiFetch";
 
 export function TestnetExtrasPanel() {
   const { address, isAuthenticated, activeNetwork, signIn } = useWallet();
@@ -46,11 +47,10 @@ export function TestnetExtrasPanel() {
     setSampleMessage(null);
 
     try {
-      const res = await fetch("/api/sample-data", {
+      const res = await apiFetch("/api/sample-data", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Bizflow-Network": "testnet",
         },
       });
       const data = await res.json();

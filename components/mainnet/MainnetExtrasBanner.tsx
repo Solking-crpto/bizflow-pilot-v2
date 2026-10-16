@@ -15,12 +15,15 @@ export function MainnetExtrasBanner() {
   useEffect(() => {
     if (!isMainnet) return;
     try {
-      const dismissed = localStorage.getItem("bizflow_mainnet_risk_ack");
-      if (!dismissed) {
-        setIsRiskDismissed(false);
-      }
-    } catch {}
-  }, [isMainnet]);
+      const storageKey = address
+        ? `bizflow_mainnet_risk_ack_${address.toLowerCase()}`
+        : "bizflow_mainnet_risk_ack_anonymous";
+      const dismissed = localStorage.getItem(storageKey);
+      setIsRiskDismissed(Boolean(dismissed));
+    } catch {
+      setIsRiskDismissed(false);
+    }
+  }, [isMainnet, address]);
 
   // Read wallet USDC balance on Arc Mainnet if connected
   useEffect(() => {
@@ -54,7 +57,10 @@ export function MainnetExtrasBanner() {
 
   const handleDismissRisk = () => {
     try {
-      localStorage.setItem("bizflow_mainnet_risk_ack", "true");
+      const storageKey = address
+        ? `bizflow_mainnet_risk_ack_${address.toLowerCase()}`
+        : "bizflow_mainnet_risk_ack_anonymous";
+      localStorage.setItem(storageKey, "true");
     } catch {}
     setIsRiskDismissed(true);
   };

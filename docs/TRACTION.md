@@ -62,7 +62,7 @@ Auditors and hackathon judges can query live platform statistics at any time:
 
 | Business Name | Operating Sector | Operational Mode | Public Consent | Verification Link |
 |---|---|---|---|---|
-| **BuildPro Infrastructure Ltd** | Civil Engineering & Construction Logistics | Builder-Operated Benchmark | **Granted** (`publicConsent: true`) | [Operational Proof](/verify/inv-mainnet-101) |
+| **Builder Admin Org** | Procurement & Logistics Benchmark | Builder-Operated Benchmark | **Granted** (`publicConsent: true`) | [Operational Proof](/verify/mainnet/inv-mainnet-101) |
 | *Public Beta Orgs (Self-Service)* | Diverse SMEs (Logistics, SaaS, Services) | Non-Custodial (Self-Signed) | Managed per Org Settings | Live Database Scoped |
 
 ---

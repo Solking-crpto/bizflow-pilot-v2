@@ -29,8 +29,28 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Public view lists ONLY organizations where publicConsent=true
-    const whereClause: any = isAuthorizedAdmin && showAll ? {} : { publicConsent: true };
+    const isPublicDirectory = searchParams.get("public") === "true";
+
+    // Signed-out visitors calling without public=true get NO organization data
+    if (!session && !isPublicDirectory && !(showAll && isAuthorizedAdmin)) {
+      return NextResponse.json({ success: true, data: [] });
+    }
+
+    let whereClause: any;
+    if (isAuthorizedAdmin && showAll) {
+      whereClause = {};
+    } else if (isPublicDirectory) {
+      whereClause = { publicConsent: true };
+    } else if (session?.address) {
+      whereClause = {
+        OR: [
+          { walletAddress: { equals: session.address, mode: "insensitive" } },
+          { members: { some: { walletAddress: { equals: session.address, mode: "insensitive" } } } },
+        ],
+      };
+    } else {
+      whereClause = { id: "__none__" };
+    }
 
     const orgs = await withDbTimeout(() =>
       db.organization.findMany({

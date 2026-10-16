@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { Building2, ChevronDown, Check, Plus } from "lucide-react";
 import Link from "next/link";
+import { useWallet } from "@/components/auth/WalletContext";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface OrgSummary {
   id: string;
@@ -11,17 +13,26 @@ interface OrgSummary {
 }
 
 export function OrgSwitcher() {
+  const { isAuthenticated, address } = useWallet();
   const [orgs, setOrgs] = useState<OrgSummary[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState<string>("");
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isAuthenticated || !address) {
+      setOrgs([]);
+      setSelectedOrgId("");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     // Read active org from document.cookie
     const match = document.cookie.match(/selected_org_id=([^;]+)/);
     const initialOrgId = match ? decodeURIComponent(match[1]) : "";
 
-    fetch("/api/pilots")
+    apiFetch("/api/pilots")
       .then((res) => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data) && data.data.length > 0) {
@@ -38,11 +49,15 @@ export function OrgSwitcher() {
             setSelectedOrgId(list[0].id);
             document.cookie = `selected_org_id=${list[0].id}; path=/; max-age=31536000; SameSite=Lax`;
           }
+        } else {
+          setOrgs([]);
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        setOrgs([]);
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [isAuthenticated, address]);
 
   const handleSelectOrg = (orgId: string) => {
     setSelectedOrgId(orgId);
@@ -54,12 +69,36 @@ export function OrgSwitcher() {
 
   const currentOrg = orgs.find((o) => o.id === selectedOrgId) || orgs[0];
 
-  if (loading || orgs.length === 0) {
+  if (!isAuthenticated) {
     return (
       <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border text-xs text-ink-muted">
-        <Building2 className="w-3.5 h-3.5 text-brand-teal" />
-        <span className="truncate">Default Org</span>
+        <Building2 className="w-3.5 h-3.5 text-ink-muted shrink-0" />
+        <span className="truncate">Connect wallet to view org</span>
       </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border text-xs text-ink-muted">
+        <Building2 className="w-3.5 h-3.5 text-brand-teal animate-pulse shrink-0" />
+        <span className="truncate">Loading organizations...</span>
+      </div>
+    );
+  }
+
+  if (orgs.length === 0) {
+    return (
+      <Link
+        href="/onboarding"
+        className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-surface hover:bg-canvas border border-dashed border-border text-xs font-medium text-ink transition-colors"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <Building2 className="w-3.5 h-3.5 text-brand-teal shrink-0" />
+          <span className="truncate text-ink-muted">Create Organization</span>
+        </div>
+        <Plus className="w-3.5 h-3.5 text-brand-teal shrink-0" />
+      </Link>
     );
   }
 

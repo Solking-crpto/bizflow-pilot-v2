@@ -25,6 +25,7 @@ import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { HashView } from "@/components/ui/StatusChip";
 import { truncateHash } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { apiFetch } from "@/lib/apiFetch";
 
 export interface DecisionRecord {
   id: string;
@@ -101,7 +102,7 @@ export function AgentDecisionsClient({
     setActionError(null);
 
     try {
-      const res = await fetch("/api/agent/decisions", {
+      const res = await apiFetch("/api/agent/decisions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -116,7 +117,7 @@ export function AgentDecisionsClient({
         setActionError(data.error || "Action failed.");
       } else {
         // Refresh decisions list and metrics
-        const refRes = await fetch("/api/agent/decisions");
+        const refRes = await apiFetch("/api/agent/decisions");
         if (refRes.ok) {
           const refData = await refRes.json();
           setDecisions(refData.decisions);

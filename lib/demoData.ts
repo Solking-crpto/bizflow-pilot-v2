@@ -6,8 +6,8 @@ const defaultVendorWallet = getSeededVendorWallet(
 );
 
 export const DEMO_ORG = {
-  id: "org-buildpro-01",
-  name: "BuildPro Infrastructure Ltd",
+  id: "org-apex-01",
+  name: "Apex Logistics Ltd",
   currency: "USDC",
 };
 
@@ -35,9 +35,9 @@ export const DEMO_ITEMS = [
 
 export const DEMO_VENDORS = [
   {
-    id: "vendor-dangote-01",
-    orgId: "org-buildpro-01",
-    name: "Northgate Cement Supply (demo vendor)",
+    id: "vendor-acme-01",
+    orgId: "org-apex-01",
+    name: "Acme Industrial Supply",
     walletAddress: defaultVendorWallet,
     status: "active",
     perVendorLimitUsdc: 15000000000n,

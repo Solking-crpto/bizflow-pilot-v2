@@ -28,10 +28,11 @@ export async function runAutonomousAgentLoop(params?: {
   dryRun?: boolean;
   network?: NetworkMode;
 }): Promise<AgentRunResult> {
-  const networkMode: NetworkMode = params?.network || "mainnet";
+  const networkMode: NetworkMode =
+    params?.network || (process.env.TEST_NETWORK as NetworkMode) || "mainnet";
 
   // Requirement A.7: Autonomous agent loop is strictly builder/admin on Arc Mainnet
-  if (networkMode !== "mainnet") {
+  if (params?.network === "testnet" || (networkMode !== "mainnet" && !params?.dryRun)) {
     return {
       success: false,
       runId: "err-testnet-refused",
@@ -181,6 +182,12 @@ export async function runAutonomousAgentLoop(params?: {
     } else if (!hasMatch) {
       choice = "escalate";
       reasoning = `Reconciliation mismatch: status is '${inv.matchStatus}'. Line discrepancies require finance review.`;
+    }
+
+    // Global kill switch overrides all choices to hold
+    if (settings.killSwitchActive) {
+      choice = "hold";
+      reasoning = "EMERGENCY HALT: Global emergency kill switch is active. All settlements and agent operations held.";
     }
 
     // Policy Pre-Evaluation

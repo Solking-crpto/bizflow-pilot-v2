@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { HashView } from "@/components/ui/StatusChip";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
+import { apiFetch } from "@/lib/apiFetch";
 
 export interface SerializedVendor {
   id: string;
@@ -76,7 +77,7 @@ export function SettingsClient({
     const nextState = !killSwitchActive;
 
     try {
-      const res = await fetch("/api/settings", {
+      const res = await apiFetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ killSwitchActive: nextState, passcode: passcode.trim() || undefined }),
@@ -104,7 +105,7 @@ export function SettingsClient({
     setErrorMessage(null);
 
     try {
-      const res = await fetch("/api/settings", {
+      const res = await apiFetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

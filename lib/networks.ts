@@ -141,9 +141,9 @@ export const NETWORKS: Record<NetworkMode, NetworkConfig> = {
     usdcAddress:
       (process.env.ARC_MAINNET_USDC_ADDRESS as `0x${string}`) || DEFAULT_USDC_ADDRESS,
     anchorAddress:
-      (process.env.AUDIT_ANCHOR_ADDRESS_MAINNET ||
-        process.env.NEXT_PUBLIC_AUDIT_ANCHOR_ADDRESS ||
-        process.env.AUDIT_ANCHOR_ADDRESS) as `0x${string}` | undefined,
+      process.env.AUDIT_ANCHOR_ADDRESS_MAINNET && process.env.AUDIT_ANCHOR_ADDRESS_MAINNET.startsWith("0x")
+        ? (process.env.AUDIT_ANCHOR_ADDRESS_MAINNET as `0x${string}`)
+        : undefined,
     maxPaymentUsdc: process.env.APP_MAX_PAYMENT_USDC || "25.00",
     isTestnet: false,
     chain: arcMainnetChain,
@@ -165,7 +165,9 @@ export const NETWORKS: Record<NetworkMode, NetworkConfig> = {
     usdcAddress:
       (process.env.ARC_TESTNET_USDC_ADDRESS as `0x${string}`) || DEFAULT_USDC_ADDRESS,
     anchorAddress:
-      (process.env.AUDIT_ANCHOR_ADDRESS_TESTNET) as `0x${string}` | undefined,
+      process.env.AUDIT_ANCHOR_ADDRESS_TESTNET && process.env.AUDIT_ANCHOR_ADDRESS_TESTNET.startsWith("0x")
+        ? (process.env.AUDIT_ANCHOR_ADDRESS_TESTNET as `0x${string}`)
+        : undefined,
     faucetUrl: "https://faucet.circle.com",
     maxPaymentUsdc: process.env.APP_MAX_PAYMENT_USDC_TESTNET || "100.00",
     isTestnet: true,

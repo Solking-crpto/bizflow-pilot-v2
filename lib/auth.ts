@@ -17,8 +17,8 @@ export const DEFAULT_ANONYMOUS_SESSION: UserSession = {
   email: null,
   walletAddress: null,
   role: "owner",
-  orgId: "public-beta",
-  orgName: "Public Beta Organization",
+  orgId: "",
+  orgName: "",
 };
 
 /**
@@ -39,29 +39,17 @@ export async function getCurrentSession(): Promise<UserSession> {
           orgName: org.name,
         };
       }
-    }
-
-    const cookieStore = cookies();
-    const networkMode = getServerActiveNetwork(cookieStore.get("bizflow_network")?.value);
-    const db = getDb(networkMode);
-
-    const org = await db.organization.findFirst({
-      include: { members: true },
-    });
-
-    if (org && org.members.length > 0) {
-      const member = org.members[0];
       return {
-        id: member.id,
-        email: member.email || null,
-        walletAddress: member.walletAddress || org.walletAddress || null,
-        role: (member.role as any) || "owner",
-        orgId: org.id,
-        orgName: org.name,
+        id: session.address,
+        email: null,
+        walletAddress: session.address,
+        role: "owner",
+        orgId: "",
+        orgName: "Unregistered Business",
       };
     }
   } catch (err) {
-    // Fallback if DB query fails
+    // Non-fatal session retrieval error
   }
 
   return DEFAULT_ANONYMOUS_SESSION;
