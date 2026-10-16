@@ -9,6 +9,7 @@ import React, {
   useRef,
 } from "react";
 import { getActiveNetwork, NetworkConfig } from "@/lib/networks";
+import { useNetwork } from "@/components/network/NetworkContext";
 import { buildSiweMessage } from "@/lib/auth/siwe";
 import { apiFetch } from "@/lib/apiFetch";
 import {
@@ -63,7 +64,7 @@ interface WalletContextType {
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const activeNetwork = getActiveNetwork();
+  const { config: activeNetwork } = useNetwork();
   const [address, setAddress] = useState<string | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -156,6 +157,19 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     },
     []
   );
+
+  // Auto-initialize provider and chainId from window.ethereum if already present
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.ethereum) {
+      window.ethereum
+        .request({ method: "eth_chainId" })
+        .then((hex: string) => {
+          if (hex) setChainId(parseInt(hex, 16));
+        })
+        .catch(() => {});
+      attachProviderListeners(window.ethereum);
+    }
+  }, [attachProviderListeners]);
 
   // 3. Connect With Explicit Provider (Zero awaits before eth_requestAccounts!)
   const connectWithProvider = useCallback(

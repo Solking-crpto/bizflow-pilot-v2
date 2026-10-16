@@ -244,7 +244,7 @@ export function getWalletAddChainParams(mode: NetworkMode): AddEthereumChainPara
   const isMainnet = mode === "mainnet";
   const cfg = NETWORKS[mode];
   return {
-    chainId: isMainnet ? "0x13B2" : "0x4CECE2", // 5042 or 5042002
+    chainId: isMainnet ? "0x13B2" : "0x4CEF52", // 5042 or 5042002
     chainName: cfg.name,
     nativeCurrency: {
       name: "USDC",

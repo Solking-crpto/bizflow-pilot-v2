@@ -175,7 +175,7 @@ export function TestnetExtrasPanel() {
                 </div>
                 <div className="flex justify-between py-0.5 border-b border-border/50">
                   <span className="text-ink-muted">Chain ID:</span>
-                  <span>5042002 (0x4CECE2)</span>
+                  <span>5042002 ({chainParams.chainId})</span>
                 </div>
                 <div className="flex justify-between py-0.5 border-b border-border/50">
                   <span className="text-ink-muted">Currency:</span>

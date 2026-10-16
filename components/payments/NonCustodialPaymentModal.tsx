@@ -21,6 +21,7 @@ import { ANCHOR_ABI } from "@/lib/contracts/auditAnchorAbi";
 import { sha256Bytes32 } from "@/lib/crypto";
 import { apiFetch } from "@/lib/apiFetch";
 import { ARC_DOCS_URLS, ARC_GAS_CONFIG } from "@/lib/networks";
+import { bigintMax } from "@/lib/bigint";
 
 interface NonCustodialPaymentModalProps {
   isOpen: boolean;
@@ -46,7 +47,7 @@ export function NonCustodialPaymentModal({
   onClose,
   onSuccess,
 }: NonCustodialPaymentModalProps) {
-  const { address, isConnected, isCorrectNetwork, switchNetwork, connect, activeNetwork, selectedProvider } = useWallet();
+  const { address, isConnected, isCorrectNetwork, switchNetwork, connect, activeNetwork, selectedProvider, chainId } = useWallet();
   const walletProvider = selectedProvider || (typeof window !== "undefined" ? window.ethereum : null);
 
   const [step, setStep] = useState<PaymentStep>("CREATING_INTENT");
@@ -193,8 +194,8 @@ export function NonCustodialPaymentModal({
 
       try {
         const fees = await publicClient.estimateFeesPerGas();
-        if (fees?.maxFeePerGas && fees.maxFeePerGas > maxFeePerGas) {
-          maxFeePerGas = fees.maxFeePerGas;
+        if (fees?.maxFeePerGas) {
+          maxFeePerGas = bigintMax(fees.maxFeePerGas, ARC_GAS_CONFIG.MIN_MAX_FEE_PER_GAS_WEI);
         }
         if (fees?.maxPriorityFeePerGas) {
           maxPriorityFeePerGas = fees.maxPriorityFeePerGas;
@@ -285,8 +286,8 @@ export function NonCustodialPaymentModal({
 
         try {
           const fees = await publicClient.estimateFeesPerGas();
-          if (fees?.maxFeePerGas && fees.maxFeePerGas > maxFeePerGas) {
-            maxFeePerGas = fees.maxFeePerGas;
+          if (fees?.maxFeePerGas) {
+            maxFeePerGas = bigintMax(fees.maxFeePerGas, ARC_GAS_CONFIG.MIN_MAX_FEE_PER_GAS_WEI);
           }
           if (fees?.maxPriorityFeePerGas) {
             maxPriorityFeePerGas = fees.maxPriorityFeePerGas;

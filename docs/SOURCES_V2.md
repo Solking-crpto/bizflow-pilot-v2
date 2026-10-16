@@ -14,7 +14,7 @@
 ### Arc EVM Architecture Specifications
 - **Chain Identifiers**:
   - Arc Mainnet: `5042` (`0x13B2`)
-  - Arc Testnet: `5042002` (`0x4CECE2`)
+  - Arc Testnet: `5042002` (`0x4CEF52`)
 - **Native Gas Token**: USDC
   - For standard EVM gas accounting and `eth_getBalance`, USDC is represented with **18 decimals** (native gas asset).
   - For standard ERC-20 token interactions, USDC uses the system contract at address `0x3600000000000000000000000000000000000000` with **6 decimals**.
@@ -108,7 +108,7 @@
 - **Reference**: [https://docs.arc.io/arc/references/connect-to-arc](https://docs.arc.io/arc/references/connect-to-arc)
 - **Chain Parameters**:
   - Mainnet: Chain ID `5042` (`0x13B2`), Chain Name `"Arc"`, `nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 }`.
-  - Testnet: Chain ID `5042002` (`0x4CECE2`), Chain Name `"Arc Testnet"`, `nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 }`.
+  - Testnet: Chain ID `5042002` (`0x4CEF52`), Chain Name `"Arc Testnet"`, `nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 }`.
   - **Decimals Notice**: Arc's `wallet_addEthereumChain` explicitly specifies **18 decimals** for native USDC gas accounting.
 
 ### Gas & Fee Specifications (20 Gwei Floor)

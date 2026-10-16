@@ -425,10 +425,12 @@ export function PaymentDeskClient({
               <NonCustodialPaymentModal
                 isOpen={isNonCustodialModalOpen}
                 invoiceId={selected.id}
-                onClose={() => setIsNonCustodialModalOpen(false)}
+                onClose={() => {
+                  setIsNonCustodialModalOpen(false);
+                  router.refresh();
+                }}
                 onSuccess={(payment) => {
                   setExecutionResult(payment);
-                  setIsNonCustodialModalOpen(false);
                   router.refresh();
                 }}
               />

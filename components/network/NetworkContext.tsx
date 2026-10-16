@@ -80,7 +80,7 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
       // Offer to switch chain in wallet if window.ethereum is connected
       if (typeof window !== "undefined" && (window as any).ethereum) {
         const ethereum = (window as any).ethereum;
-        const targetChainIdHex = mode === "mainnet" ? "0x13B2" : "0x4CECE2"; // 5042 or 5042002
+        const targetChainIdHex = mode === "mainnet" ? "0x13B2" : "0x4CEF52"; // 5042 or 5042002
         try {
           await ethereum.request({
             method: "wallet_switchEthereumChain",
