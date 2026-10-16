@@ -19,6 +19,7 @@ const ROUTES = [
   "/agent/decisions",
   "/pilots",
   "/settings/pilots",
+  "/guide",
 ];
 
 const API_ROUTES = [

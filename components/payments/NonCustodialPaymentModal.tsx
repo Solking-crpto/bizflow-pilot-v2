@@ -13,12 +13,14 @@ import {
   ArrowRight,
   Anchor,
   FileCheck,
+  Droplets,
 } from "lucide-react";
 import { createPublicClient, createWalletClient, custom, http, erc20Abi, formatUnits } from "viem";
 import { useWallet } from "@/components/auth/WalletContext";
 import { ANCHOR_ABI } from "@/lib/contracts/auditAnchorAbi";
 import { sha256Bytes32 } from "@/lib/crypto";
 import { apiFetch } from "@/lib/apiFetch";
+import { ARC_DOCS_URLS } from "@/lib/networks";
 
 interface NonCustodialPaymentModalProps {
   isOpen: boolean;
@@ -103,7 +105,7 @@ export function NonCustodialPaymentModal({
         setPolicyData(data.policy);
         setStep("READY");
 
-        // Check USDC Balance if wallet connected
+        // Check USDC Balance and Gas if wallet connected
         if (address && window.ethereum) {
           try {
             const publicClient = createPublicClient({
@@ -111,16 +113,22 @@ export function NonCustodialPaymentModal({
               transport: custom(window.ethereum),
             });
 
-            const bal = await publicClient.readContract({
-              address: data.intent.tokenAddress as `0x${string}`,
-              abi: erc20Abi,
-              functionName: "balanceOf",
-              args: [address as `0x${string}`],
-            });
+            const [bal, gasBal] = await Promise.all([
+              publicClient.readContract({
+                address: data.intent.tokenAddress as `0x${string}`,
+                abi: erc20Abi,
+                functionName: "balanceOf",
+                args: [address as `0x${string}`],
+              }).catch(() => 0n),
+              publicClient.getBalance({
+                address: address as `0x${string}`,
+              }).catch(() => 0n),
+            ]);
 
-            const formattedBal = formatUnits(bal, 6);
+            const formattedBal = formatUnits(bal as bigint, 6);
             setUsdcBalance(formattedBal);
-            setHasSufficientBalance(bal >= BigInt(data.intent.amountAtomic));
+            const hasFunds = (bal as bigint) >= BigInt(data.intent.amountAtomic) && (gasBal as bigint) > 0n;
+            setHasSufficientBalance(hasFunds);
           } catch {
             // Balance read error ignored
           }
@@ -400,14 +408,52 @@ export function NonCustodialPaymentModal({
                   </button>
                 </div>
               ) : !hasSufficientBalance ? (
-                <div className="p-3 rounded-lg bg-danger-light border border-danger-border space-y-1 text-xs text-danger">
+                <div className="p-3.5 rounded-lg bg-danger-light border border-danger-border space-y-2 text-xs text-danger">
                   <div className="font-bold flex items-center gap-1.5">
-                    <AlertTriangle className="w-4 h-4" /> Insufficient USDC Balance
+                    <AlertTriangle className="w-4 h-4" /> Insufficient USDC Balance or Gas
                   </div>
                   <div>
                     Your wallet holds {usdcBalance || "0"} USDC, but this settlement requires{" "}
-                    {intentData.amountFormatted}.
+                    {intentData.amountFormatted} (plus a fraction of a cent for Arc gas).
                   </div>
+
+                  {activeNetwork.mode === "testnet" ? (
+                    <div className="pt-1">
+                      <a
+                        href={activeNetwork.faucetUrl || "https://faucet.circle.com"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition-colors shadow-2xs"
+                      >
+                        <Droplets className="w-3.5 h-3.5" />
+                        <span>Get free test USDC</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="pt-1 flex flex-wrap items-center gap-2 text-xs">
+                      <a
+                        href={ARC_DOCS_URLS.getUsdcMainnet}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-navy font-semibold hover:underline"
+                      >
+                        <span>You need USDC on Arc</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                      <span className="text-ink-muted">•</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          switchNetwork();
+                        }}
+                        className="text-amber-800 font-semibold hover:underline cursor-pointer"
+                      >
+                        Try testnet first
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : null}
 

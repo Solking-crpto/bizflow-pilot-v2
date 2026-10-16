@@ -2,9 +2,9 @@
   "network": "Arc Mainnet",
   "chainId": 5042,
   "contract": "AuditAnchor",
-  "address": "0xf277e351656699c2a0e1a0d9e4ecb5e786916ba9",
+  "address": "0x272f6ce4188a2493601d92053993703c52718210",
   "deployer": "0x061F5c70D68A246b654724C0f9595F3a14cF9b0B",
-  "txHash": "0x7b4ac165671ec1a765c236d2d9c12cc9f9b9b594edb17d22bfd70b13bd8e38b4",
-  "blockNumber": 25993840,
-  "deployedAt": "2026-10-14T22:34:06.050Z"
+  "txHash": "0x0db40e58fe76971ad4e5259450845496372f6d8ee82b72a26c994e0dfb67872f",
+  "blockNumber": 26241632,
+  "deployedAt": "2026-10-16T09:34:38.143Z"
 }

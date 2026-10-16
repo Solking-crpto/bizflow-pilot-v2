@@ -64,6 +64,10 @@ export function Footer({ networkMode }: FooterProps) {
             Beta Limit: 25.00 USDC max / payment
           </span>
           <span>•</span>
+          <Link href="/guide" className="hover:text-navy transition-colors underline font-medium">
+            User Guide
+          </Link>
+          <span>•</span>
           <Link href="/terms" className="hover:text-navy transition-colors underline">
             Terms
           </Link>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { Sparkles, X, ArrowRight, ShieldCheck, AlertTriangle } from "lucide-react";
 import { useNetwork } from "@/components/network/NetworkContext";
 
@@ -154,6 +155,18 @@ export function FirstVisitChoiceModal({ networkMode }: { networkMode?: "testnet"
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
+        </div>
+
+        {/* Quick User Guide Link */}
+        <div className="mt-5 pt-3 border-t border-border/80 text-center">
+          <Link
+            href="/guide"
+            onClick={handleDismiss}
+            className="text-xs text-navy hover:text-brand-teal font-medium underline inline-flex items-center gap-1"
+          >
+            <span>Read the 2-minute guide</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
         </div>
       </div>
     </div>

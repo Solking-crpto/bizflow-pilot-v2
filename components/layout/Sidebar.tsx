@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   Building2,
   Users,
+  BookOpen,
 } from "lucide-react";
 import { Logo } from "../ui/Logo";
 import { OrgSwitcher } from "./OrgSwitcher";
@@ -36,6 +37,7 @@ export const NAV_ITEMS = [
   { name: "Policy Simulator", href: "/simulator", icon: SlidersHorizontal },
   { name: "Pilot Businesses", href: "/pilots", icon: Building2 },
   { name: "Rules & Settings", href: "/settings", icon: Settings },
+  { name: "User Guide", href: "/guide", icon: BookOpen },
   { name: "Judge Guide", href: "/judges", icon: Award },
   { name: "About & Trust Model", href: "/about", icon: HelpCircle },
 ];

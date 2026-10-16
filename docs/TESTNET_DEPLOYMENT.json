@@ -1,0 +1,9 @@
+{
+  "network": "testnet",
+  "chainId": 5042002,
+  "address": "0x2b18fe9d3a63710da242092571744520ea8effe0",
+  "deployer": "0x061F5c70D68A246b654724C0f9595F3a14cF9b0B",
+  "txHash": "0x1b6e23e544981c7369e12e5e5bf562279ee215f3c73308732bf7d327b86aae64",
+  "blockNumber": 67478586,
+  "deployedAt": "2026-10-16T09:33:42.231Z"
+}

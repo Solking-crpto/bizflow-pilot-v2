@@ -16,6 +16,7 @@ import { SupplierModal } from "./SupplierModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { HashView } from "@/components/ui/StatusChip";
 import { getActiveNetwork } from "@/lib/networks";
+import { ZeroBalanceNotice } from "@/components/common/ZeroBalanceNotice";
 
 export interface SerializedSupplier {
   id: string;
@@ -53,6 +54,8 @@ export function SupplierDeskClient({ suppliers }: { suppliers: SerializedSupplie
           <span>Add Supplier</span>
         </button>
       </div>
+
+      <ZeroBalanceNotice />
 
       <SupplierModal
         isOpen={isModalOpen}

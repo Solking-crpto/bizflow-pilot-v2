@@ -29,6 +29,7 @@ const PAGES = [
   { path: "/terms", name: "terms" },
   { path: "/privacy", name: "privacy" },
   { path: "/risk", name: "risk" },
+  { path: "/guide", name: "guide" },
 ];
 
 const NETWORKS = ["testnet", "mainnet"] as const;

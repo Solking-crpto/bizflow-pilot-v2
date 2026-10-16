@@ -18,6 +18,7 @@ export interface EmptyStateProps {
     href?: string;
     onClick?: () => void;
   };
+  showGuideLink?: boolean;
   className?: string;
 }
 
@@ -28,6 +29,7 @@ export function EmptyState({
   badge,
   action,
   secondaryAction,
+  showGuideLink = true,
   className = "",
 }: EmptyStateProps) {
   const ActionIcon = action?.icon || Plus;
@@ -90,6 +92,18 @@ export function EmptyState({
                 <span>{secondaryAction.label}</span>
               </button>
             ))}
+        </div>
+      )}
+
+      {showGuideLink && (
+        <div className="mt-6 pt-4 border-t border-border/60 text-center w-full">
+          <Link
+            href="/guide"
+            className="text-xs text-navy hover:text-brand-teal font-medium underline inline-flex items-center gap-1"
+          >
+            <span>Read the 2-minute user guide</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
         </div>
       )}
     </div>

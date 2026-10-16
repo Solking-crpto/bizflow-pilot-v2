@@ -22,6 +22,7 @@ import { useWallet } from "@/components/auth/WalletContext";
 import { NonCustodialPaymentModal } from "./NonCustodialPaymentModal";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/apiFetch";
+import { ZeroBalanceNotice } from "@/components/common/ZeroBalanceNotice";
 
 export interface PayableInvoiceItem {
   id: string;
@@ -150,6 +151,8 @@ export function PaymentDeskClient({
           </div>
         )}
       </div>
+
+      <ZeroBalanceNotice />
 
       {/* Non-Custodial Architecture Notice */}
       <div className="p-3 rounded-lg bg-surface border border-border text-xs text-ink flex items-center justify-between gap-2 shadow-2xs">

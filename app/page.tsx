@@ -21,6 +21,7 @@ import { StatusChip, HashView } from "@/components/ui/StatusChip";
 import type { Metadata } from "next";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LiveProofCard } from "@/components/common/LiveProofCard";
+import { ZeroBalanceNotice } from "@/components/common/ZeroBalanceNotice";
 import { getServerSession } from "@/lib/auth/session";
 import { Building2, Wallet } from "lucide-react";
 
@@ -129,6 +130,9 @@ export default async function CommandCenterPage() {
         </div>
       </div>
 
+      {/* Connected Wallet Zero Balance Notice */}
+      <ZeroBalanceNotice />
+
       {/* Live Proof Card (Real On-Chain Settlement) */}
       <LiveProofCard payment={latestConfirmedPayment} explorerUrl={network.explorerUrl} />
 
@@ -210,6 +214,18 @@ export default async function CommandCenterPage() {
                   <span>Arc RPC Live</span>
                 </div>
                 <span className="font-mono text-ink-muted">Gas: {treasuryBalances.gasFormatted}</span>
+              </div>
+            )}
+            {networkMode === "testnet" && network.faucetUrl && treasuryBalances.usdcAtomicValue === 0n && (
+              <div className="mt-2 pt-1.5 border-t border-border/60">
+                <a
+                  href={network.faucetUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] font-semibold text-amber-700 hover:text-amber-800 underline inline-flex items-center gap-1"
+                >
+                  <span>Get free test USDC &rarr;</span>
+                </a>
               </div>
             )}
           </div>

@@ -80,3 +80,56 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+/**
+ * GET /api/agent/run
+ * Vercel Cron sends GET requests. Requires CRON_SECRET bearer token.
+ * Runs in mainnet-only admin mode. Returns 401 when unauthorized or when CRON_SECRET is unset.
+ */
+export async function GET(req: NextRequest) {
+  try {
+    const cronSecret = process.env.CRON_SECRET?.trim();
+    if (!cronSecret) {
+      return NextResponse.json(
+        { error: "Unauthorized: CRON_SECRET is not configured on the server." },
+        { status: 401 }
+      );
+    }
+
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json(
+        { error: "Unauthorized: Missing Bearer token in Authorization header." },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.slice(7).trim();
+    if (token !== cronSecret) {
+      return NextResponse.json(
+        { error: "Unauthorized: Invalid CRON_SECRET bearer token." },
+        { status: 401 }
+      );
+    }
+
+    // Runs mainnet-only admin mode
+    const dryRun = process.env.DRY_RUN === "true";
+    const result = await runAutonomousAgentLoop({
+      dryRun,
+      network: "mainnet",
+    });
+
+    return NextResponse.json({
+      success: true,
+      network: "mainnet",
+      mode: "cron",
+      result,
+    });
+  } catch (err: any) {
+    console.error("Cron agent run error:", err);
+    return NextResponse.json(
+      { error: err.message || "Failed to execute cron agent loop" },
+      { status: 500 }
+    );
+  }
+}
