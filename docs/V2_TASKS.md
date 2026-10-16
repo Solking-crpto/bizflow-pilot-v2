@@ -232,3 +232,43 @@ Status: COMPLETED
   - Full Vitest suite passing 34/34 suites (172/172 tests).
   - Production build (`npm run build`) passing cleanly.
   - Client bundle scan (`npm run scan:bundle`) verified clean with negative testing verified.
+
+---
+
+## Section H — EIP-6963 Multi-Wallet Discovery, Arc Endpoints & Gas Guardrails (16 Oct 2026)
+Status: COMPLETED
+- [x] **1. Wallet Connect & EIP-6963 Discovery**:
+  - [x] Implemented standard EIP-6963 discovery (`lib/auth/eip6963.ts`): listens for `eip6963:announceProvider`, dispatches `eip6963:requestProvider`.
+  - [x] Sorted MetaMask to top of discovered wallets list; persisted wallet choice in `localStorage`.
+  - [x] Created `WalletPickerModal.tsx` listing all announced wallets when >1 wallet detected, with "Install MetaMask" fallback link.
+  - [x] Enforced synchronous `eth_requestAccounts` execution inside user click handler with zero prior `await` to prevent Chrome user activation suppression.
+  - [x] Hard rule: zero calls to `wallet_switchEthereumChain` or `wallet_addEthereumChain` before accounts are granted.
+  - [x] Error mapping: `4001` -> "You closed or declined the request in your wallet. Try again.", `-32002` -> "A request is already open. Open your wallet extension and approve it.", missing wallet -> "Install MetaMask".
+  - [x] Added "Connecting... check your wallet extension" card with a working Cancel button.
+  - [x] Displayed detected wallet names in About page via `<DetectedWallets />`.
+  - [x] Created `tests/eip6963-wallet.test.ts` testing two mock providers: one rejecting (4001) and one pending (-32002).
+- [x] **2. Arc Network Endpoints & RPC Resilience**:
+  - [x] Updated `lib/networks.ts` and `.env.example` per official Arc documentation (`https://docs.arc.io/arc/references/rpc-endpoints` & `connect-to-arc`):
+    - Testnet RPC: `https://rpc.testnet.arc.io` (replacing dead `rpc.testnet.arc.network`).
+    - Mainnet RPC: `https://rpc.mainnet.arc.io` (anonymous, open CORS).
+    - Explorers: `https://explorer.arc.io` (mainnet) and `https://explorer.testnet.arc.io` (testnet).
+    - `wallet_addEthereumChain` parameters: exact from Connect to Arc page, with **18 decimals** explicitly specified for native USDC currency.
+  - [x] Added `withRpcRetry()` with exponential backoff for Arc load balancer lag error code `-32014`.
+  - [x] Added server-side fallback RPC lists across official node providers (Blockdaemon, dRPC, QuickNode).
+  - [x] Created `tests/rpc-resilience.test.ts` verifying -32014 backoff retry and non-lag pass-through.
+- [x] **3. Receipt Verification (Dual Log Disambiguation)**:
+  - [x] Implemented `lib/payment/receipt-verifier.ts` (`verifyArcTransferReceiptLogs`):
+    - Disambiguates Arc USDC dual emitters: ERC-20 contract (`0x3600000000000000000000000000000000000000`, 6 decimals) and system emitter (`0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE`, 18 decimals).
+    - Filters strictly by emitter address; never matches `topic[0]` alone.
+    - Requires exactly 1 matching ERC-20 log.
+    - Cross-checks 18-decimal system emitter log without double-counting.
+  - [x] Integrated into `app/api/payments/verify-receipt/route.ts`.
+  - [x] Created `tests/receipt-dual-log-verification.test.ts` testing all 5 cases: only ERC-20 log, both logs, wrong emitter, wrong amount, wrong recipient.
+- [x] **4. Fee Floor & Gas Guard**:
+  - [x] Configured `ARC_GAS_CONFIG` with `MIN_MAX_FEE_PER_GAS_WEI = 20_000_000_000n` (20 Gwei floor per `https://docs.arc.io/arc/references/gas-and-fees`).
+  - [x] Enforced 20 Gwei `maxFeePerGas` floor in `NonCustodialPaymentModal.tsx` for transfer and anchor proof transactions.
+  - [x] Added gas balance validation for Arc native USDC gas with informative warnings.
+  - [x] Added clear error guidance when gas is too low.
+- [x] **5. Client Bundle Safety Scanner**:
+  - [x] Updated allow-list in `scripts/scan-client-bundle.ts` with documented open-source mathematical curve constants from `@noble/curves` (secp256k1 isogeny map coefficients) and viem.
+  - [x] Bundle scanner test `tests/client-bundle-safety.test.ts` passing 3/3 tests, including negative leak injection test.

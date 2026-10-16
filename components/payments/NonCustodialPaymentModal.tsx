@@ -20,7 +20,7 @@ import { useWallet } from "@/components/auth/WalletContext";
 import { ANCHOR_ABI } from "@/lib/contracts/auditAnchorAbi";
 import { sha256Bytes32 } from "@/lib/crypto";
 import { apiFetch } from "@/lib/apiFetch";
-import { ARC_DOCS_URLS } from "@/lib/networks";
+import { ARC_DOCS_URLS, ARC_GAS_CONFIG } from "@/lib/networks";
 
 interface NonCustodialPaymentModalProps {
   isOpen: boolean;
@@ -46,7 +46,8 @@ export function NonCustodialPaymentModal({
   onClose,
   onSuccess,
 }: NonCustodialPaymentModalProps) {
-  const { address, isConnected, isCorrectNetwork, switchNetwork, connect, activeNetwork } = useWallet();
+  const { address, isConnected, isCorrectNetwork, switchNetwork, connect, activeNetwork, selectedProvider } = useWallet();
+  const walletProvider = selectedProvider || (typeof window !== "undefined" ? window.ethereum : null);
 
   const [step, setStep] = useState<PaymentStep>("CREATING_INTENT");
   const [intentData, setIntentData] = useState<any>(null);
@@ -106,11 +107,11 @@ export function NonCustodialPaymentModal({
         setStep("READY");
 
         // Check USDC Balance and Gas if wallet connected
-        if (address && window.ethereum) {
+        if (address && walletProvider) {
           try {
             const publicClient = createPublicClient({
               chain: activeNetwork.chain,
-              transport: custom(window.ethereum),
+              transport: custom(walletProvider),
             });
 
             const [bal, gasBal] = await Promise.all([
@@ -127,8 +128,19 @@ export function NonCustodialPaymentModal({
 
             const formattedBal = formatUnits(bal as bigint, 6);
             setUsdcBalance(formattedBal);
-            const hasFunds = (bal as bigint) >= BigInt(data.intent.amountAtomic) && (gasBal as bigint) > 0n;
-            setHasSufficientBalance(hasFunds);
+
+            // Arc requires USDC for gas. Minimum viable gas: 20 Gwei floor * 100k gas = 0.002 USDC (18 decimals)
+            const minGasRequired = ARC_GAS_CONFIG.MIN_MAX_FEE_PER_GAS_WEI * 100_000n;
+            const hasGas = (gasBal as bigint) >= minGasRequired;
+            const hasUsdc = (bal as bigint) >= BigInt(data.intent.amountAtomic);
+
+            setHasSufficientBalance(hasUsdc && hasGas);
+
+            if (!hasGas && hasUsdc) {
+              setErrorMessage(
+                `Insufficient gas balance: Arc uses USDC as the native gas token with a 20 Gwei minimum fee floor. Your gas balance is ${formatUnits(gasBal as bigint, 18)} USDC. Please fund your wallet with USDC for gas.`
+              );
+            }
           } catch {
             // Balance read error ignored
           }
@@ -145,12 +157,12 @@ export function NonCustodialPaymentModal({
     return () => {
       isMounted = false;
     };
-  }, [isOpen, invoiceId, address, activeNetwork]);
+  }, [isOpen, invoiceId, address, activeNetwork, walletProvider]);
 
   if (!isOpen) return null;
 
   const handleSignPayment = async () => {
-    if (!intentData || !window.ethereum || !address) return;
+    if (!intentData || !walletProvider || !address) return;
 
     try {
       if (!isCorrectNetwork) {
@@ -166,21 +178,40 @@ export function NonCustodialPaymentModal({
 
       const walletClient = createWalletClient({
         chain: activeNetwork.chain,
-        transport: custom(window.ethereum),
+        transport: custom(walletProvider),
       });
 
       const publicClient = createPublicClient({
         chain: activeNetwork.chain,
-        transport: custom(window.ethereum),
+        transport: custom(walletProvider),
       });
 
-      // 1. Send ERC-20 transfer
+      // Gas floor guard: Ensure maxFeePerGas meets Arc's 20 Gwei floor
+      // Reference: https://docs.arc.io/arc/references/gas-and-fees
+      let maxFeePerGas = ARC_GAS_CONFIG.MIN_MAX_FEE_PER_GAS_WEI;
+      let maxPriorityFeePerGas = ARC_GAS_CONFIG.DEFAULT_PRIORITY_FEE_WEI;
+
+      try {
+        const fees = await publicClient.estimateFeesPerGas();
+        if (fees?.maxFeePerGas && fees.maxFeePerGas > maxFeePerGas) {
+          maxFeePerGas = fees.maxFeePerGas;
+        }
+        if (fees?.maxPriorityFeePerGas) {
+          maxPriorityFeePerGas = fees.maxPriorityFeePerGas;
+        }
+      } catch {
+        // Fallback to official 20 Gwei floor
+      }
+
+      // 1. Send ERC-20 transfer with explicit fee floor
       const hash = await walletClient.writeContract({
         address: intentData.tokenAddress as `0x${string}`,
         abi: erc20Abi,
         functionName: "transfer",
         args: [intentData.recipientAddress as `0x${string}`, BigInt(intentData.amountAtomic)],
         account: address as `0x${string}`,
+        maxFeePerGas,
+        maxPriorityFeePerGas,
       });
 
       setTxHash(hash);
@@ -216,8 +247,13 @@ export function NonCustodialPaymentModal({
       onSuccess(verifyData.payment);
     } catch (err: any) {
       setStep("ERROR");
-      if (err.message?.includes("User rejected") || err.message?.includes("denied")) {
-        setErrorMessage("Transaction signing was rejected by user.");
+      const errStr = String(err.message || "").toLowerCase();
+      if (errStr.includes("underpriced") || errStr.includes("lower than the 20 gwei") || errStr.includes("intrinsic gas too low")) {
+        setErrorMessage(
+          "Gas fee too low: Arc mempool enforces a 20 Gwei maxFeePerGas floor. Increase gas fee in your wallet to at least 20 Gwei and resubmit."
+        );
+      } else if (errStr.includes("user rejected") || errStr.includes("denied") || err.code === 4001) {
+        setErrorMessage("You closed or declined the request in your wallet. Try again.");
       } else {
         setErrorMessage(err.message || "Payment execution failed");
       }
@@ -225,7 +261,7 @@ export function NonCustodialPaymentModal({
   };
 
   const handleAnchorProof = async () => {
-    if (!confirmedPayment || !window.ethereum || !address) return;
+    if (!confirmedPayment || !walletProvider || !address) return;
     const anchorAddress = activeNetwork.anchorAddress || (process.env.NEXT_PUBLIC_AUDIT_ANCHOR_ADDRESS as `0x${string}`);
 
     setStep("ANCHORING");
@@ -233,16 +269,31 @@ export function NonCustodialPaymentModal({
       if (anchorAddress && anchorAddress.startsWith("0x")) {
         const walletClient = createWalletClient({
           chain: activeNetwork.chain,
-          transport: custom(window.ethereum),
+          transport: custom(walletProvider),
         });
 
         const publicClient = createPublicClient({
           chain: activeNetwork.chain,
-          transport: custom(window.ethereum),
+          transport: custom(walletProvider),
         });
 
         const invoiceHashBytes32 = sha256Bytes32(intentData.invoiceNumber || invoiceId);
         const ledgerRootBytes32 = sha256Bytes32(confirmedPayment.txHash || invoiceId);
+
+        let maxFeePerGas = ARC_GAS_CONFIG.MIN_MAX_FEE_PER_GAS_WEI;
+        let maxPriorityFeePerGas = ARC_GAS_CONFIG.DEFAULT_PRIORITY_FEE_WEI;
+
+        try {
+          const fees = await publicClient.estimateFeesPerGas();
+          if (fees?.maxFeePerGas && fees.maxFeePerGas > maxFeePerGas) {
+            maxFeePerGas = fees.maxFeePerGas;
+          }
+          if (fees?.maxPriorityFeePerGas) {
+            maxPriorityFeePerGas = fees.maxPriorityFeePerGas;
+          }
+        } catch {
+          // Fallback to 20 Gwei floor
+        }
 
         const aHash = await walletClient.writeContract({
           address: anchorAddress,
@@ -250,6 +301,8 @@ export function NonCustodialPaymentModal({
           functionName: "anchorProof",
           args: [invoiceHashBytes32, ledgerRootBytes32],
           account: address as `0x${string}`,
+          maxFeePerGas,
+          maxPriorityFeePerGas,
         });
 
         await publicClient.waitForTransactionReceipt({ hash: aHash });

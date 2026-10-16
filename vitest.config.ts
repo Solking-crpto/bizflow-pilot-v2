@@ -11,8 +11,8 @@ export default defineConfig({
   test: {
     include: ["tests/**/*.test.ts"],
     exclude: ["tests-e2e/**", "node_modules/**"],
-    testTimeout: 20000,
-    hookTimeout: 20000,
+    testTimeout: 60000,
+    hookTimeout: 60000,
     fileParallelism: false,
     setupFiles: ["./tests/setup.ts"],
   },

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { getDb } from "../lib/db";
+import { getDb, withDbTimeout } from "../lib/db";
 import { recordAuditEvent, verifyAuditChain } from "../lib/audit/ledger";
 
 const prisma = getDb("testnet");
@@ -8,12 +8,14 @@ describe("lib/audit - Cryptographic Hash Chain & Tamper Detection", () => {
   const testOrgId = "org-test-audit-01";
 
   beforeEach(async () => {
-    await prisma.auditEvent.deleteMany({ where: { orgId: testOrgId } });
-    await prisma.organization.upsert({
-      where: { id: testOrgId },
-      update: {},
-      create: { id: testOrgId, name: "Audit Test Org" },
-    });
+    await withDbTimeout(() => prisma.auditEvent.deleteMany({ where: { orgId: testOrgId } }));
+    await withDbTimeout(() =>
+      prisma.organization.upsert({
+        where: { id: testOrgId },
+        update: {},
+        create: { id: testOrgId, name: "Audit Test Org" },
+      })
+    );
   });
 
   it("builds a cryptographically linked hash chain across multiple events", async () => {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createPublicClient, http, parseEventLogs, erc20Abi } from "viem";
+import { createPublicClient, http } from "viem";
 import { withDbTimeout } from "@/lib/db";
 import { validateApiNetwork } from "@/lib/api-guard";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
@@ -8,6 +8,8 @@ import { getSessionFromRequest, getSessionOrg } from "@/lib/auth/session";
 import { getNetworkConfig } from "@/lib/networks";
 import { recordAuditEvent } from "@/lib/audit/ledger";
 import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
+import { verifyArcTransferReceiptLogs } from "@/lib/payment/receipt-verifier";
+import { withRpcRetry } from "@/lib/rpc/client";
 
 export const dynamic = "force-dynamic";
 
@@ -117,9 +119,11 @@ export async function POST(req: NextRequest) {
 
     let receipt: any;
     try {
-      receipt = await publicClient.getTransactionReceipt({
-        hash: normalizedTxHash as `0x${string}`,
-      });
+      receipt = await withRpcRetry(() =>
+        publicClient.getTransactionReceipt({
+          hash: normalizedTxHash as `0x${string}`,
+        })
+      );
     } catch (rpcErr: any) {
       return NextResponse.json(
         { error: `Could not fetch transaction receipt from Arc RPC: ${rpcErr.message}` },
@@ -150,52 +154,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 6. Verify Transfer event in logs
-    let matchingTransferFound = false;
-    try {
-      const transferLogs = parseEventLogs({
-        abi: erc20Abi,
-        logs: receipt.logs,
-        eventName: "Transfer",
-      });
+    // 6. Verify Transfer event in logs with Arc dual-emitter disambiguation
+    const verification = verifyArcTransferReceiptLogs({
+      logs: receipt.logs,
+      payerAddress: intent.payerAddress,
+      recipientAddress: intent.recipientAddress,
+      expectedAmountAtomic6: intent.amountAtomic,
+      expectedErc20Address: networkConfig.usdcAddress,
+    });
 
-      for (const log of transferLogs) {
-        const isCorrectToken = log.address.toLowerCase() === networkConfig.usdcAddress.toLowerCase();
-        const isPayer = log.args.from.toLowerCase() === intent.payerAddress.toLowerCase();
-        const isRecipient = log.args.to.toLowerCase() === intent.recipientAddress.toLowerCase();
-        const isCorrectAmount = log.args.value === intent.amountAtomic;
-
-        if (isCorrectToken && isPayer && isRecipient && isCorrectAmount) {
-          matchingTransferFound = true;
-          break;
-        }
-      }
-    } catch {
-      // Fallback manual topics parsing if parseEventLogs encounters custom log structures
-      const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
-      const expectedPayerTopic = `0x000000000000000000000000${intent.payerAddress.toLowerCase().replace("0x", "")}`;
-      const expectedRecipientTopic = `0x000000000000000000000000${intent.recipientAddress.toLowerCase().replace("0x", "")}`;
-
-      for (const log of receipt.logs) {
-        if (
-          log.address.toLowerCase() === networkConfig.usdcAddress.toLowerCase() &&
-          log.topics[0]?.toLowerCase() === TRANSFER_TOPIC.toLowerCase() &&
-          log.topics[1]?.toLowerCase() === expectedPayerTopic &&
-          log.topics[2]?.toLowerCase() === expectedRecipientTopic
-        ) {
-          const val = BigInt(log.data);
-          if (val === intent.amountAtomic) {
-            matchingTransferFound = true;
-            break;
-          }
-        }
-      }
-    }
-
-    if (!matchingTransferFound) {
+    if (!verification.valid) {
       return NextResponse.json(
         {
           error:
+            verification.error ||
             "Receipt verification failed: No matching USDC Transfer event found matching payer, recipient, and atomic amount.",
         },
         { status: 400 }

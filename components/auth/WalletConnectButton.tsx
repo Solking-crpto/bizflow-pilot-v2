@@ -13,9 +13,12 @@ import {
   Lock,
   PlusCircle,
   X,
+  ExternalLink,
 } from "lucide-react";
 import { useWallet } from "./WalletContext";
+import { WalletPickerModal } from "./WalletPickerModal";
 import { truncateHash } from "@/lib/utils";
+import { EIP6963ProviderDetail } from "@/lib/auth/eip6963";
 
 export function WalletConnectButton() {
   const {
@@ -27,14 +30,18 @@ export function WalletConnectButton() {
     org,
     isAdmin,
     isLoading,
+    isConnecting,
     error,
-    connect,
+    discoveredWallets,
+    connectWithProvider,
+    cancelConnecting,
     signIn,
     logout,
     switchNetwork,
   } = useWallet();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [actionPending, setActionPending] = useState(false);
   const [dismissedError, setDismissedError] = useState<string | null>(null);
 
@@ -48,11 +55,26 @@ export function WalletConnectButton() {
 
   // Floating Toast Notification for errors
   const errorToast = activeError && (
-    <div className="absolute right-0 top-full mt-2 z-50 w-72 p-2.5 rounded-xl bg-surface border border-danger/40 shadow-xl text-xs text-ink flex items-start gap-2 animate-scale-in">
+    <div className="absolute right-0 top-full mt-2 z-50 w-80 p-3 rounded-xl bg-surface border border-danger/40 shadow-xl text-xs text-ink flex items-start gap-2 animate-scale-in">
       <AlertTriangle className="w-4 h-4 shrink-0 text-danger mt-0.5" />
-      <div className="flex-1 text-[11px] leading-tight">
-        <span className="font-bold text-danger block">Notice</span>
-        <span className="text-ink-muted">{activeError}</span>
+      <div className="flex-1 text-[11px] leading-tight space-y-1">
+        <span className="font-bold text-danger block">Wallet Notice</span>
+        {activeError.includes("Install MetaMask") ? (
+          <div className="space-y-1.5">
+            <p className="text-ink-muted">No Web3 wallet detected in your browser.</p>
+            <a
+              href="https://metamask.io/download/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-semibold text-navy hover:underline"
+            >
+              <span>Install MetaMask</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        ) : (
+          <span className="text-ink-muted">{activeError}</span>
+        )}
       </div>
       <button
         onClick={() => setDismissedError(error)}
@@ -64,22 +86,82 @@ export function WalletConnectButton() {
     </div>
   );
 
-  // State 1: Not connected to window.ethereum
+  // Connecting State Overlay / Card with Cancel button
+  const connectingBanner = isConnecting && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/40 backdrop-blur-xs animate-fade-in">
+      <div className="relative w-full max-w-sm rounded-2xl bg-surface border border-border shadow-elevated p-5 text-center space-y-4 animate-scale-in">
+        <div className="mx-auto w-12 h-12 rounded-full bg-brand-light flex items-center justify-center text-brand-teal">
+          <Loader2 className="w-6 h-6 animate-spin" />
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-sm font-bold text-ink">Connecting... check your wallet extension</h3>
+          <p className="text-xs text-ink-muted leading-relaxed">
+            Please open your wallet extension to approve the connection request.
+          </p>
+        </div>
+        <button
+          onClick={cancelConnecting}
+          className="w-full py-2 px-3 rounded-lg border border-border bg-canvas hover:bg-white text-ink text-xs font-semibold transition"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+
+  // Direct Click Handler for connecting
+  const handleConnectClick = () => {
+    setDismissedError(null);
+
+    // If multiple wallets discovered, open wallet picker so user can pick
+    if (discoveredWallets.length > 1) {
+      setPickerOpen(true);
+      return;
+    }
+
+    // If exactly 1 wallet discovered, call eth_requestAccounts directly inside click handler!
+    if (discoveredWallets.length === 1) {
+      const singleWallet = discoveredWallets[0];
+      const accountsPromise = singleWallet.provider.request({
+        method: "eth_requestAccounts",
+      });
+      connectWithProvider(singleWallet, accountsPromise);
+      return;
+    }
+
+    // Fallback: window.ethereum
+    if (typeof window !== "undefined" && window.ethereum) {
+      const accountsPromise = window.ethereum.request({
+        method: "eth_requestAccounts",
+      });
+      const fallbackDetail: EIP6963ProviderDetail = {
+        info: {
+          uuid: "window.ethereum",
+          name: "Browser Wallet",
+          icon: "",
+          rdns: "window.ethereum",
+        },
+        provider: window.ethereum,
+      };
+      connectWithProvider(fallbackDetail, accountsPromise);
+      return;
+    }
+
+    // No wallet installed
+    setPickerOpen(true);
+  };
+
+  // State 1: Not connected to wallet
   if (!isConnected) {
     return (
       <div className="relative">
         <button
-          onClick={async () => {
-            setActionPending(true);
-            setDismissedError(null);
-            await connect();
-            setActionPending(false);
-          }}
-          disabled={actionPending}
+          onClick={handleConnectClick}
+          disabled={isConnecting}
           className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-navy hover:bg-navy-light text-white text-xs font-semibold shadow-xs transition-colors shrink-0"
           title="Connect Web3 Wallet"
         >
-          {actionPending ? (
+          {isConnecting ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : (
             <Wallet className="w-3.5 h-3.5 text-brand-teal" />
@@ -88,6 +170,16 @@ export function WalletConnectButton() {
           <span className="inline sm:hidden">Connect</span>
         </button>
         {errorToast}
+        {connectingBanner}
+        <WalletPickerModal
+          isOpen={pickerOpen}
+          wallets={discoveredWallets}
+          onClose={() => setPickerOpen(false)}
+          onSelectWallet={(wallet, preInitiatedPromise) => {
+            setPickerOpen(false);
+            connectWithProvider(wallet, preInitiatedPromise);
+          }}
+        />
       </div>
     );
   }

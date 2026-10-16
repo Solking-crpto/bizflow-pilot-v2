@@ -1,9 +1,9 @@
 {
   "network": "testnet",
   "chainId": 5042002,
-  "address": "0x2b18fe9d3a63710da242092571744520ea8effe0",
+  "address": "0x648e6220bc2d91358c82e7675274c080dcec005d",
   "deployer": "0x061F5c70D68A246b654724C0f9595F3a14cF9b0B",
-  "txHash": "0x1b6e23e544981c7369e12e5e5bf562279ee215f3c73308732bf7d327b86aae64",
-  "blockNumber": 67478586,
-  "deployedAt": "2026-10-16T09:33:42.231Z"
+  "txHash": "0x7e6f167b538d689e21c380c4709e9989b767fe34662d16e925eb9e550518228f",
+  "blockNumber": 67487889,
+  "deployedAt": "2026-10-16T10:53:55.679Z"
 }

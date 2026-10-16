@@ -14,6 +14,7 @@ import {
   Boxes,
   CheckCircle2,
 } from "lucide-react";
+import { DetectedWallets } from "@/components/about/DetectedWallets";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -189,6 +190,9 @@ export default function AboutPage() {
           </div>
         </div>
       </div>
+
+      {/* Detected Wallets (EIP-6963 Discovery) */}
+      <DetectedWallets />
 
       {/* External Resources & Hackathon Citations */}
       <div className="p-5 rounded-xl border border-border bg-canvas space-y-3 text-xs">

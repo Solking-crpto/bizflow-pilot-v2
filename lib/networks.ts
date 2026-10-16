@@ -49,20 +49,47 @@ export interface AddEthereumChainParameter {
 }
 
 export const ARC_DOCS_URLS = {
-  networkInfo: "https://docs.arc.network",
-  getUsdcMainnet: "https://docs.arc.network",
+  networkInfo: "https://docs.arc.io/arc-chain",
+  rpcEndpoints: "https://docs.arc.io/arc/references/rpc-endpoints",
+  connectToArc: "https://docs.arc.io/arc/references/connect-to-arc",
+  gasAndFees: "https://docs.arc.io/arc/references/gas-and-fees",
+  evmDifferences: "https://docs.arc.io/arc/references/evm-differences",
+  getUsdcMainnet: "https://docs.arc.io/arc/references/connect-to-arc",
   testnetFaucet: "https://faucet.circle.com",
-  addArcWallet: "https://docs.arc.network",
+  addArcWallet: "https://docs.arc.io/arc/references/connect-to-arc",
 };
+
+// Official Arc mempool gas floor and fee settings
+// Reference: https://docs.arc.io/arc/references/gas-and-fees
+export const ARC_GAS_CONFIG = {
+  MIN_MAX_FEE_PER_GAS_GWEI: 20n,
+  MIN_MAX_FEE_PER_GAS_WEI: 20_000_000_000n, // 20 Gwei floor per Arc mempool rules
+  DEFAULT_PRIORITY_FEE_WEI: 1_000_000_000n, // 1 Gwei EIP-1559 tip
+};
+
+// Server-side fallback RPCs across official Arc node providers (Blockdaemon, dRPC, QuickNode)
+// Reference: https://docs.arc.io/arc/references/rpc-endpoints
+export const MAINNET_FALLBACK_RPCS = [
+  "https://rpc.blockdaemon.mainnet.arc.io",
+  "https://rpc.drpc.mainnet.arc.io",
+  "https://rpc.quicknode.mainnet.arc.io",
+];
+
+export const TESTNET_FALLBACK_RPCS = [
+  "https://rpc.blockdaemon.testnet.arc.io",
+  "https://rpc.drpc.testnet.arc.io",
+  "https://rpc.quicknode.testnet.arc.io",
+];
 
 // Official PUBLIC RPC endpoints suitable for any user's browser wallet
 export const PUBLIC_MAINNET_RPCS = [
   process.env.NEXT_PUBLIC_ARC_MAINNET_PUBLIC_RPC || "https://rpc.mainnet.arc.io",
-  "https://rpc.arc.network",
+  ...MAINNET_FALLBACK_RPCS,
 ];
 
 export const PUBLIC_TESTNET_RPCS = [
-  process.env.NEXT_PUBLIC_ARC_TESTNET_PUBLIC_RPC || "https://rpc.testnet.arc.network",
+  process.env.NEXT_PUBLIC_ARC_TESTNET_PUBLIC_RPC || "https://rpc.testnet.arc.io",
+  ...TESTNET_FALLBACK_RPCS,
 ];
 
 const DEFAULT_MAINNET_PUBLIC_RPC = PUBLIC_MAINNET_RPCS[0];
@@ -90,8 +117,8 @@ export const arcTestnetChain = defineChain({
   },
   blockExplorers: {
     default: {
-      name: "Arcscan Testnet",
-      url: process.env.ARC_TESTNET_EXPLORER_URL || "https://testnet.arcscan.app",
+      name: "Arc Testnet Explorer",
+      url: process.env.ARC_TESTNET_EXPLORER_URL || "https://explorer.testnet.arc.io",
     },
   },
 });
@@ -126,7 +153,7 @@ export const arcMainnetChain = defineChain({
 export const NETWORKS: Record<NetworkMode, NetworkConfig> = {
   mainnet: {
     mode: "mainnet",
-    name: "Arc Mainnet",
+    name: "Arc",
     badgeLabel: "ARC MAINNET: real USDC",
     chainId: 5042,
     rpcUrl:
@@ -136,7 +163,7 @@ export const NETWORKS: Record<NetworkMode, NetworkConfig> = {
     publicRpcUrl:
       process.env.NEXT_PUBLIC_ARC_MAINNET_PUBLIC_RPC ||
       DEFAULT_MAINNET_PUBLIC_RPC,
-    fallbackRpcs: ["https://rpc.arc.network"],
+    fallbackRpcs: MAINNET_FALLBACK_RPCS,
     explorerUrl: process.env.ARC_MAINNET_EXPLORER_URL || "https://explorer.arc.io",
     usdcAddress:
       (process.env.ARC_MAINNET_USDC_ADDRESS as `0x${string}`) || DEFAULT_USDC_ADDRESS,
@@ -160,8 +187,8 @@ export const NETWORKS: Record<NetworkMode, NetworkConfig> = {
     publicRpcUrl:
       process.env.NEXT_PUBLIC_ARC_TESTNET_PUBLIC_RPC ||
       DEFAULT_TESTNET_PUBLIC_RPC,
-    fallbackRpcs: ["https://rpc.testnet.arc.network"],
-    explorerUrl: process.env.ARC_TESTNET_EXPLORER_URL || "https://testnet.arcscan.app",
+    fallbackRpcs: TESTNET_FALLBACK_RPCS,
+    explorerUrl: process.env.ARC_TESTNET_EXPLORER_URL || "https://explorer.testnet.arc.io",
     usdcAddress:
       (process.env.ARC_TESTNET_USDC_ADDRESS as `0x${string}`) || DEFAULT_USDC_ADDRESS,
     anchorAddress:
