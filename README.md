@@ -46,7 +46,7 @@ Upgraded from the original [BizFlow Pilot (Arc Microgrants edition)](https://git
   - **Block Height:** `25822380`
 
 > [!WARNING]
-> **Wallet Security & Phishing Filter Notice:** Some wallets (MetaMask uses Blockaid) flag brand-new websites, including new vercel.app domains, as possible phishing. BizFlow Pilot V2 is open source and non-custodial: it asks only for a free sign-in signature and for USDC transfers you review. We have asked the providers to review the domain. To try it safely, use TESTNET with a fresh wallet that holds no real funds, or run it locally (npm install, npm run dev). Do not connect a wallet that holds real funds to any site you are unsure about.
+> **Wallet Security Notice:** Some wallet security filters may flag new websites. BizFlow Pilot V2 is open source and non-custodial: it asks only for a free sign-in signature and for USDC transfers you explicitly review and approve. We have asked for a review. To try it safely, use TESTNET with a fresh wallet that holds no real funds, or run it locally (`npm install`, `npm run dev`). Never connect a wallet that holds real funds to any site you are unsure about.
 
 ---
 

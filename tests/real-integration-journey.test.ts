@@ -84,7 +84,7 @@ describe("Real End-to-End Integration Journey (Unmocked Testnet Database)", { ti
 
   it("Step 1: Onboard new organization via POST /api/onboarding", async () => {
     const req = makeRequest("/api/onboarding", "POST", {
-      name: "Integration Test Logistics Corp",
+      name: "TEST-Integration Logistics Corp",
       country: "Ghana",
       contactEmail: "ops@integration-test.example",
       websiteUrl: "https://integration-test.example",
@@ -104,11 +104,15 @@ describe("Real End-to-End Integration Journey (Unmocked Testnet Database)", { ti
     const data = await res.json();
     expect(data.success).toBe(true);
     expect(data.org).toBeDefined();
-    expect(data.org.name).toBe("Integration Test Logistics Corp");
+    expect(data.org.name).toBe("TEST-Integration Logistics Corp");
     expect(data.org.walletAddress).toBe(testAddress);
 
     createdOrgId = data.org.id;
     expect(createdOrgId).toBeTruthy();
+
+    // Verify organization is honestly flagged as isTest = true
+    const dbOrg = await prisma.organization.findUnique({ where: { id: createdOrgId } });
+    expect(dbOrg?.isTest).toBe(true);
 
     // Refresh session token with created organization ID
     sessionToken = createSessionToken({

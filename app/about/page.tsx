@@ -21,7 +21,7 @@ export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "About & Trust Architecture | BizFlow Pilot V2",
-  description: "Cryptographic trust model, decentralized settlement guarantees, and decoupled AI execution on Arc.",
+  description: "Cryptographic trust model, decentralized settlement mechanics, and decoupled AI execution on Arc.",
 };
 
 export default function AboutPage() {

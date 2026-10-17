@@ -9,7 +9,7 @@ Compiled on: 12 Oct 2026
 | **Chain ID** | `5042` (`0x13b2`) | `5042002` (`0x4cef52`) | Arc official docs (`docs.arc.network`, Chainlist) |
 | **Native Gas Token** | USDC (18 decimals for native `eth_getBalance`) | USDC (18 decimals for native `eth_getBalance`) | Arc native stablecoin architecture specs |
 | **ERC-20 System Contract** | `0x3600000000000000000000000000000000000000` (6 decimals) | `0x3600000000000000000000000000000000000000` (6 decimals) | Arc docs & LabLab developer guides |
-| **Primary RPC URL** | `https://rpc.mainnet.arc.io` | `https://rpc.testnet.arc.network` | Arc official documentation |
+| **Primary RPC URL** | `https://rpc.mainnet.arc.io` | `https://rpc.testnet.arc.io` | Arc official documentation |
 | **Fallback RPC URLs** | `https://rpc.arc.network` | `https://rpc.testnet.arc.io` | Arc developer community / solidrpc |
 | **Block Explorer** | `https://explorer.arc.io` | `https://testnet.arcscan.app` | Arc official explorer index |
 | **Faucet** | Bridge via Circle CCTP or direct point of contact | `https://faucet.circle.com` | Circle Faucet |

@@ -237,7 +237,7 @@ export function getServerActiveNetwork(cookieVal?: string | null): NetworkMode {
 
 /**
  * Returns the chain parameters for wallet_addEthereumChain read directly
- * from official Arc specifications. The RPC URL provided is guaranteed to be
+ * from official Arc specifications. The RPC URL provided is configured as
  * a public, unauthenticated RPC endpoint suitable for any end-user wallet.
  */
 export function getWalletAddChainParams(mode: NetworkMode): AddEthereumChainParameter {

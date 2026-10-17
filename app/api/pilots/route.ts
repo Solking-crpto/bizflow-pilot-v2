@@ -4,6 +4,7 @@ import { verifyOwnerPasscodeWithRateLimit, getClientIp } from "@/lib/security/au
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { getSessionFromRequest, isAdminWallet } from "@/lib/auth/session";
 import { validateApiNetwork } from "@/lib/api-guard";
+import { isTestOrganization } from "@/lib/builder-wallets";
 
 export const dynamic = "force-dynamic";
 
@@ -87,7 +88,12 @@ export async function GET(req: NextRequest) {
       })
     );
 
-    const serialized = orgs.map((org) => {
+    // Public pilot directory counts external wallets only
+    const effectiveOrgs = isPublicDirectory
+      ? orgs.filter((org) => !isTestOrganization(org))
+      : orgs;
+
+    const serialized = effectiveOrgs.map((org) => {
       const totalVolumeAtomic = org.payments.reduce(
         (sum, p) => sum + BigInt(p.amountAtomic.toString()),
         0n

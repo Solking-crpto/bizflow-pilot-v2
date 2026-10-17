@@ -51,7 +51,7 @@ export function DetectedWallets() {
             <p className="text-ink-muted text-[11px]">
               {hasWindowEthereum
                 ? "A legacy window.ethereum provider is active, but no extensions announced via EIP-6963."
-                : "Install MetaMask, Rabby, or another EIP-6963 compliant wallet extension to connect."}
+                : "Install MetaMask, Rabby, or another EIP-6963 compatible wallet extension to connect."}
             </p>
           </div>
           {!hasWindowEthereum && (

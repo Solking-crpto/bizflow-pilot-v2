@@ -122,7 +122,7 @@ Every payment intent must pass 10 server-side rules before issuance:
 | Parameter | Arc Mainnet | Arc Testnet |
 |---|---|---|
 | **Chain ID** | `5042` | `5042002` |
-| **RPC Endpoint** | `https://rpc.mainnet.arc.io` | `https://rpc.testnet.arc.network` |
+| **RPC Endpoint** | `https://rpc.mainnet.arc.io` | `https://rpc.testnet.arc.io` |
 | **Explorer** | `https://explorer.arc.io` | `https://testnet.arcscan.io` |
 | **Native Gas Currency** | USDC (18 decimals) | USDC (18 decimals) |
 | **Settlement USDC Token** | `0x3600000000000000000000000000000000000000` | `0x3600000000000000000000000000000000000000` |

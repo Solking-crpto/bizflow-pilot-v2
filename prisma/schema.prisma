@@ -18,6 +18,7 @@ model Organization {
   country        String?
   contactEmail   String?
   isPilot        Boolean      @default(false)
+  isTest         Boolean      @default(false)
   websiteUrl     String?
   xUrl           String?
   linkedinUrl    String?

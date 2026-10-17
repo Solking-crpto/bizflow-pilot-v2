@@ -31,7 +31,7 @@ export const revalidate = 0;
 export const metadata: Metadata = {
   title: "Judge Guide — 5-Minute Evaluation Path | BizFlow Pilot V2",
   description:
-    "Comprehensive Tameion Agents Hackathon evaluation guide for judges: autonomous execution, real mainnet transactions, audit contracts, compliance matrix, and pilot organizations.",
+    "Comprehensive Tameion Agents Hackathon evaluation guide for judges: autonomous execution, real mainnet transactions, audit contracts, requirements checklist, and pilot organizations.",
 };
 
 export default async function JudgesPage() {
@@ -107,25 +107,25 @@ export default async function JudgesPage() {
         <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-300 space-y-1.5 text-xs">
           <div className="flex items-center gap-2 font-bold text-amber-950">
             <Lock className="w-4 h-4 text-amber-700" />
-            <span>Wallet Security & Phishing Filter Notice</span>
+            <span>Wallet Security Notice</span>
           </div>
           <p className="text-amber-900 leading-relaxed font-sans">
-            Some wallets (MetaMask uses Blockaid) flag brand-new websites, including new vercel.app domains, as possible phishing. BizFlow Pilot V2 is open source and non-custodial: it asks only for a free sign-in signature and for USDC transfers you review. We have asked the providers to review the domain. To try it safely, use TESTNET with a fresh wallet that holds no real funds, or run it locally (npm install, npm run dev). Do not connect a wallet that holds real funds to any site you are unsure about.
+            Some wallet security filters may flag new websites. BizFlow Pilot V2 is open source and non-custodial: it asks only for a free sign-in signature and for USDC transfers you explicitly review and approve. We have asked for a review. To try it safely, use TESTNET with a fresh wallet that holds no real funds, or run it locally (<code className="font-mono bg-amber-100/60 px-1 py-0.5 rounded text-amber-950">npm install</code>, <code className="font-mono bg-amber-100/60 px-1 py-0.5 rounded text-amber-950">npm run dev</code>). Never connect a wallet that holds real funds to any site you are unsure about.
           </p>
         </div>
       </div>
 
-      {/* Compliance Matrix Table */}
+      {/* Requirements Matrix Table */}
       <div className="rounded-xl border border-border bg-surface shadow-card overflow-hidden">
         <div className="px-5 py-4 border-b border-border bg-canvas/60 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-brand-teal" />
             <h2 className="text-sm font-semibold text-ink">
-              Hackathon Requirements Compliance Table
+              Hackathon Requirements Checklist
             </h2>
           </div>
           <span className="text-xs font-mono text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-            100% Compliant
+            All Requirements Implemented
           </span>
         </div>
 

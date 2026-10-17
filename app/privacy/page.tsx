@@ -5,7 +5,7 @@ import { ShieldCheck, ArrowLeft, Lock, Database } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — Non-Custodial Beta | BizFlow Pilot V2",
-  description: "Privacy policy detailing data isolation, cryptographic hashing, and zero-custody guarantees.",
+  description: "Privacy policy detailing data isolation, cryptographic hashing, and zero-custody architecture.",
 };
 
 export default function PrivacyPage() {

@@ -8,6 +8,7 @@ import { getDb, withDbTimeout } from "@/lib/db";
 import { getServerActiveNetwork } from "@/lib/networks";
 import { formatUsdc, usdcAtomic } from "@/lib/money";
 import { PilotsClient, PilotOrgData } from "@/components/pilots/PilotsClient";
+import { isTestOrganization } from "@/lib/builder-wallets";
 
 export const metadata: Metadata = {
   title: "Pilot Businesses & Real Production Traction | BizFlow Pilot V2",
@@ -22,7 +23,7 @@ export default async function PilotsPage() {
   let orgs: any[] = [];
 
   try {
-    orgs = await withDbTimeout(() =>
+    const rawOrgs = await withDbTimeout(() =>
       db.organization.findMany({
         where: { publicConsent: true },
         include: {
@@ -56,6 +57,8 @@ export default async function PilotsPage() {
         orderBy: { createdAt: "desc" },
       })
     );
+    // Count external wallets only
+    orgs = rawOrgs.filter((org) => !isTestOrganization(org));
   } catch {
     orgs = [];
   }

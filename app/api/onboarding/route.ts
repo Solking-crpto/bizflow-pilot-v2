@@ -9,6 +9,7 @@ import {
   SESSION_COOKIE_NAME,
 } from "@/lib/auth/session";
 import { safeDbErrorResponse } from "@/lib/errors";
+import { isTestOrganization } from "@/lib/builder-wallets";
 
 export const dynamic = "force-dynamic";
 
@@ -95,6 +96,11 @@ export async function POST(req: NextRequest) {
     let orgId: string;
     let createdOrUpdatedOrg: any;
 
+    const isTest = isTestOrganization({
+      name: name.trim(),
+      walletAddress: normalizedAddress,
+    });
+
     if (existingOrg) {
       orgId = existingOrg.id;
       createdOrUpdatedOrg = await withDbTimeout(() =>
@@ -108,6 +114,7 @@ export async function POST(req: NextRequest) {
             xUrl: xUrl ? xUrl.trim() : null,
             linkedinUrl: linkedinUrl ? linkedinUrl.trim() : null,
             publicConsent: Boolean(publicConsent),
+            isTest: existingOrg.isTest || isTest,
           },
         })
       );
@@ -154,6 +161,7 @@ export async function POST(req: NextRequest) {
             currency: "USDC",
             walletAddress: normalizedAddress,
             publicConsent: Boolean(publicConsent),
+            isTest,
             members: {
               create: {
                 walletAddress: normalizedAddress,

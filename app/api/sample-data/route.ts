@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
             name: `Test Business (${session.address.slice(0, 6)}...${session.address.slice(-4)})`,
             walletAddress: session.address,
             country: "US",
+            isTest: true,
             settings: {
               create: {
                 requireApprovalAbove: 25000000n, // 25 USDC

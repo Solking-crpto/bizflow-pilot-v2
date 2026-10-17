@@ -19,7 +19,7 @@ module.exports = {
   },
   networks: {
     arcTestnet: {
-      url: process.env.ARC_TESTNET_RPC_URL || "https://rpc.testnet.arc.network",
+      url: process.env.ARC_TESTNET_RPC_URL || "https://rpc.testnet.arc.io",
       chainId: 5042002,
       accounts: [cleanKey],
     },

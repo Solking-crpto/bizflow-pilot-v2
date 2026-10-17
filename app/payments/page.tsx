@@ -39,7 +39,7 @@ export default async function PaymentsPage() {
         <EmptyState
           icon={Wallet}
           title="Connect your wallet to begin"
-          description="BizFlow Pilot V2 is strictly non-custodial. Connect your Web3 wallet to authorize policy-compliant settlements and anchor audit receipts on Arc."
+          description="BizFlow Pilot V2 is strictly non-custodial. Connect your Web3 wallet to authorize policy-approved settlements and anchor audit receipts on Arc."
           action={{
             label: "Explore Public Metrics",
             href: "/metrics",

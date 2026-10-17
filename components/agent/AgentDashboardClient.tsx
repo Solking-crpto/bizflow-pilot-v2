@@ -305,7 +305,7 @@ export function AgentDashboardClient({
           <ShieldCheck className="w-4 h-4" />
         </div>
         <div className="text-xs text-sky-900 leading-relaxed">
-          <strong className="font-semibold text-sky-950">Non-Custodial Guarantee: </strong>
+          <strong className="font-semibold text-sky-950">Non-Custodial Architecture: </strong>
           BizFlow never holds your keys or funds. Recommendations are advisory. Every payment requires your wallet signature. The agent cannot spend funds on your behalf.
         </div>
       </div>
