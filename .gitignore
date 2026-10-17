@@ -43,8 +43,15 @@ prisma/*.db-journal
 
 # video production
 .env.video.local
+*.mp4
+*.mov
+*.mkv
+*.mp3
+*.wav
+video/raw/
+video/audio/
 video/cache/
-video/assets/
+video/assets/generated/
 video-out/
 
 .env*

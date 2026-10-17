@@ -1,10 +1,4 @@
 {
-  "liveUrl": "https://bizflow-pilot.vercel.app",
-  "repoUrl": "https://github.com/Solking-crpto/bizflow-pilot",
-  "paymentTxHash": "0x9f5a7d65b758269d6c42939b4cb0e7e17eaec596b42b6559d2824dfb5dbd0e82",
-  "anchorTxHash": "0x600e31431faba6022dbc5d259961ddc4fbd89e7c2867b1e590ca76f8d74b83e4",
-  "auditContractAddress": "0x2b18fe9d3a63710da242092571744520ea8effe0",
-  "paymentAmountUsdc": "0.50",
-  "capUsdc": "1.00",
-  "explorerBaseUrl": "https://explorer.arc.io"
+  "liveUrl": "https://bizflow-pilot-v2.vercel.app",
+  "repoUrl": "https://github.com/Solking-crpto/bizflow-pilot-v2"
 }
