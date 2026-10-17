@@ -8,6 +8,7 @@ import {
   createSessionToken,
   SESSION_COOKIE_NAME,
 } from "@/lib/auth/session";
+import { safeDbErrorResponse } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -210,9 +211,6 @@ export async function POST(req: NextRequest) {
 
     return response;
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || "Failed to complete onboarding" },
-      { status: 500 }
-    );
+    return safeDbErrorResponse(error);
   }
 }

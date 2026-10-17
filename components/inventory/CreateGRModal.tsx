@@ -63,10 +63,20 @@ export function CreateGRModal({ isOpen, onClose, onSuccess, defaultPoId }: Creat
     setIsSubmitting(true);
 
     try {
-      const lines = (currentPo.lines || []).map((l: any) => ({
-        itemId: l.itemId || l.id,
-        quantity: Number(receivedQuantities[l.itemId || l.id] ?? l.quantity),
-      }));
+      const lines = (currentPo.lines || []).map((l: any) => {
+        const rawVal = receivedQuantities[l.itemId || l.id];
+        const parsedQty = rawVal !== undefined ? parseInt(String(rawVal), 10) : l.quantity;
+        return {
+          itemId: l.itemId || l.id,
+          quantity: isNaN(parsedQty) || parsedQty < 0 ? 0 : parsedQty,
+        };
+      });
+
+      if (lines.length === 0 || lines.every((l) => l.quantity <= 0)) {
+        setError("Please specify a received quantity greater than 0 for at least one item line.");
+        setIsSubmitting(false);
+        return;
+      }
 
       const res = await apiFetch("/api/goods-receipts", {
         method: "POST",
@@ -103,7 +113,7 @@ export function CreateGRModal({ isOpen, onClose, onSuccess, defaultPoId }: Creat
               <PackageCheck className="w-4 h-4 text-brand-teal" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-ink">Record Goods Receipt Note</h3>
+              <h3 className="text-sm font-bold text-ink">Record Goods Receipt</h3>
               <p className="text-[11px] text-ink-muted">Confirm physical inventory arrival for 3-way match validation</p>
             </div>
           </div>
@@ -173,21 +183,25 @@ export function CreateGRModal({ isOpen, onClose, onSuccess, defaultPoId }: Creat
                 {currentPo.lines.map((l: any) => {
                   const lineKey = l.itemId || l.id;
                   return (
-                    <div key={lineKey} className="flex items-center justify-between bg-canvas p-2 rounded-lg border border-border">
-                      <span className="font-medium text-ink">{l.itemName || "Item"}</span>
-                      <div className="flex items-center gap-2">
+                    <div key={lineKey} className="flex items-center justify-between bg-canvas p-2.5 rounded-lg border border-border">
+                      <div className="flex flex-col min-w-0 pr-2">
+                        <span className="font-semibold text-ink truncate">{l.itemName || "Item"}</span>
+                        {l.sku && <span className="font-mono text-[10px] text-ink-muted">{l.sku}</span>}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
                         <span className="text-ink-muted text-[11px]">Ordered: {l.quantity}</span>
                         <input
                           type="number"
                           min="0"
                           value={receivedQuantities[lineKey] ?? l.quantity}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value, 10);
                             setReceivedQuantities({
                               ...receivedQuantities,
-                              [lineKey]: Number(e.target.value),
-                            })
-                          }
-                          className="w-16 px-2 py-1 text-xs rounded border border-border bg-white text-right font-mono"
+                              [lineKey]: isNaN(val) ? 0 : Math.max(0, val),
+                            });
+                          }}
+                          className="w-20 px-2 py-1 text-xs rounded border border-border bg-white text-right font-mono focus:outline-none focus:border-navy"
                         />
                       </div>
                     </div>
@@ -222,7 +236,7 @@ export function CreateGRModal({ isOpen, onClose, onSuccess, defaultPoId }: Creat
               ) : (
                 <ShieldCheck className="w-3.5 h-3.5 text-brand-teal" />
               )}
-              <span>Log Goods Receipt</span>
+              <span>Record Goods Receipt</span>
             </button>
           </div>
         </form>

@@ -128,7 +128,7 @@ export function InventoryDeskClient({ items, purchaseOrders }: InventoryDeskClie
             className="px-3.5 py-1.5 rounded-md bg-white border border-border text-ink text-xs font-semibold hover:bg-canvas disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs flex items-center gap-1.5"
           >
             <PackageCheck className="w-3.5 h-3.5 text-brand-teal" />
-            <span>Log Receiving Slip</span>
+            <span>Record Goods Receipt</span>
           </button>
           <Link
             href="/invoices"

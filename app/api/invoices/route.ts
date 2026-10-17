@@ -11,6 +11,7 @@ import { evaluateThreeWayMatch } from "@/lib/matching/threeWayMatch";
 import { recordAuditEvent } from "@/lib/audit/ledger";
 import { parseInvoiceRawText } from "@/lib/invoices/parser";
 import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
+import { safeDbErrorResponse } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -89,7 +90,7 @@ export async function GET(req: NextRequest) {
       })),
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return safeDbErrorResponse(error);
   }
 }
 
@@ -334,6 +335,6 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return safeDbErrorResponse(error);
   }
 }

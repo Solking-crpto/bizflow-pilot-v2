@@ -3,6 +3,7 @@ import { z } from "zod";
 import { withDbTimeout } from "@/lib/db";
 import { validateApiNetwork } from "@/lib/api-guard";
 import { getSessionFromRequest, getSessionOrg } from "@/lib/auth/session";
+import { safeDbErrorResponse } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest) {
       })),
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return safeDbErrorResponse(error);
   }
 }
 
@@ -100,11 +101,15 @@ export async function POST(req: NextRequest) {
 
     const { grNumber, purchaseOrderId, receivedDate, receivedBy, notes, lines } = parsed.data;
 
-    // Verify PO belongs to this organization (IDOR check)
+    // Verify PO belongs to this organization (IDOR check) and include lines with items
     const po = await withDbTimeout(() =>
       db.purchaseOrder.findUnique({
         where: { id: purchaseOrderId },
-        include: { lines: true },
+        include: {
+          lines: {
+            include: { item: true },
+          },
+        },
       })
     );
 
@@ -129,7 +134,49 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create Goods Receipt
+    // Validate that each GR line matches a PO line of the same org before writing
+    const poLineByItemId = new Map(po.lines.map((pl) => [pl.itemId, pl]));
+    const poLineById = new Map(po.lines.map((pl) => [pl.id, pl]));
+
+    const verifiedLines: Array<{ itemId: string; quantity: number }> = [];
+
+    for (const submittedLine of lines) {
+      // Find matching PO line either by itemId or by poLine.id
+      const matchedPoLine =
+        poLineByItemId.get(submittedLine.itemId) || poLineById.get(submittedLine.itemId);
+
+      if (!matchedPoLine) {
+        return NextResponse.json(
+          {
+            error: `Could not save: line item '${submittedLine.itemId}' does not match any line item on Purchase Order ${po.poNumber}.`,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Ensure the referenced item exists and belongs strictly to this organization
+      const realItem = await withDbTimeout(() =>
+        db.item.findFirst({
+          where: { id: matchedPoLine.itemId, orgId: org.id },
+        })
+      );
+
+      if (!realItem) {
+        return NextResponse.json(
+          {
+            error: `Could not save: the item record for '${matchedPoLine.item?.name || matchedPoLine.itemId}' was not found in your organization.`,
+          },
+          { status: 400 }
+        );
+      }
+
+      verifiedLines.push({
+        itemId: realItem.id,
+        quantity: submittedLine.quantity,
+      });
+    }
+
+    // Create Goods Receipt with verified real Item IDs
     const gr = await withDbTimeout(() =>
       db.goodsReceipt.create({
         data: {
@@ -140,9 +187,9 @@ export async function POST(req: NextRequest) {
           receivedBy: receivedBy.trim(),
           notes: notes ? notes.trim() : null,
           lines: {
-            create: lines.map((l) => ({
-              itemId: l.itemId,
-              quantity: l.quantity,
+            create: verifiedLines.map((vl) => ({
+              itemId: vl.itemId,
+              quantity: vl.quantity,
             })),
           },
         },
@@ -152,13 +199,13 @@ export async function POST(req: NextRequest) {
       })
     );
 
-    // Update stock counts
-    for (const line of lines) {
+    // Update stock counts and record physical stock movements
+    for (const vl of verifiedLines) {
       await withDbTimeout(() =>
         db.item.update({
-          where: { id: line.itemId },
+          where: { id: vl.itemId },
           data: {
-            currentStock: { increment: line.quantity },
+            currentStock: { increment: vl.quantity },
           },
         })
       );
@@ -166,8 +213,8 @@ export async function POST(req: NextRequest) {
       await withDbTimeout(() =>
         db.stockMovement.create({
           data: {
-            itemId: line.itemId,
-            quantity: line.quantity,
+            itemId: vl.itemId,
+            quantity: vl.quantity,
             type: "in",
             reference: gr.grNumber,
           },
@@ -184,9 +231,16 @@ export async function POST(req: NextRequest) {
         poNumber: po.poNumber,
         receivedBy: gr.receivedBy,
         linesCount: gr.lines.length,
+        lines: gr.lines.map((l) => ({
+          id: l.id,
+          itemId: l.itemId,
+          itemName: l.item.name,
+          sku: l.item.sku,
+          quantity: l.quantity,
+        })),
       },
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return safeDbErrorResponse(error);
   }
 }

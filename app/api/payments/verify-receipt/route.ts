@@ -10,6 +10,7 @@ import { recordAuditEvent } from "@/lib/audit/ledger";
 import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { verifyArcTransferReceiptLogs } from "@/lib/payment/receipt-verifier";
 import { withRpcRetry } from "@/lib/rpc/client";
+import { safeDbErrorResponse } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -82,7 +83,16 @@ export async function POST(req: NextRequest) {
         isIdempotent: true,
         network,
         message: "Payment already verified and confirmed on Arc.",
-        payment: existingPayment,
+        payment: existingPayment
+          ? {
+              id: existingPayment.id,
+              invoiceId: existingPayment.invoiceId,
+              txHash: existingPayment.txHash,
+              amountFormatted: formatUsdc(usdcAtomic(existingPayment.amountAtomic)),
+              destination: existingPayment.destination,
+              confirmedAt: existingPayment.confirmedAt,
+            }
+          : null,
       });
     }
 
@@ -251,9 +261,6 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || "Failed to verify transaction receipt" },
-      { status: 500 }
-    );
+    return safeDbErrorResponse(error);
   }
 }

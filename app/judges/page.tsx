@@ -102,6 +102,17 @@ export default async function JudgesPage() {
             <strong>BizFlow Pilot V2</strong> is an autonomous, non-custodial financial operations layer for enterprise treasury that bridges real-world procurement to native USDC settlement on <strong>Arc Mainnet</strong>. Evaluators can switch between <strong>Arc Testnet</strong> (risk-free sandbox practice with free test USDC) and <strong>Arc Mainnet</strong> (real USDC settlement) anytime using the global switcher in the top bar. By decoupling untrusted LLM extraction from a deterministic 10-point policy engine, it prevents prompt-injection fraud, duplicate billing, and quantity discrepancies before triggering idempotent on-chain payments and anchoring immutable SHA-256 audit proofs to <code>AuditAnchor.sol</code>.
           </p>
         </div>
+
+        {/* Wallet Security Notice */}
+        <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-300 space-y-1.5 text-xs">
+          <div className="flex items-center gap-2 font-bold text-amber-950">
+            <Lock className="w-4 h-4 text-amber-700" />
+            <span>Wallet Security & Phishing Filter Notice</span>
+          </div>
+          <p className="text-amber-900 leading-relaxed font-sans">
+            Some wallets (MetaMask uses Blockaid) flag brand-new websites, including new vercel.app domains, as possible phishing. BizFlow Pilot V2 is open source and non-custodial: it asks only for a free sign-in signature and for USDC transfers you review. We have asked the providers to review the domain. To try it safely, use TESTNET with a fresh wallet that holds no real funds, or run it locally (npm install, npm run dev). Do not connect a wallet that holds real funds to any site you are unsure about.
+          </p>
+        </div>
       </div>
 
       {/* Compliance Matrix Table */}

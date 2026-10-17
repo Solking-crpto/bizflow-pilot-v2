@@ -480,6 +480,16 @@ export default function UserGuidePage() {
               .
             </p>
           </div>
+
+          {/* FAQ 6 */}
+          <div className="p-5 space-y-1.5 bg-amber-50/40 border-t border-border">
+            <h3 className="text-sm font-bold text-ink flex items-center gap-2">
+              <span>Why does my wallet flag this site?</span>
+            </h3>
+            <p className="text-xs sm:text-sm text-ink-muted leading-relaxed">
+              Some wallets (MetaMask uses Blockaid) flag brand-new websites, including new vercel.app domains, as possible phishing. BizFlow Pilot V2 is open source and non-custodial: it asks only for a free sign-in signature and for USDC transfers you review. We have asked the providers to review the domain. To try it safely, use TESTNET with a fresh wallet that holds no real funds, or run it locally (npm install, npm run dev). Do not connect a wallet that holds real funds to any site you are unsure about.
+            </p>
+          </div>
         </div>
       </section>
 

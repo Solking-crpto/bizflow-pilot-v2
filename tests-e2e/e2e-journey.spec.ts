@@ -192,9 +192,23 @@ test.describe("BizFlow Pilot V2 — Playwright Non-Custodial Journey & Network I
     await expect(page.locator("h1", { hasText: "Suppliers" })).toBeVisible();
     await expect(page.locator("body")).toBeVisible();
 
-    // 5. Purchase Orders & Inventory Desk
+    // 5. Purchase Orders & Inventory Desk: record goods receipt
     await page.goto("/inventory", { waitUntil: "domcontentloaded" });
     await expect(page.locator("h1", { hasText: /Purchase Orders/i })).toBeVisible();
+
+    const recordGrBtn = page.getByRole("button", { name: "Record Goods Receipt" }).first();
+    await expect(recordGrBtn).toBeVisible({ timeout: 10000 });
+    await recordGrBtn.click();
+
+    await expect(page.locator("h3", { hasText: "Record Goods Receipt" })).toBeVisible({ timeout: 10000 });
+    const grInput = page.getByPlaceholder("e.g. GR-2026-0001");
+    await grInput.fill(`GR-E2E-${Date.now()}`);
+
+    const [grResponse] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes("/api/goods-receipts") && res.request().method() === "POST"),
+      page.locator("button[type='submit']", { hasText: "Record Goods Receipt" }).click(),
+    ]);
+    expect(grResponse.status()).toBe(200);
 
     // 6. Invoices Desk: 3-way match & threat quarantine
     await page.goto("/invoices", { waitUntil: "domcontentloaded" });

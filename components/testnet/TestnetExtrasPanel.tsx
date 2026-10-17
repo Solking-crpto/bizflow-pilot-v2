@@ -72,9 +72,9 @@ export function TestnetExtrasPanel() {
       {/* Top Banner */}
       <div className="px-4 py-2 bg-amber-100 border-b border-amber-200 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2 text-amber-950 font-medium">
-          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+          <Database className="w-4 h-4 text-amber-600 shrink-0" />
           <span>
-            <strong>TESTNET: test USDC has no value.</strong> Test autonomous accounts payable risk-free.
+            <strong>Testnet AP Sandbox</strong> — Practice autonomous accounts payable risk-free.
           </span>
         </div>
 

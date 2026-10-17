@@ -4,10 +4,12 @@ import { withDbTimeout } from "@/lib/db";
 import { validateApiNetwork } from "@/lib/api-guard";
 import { parseUsdc, formatUsdc, usdcAtomic } from "@/lib/money";
 import { getSessionFromRequest, getSessionOrg } from "@/lib/auth/session";
+import { safeDbErrorResponse } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
 const CreatePOLineSchema = z.object({
+  itemId: z.string().optional(),
   description: z.string().min(1, "Item description required"),
   quantity: z.number().int().positive("Quantity must be greater than 0"),
   unitPriceUsdc: z.string().min(1, "Unit price in USDC is required"),
@@ -67,6 +69,7 @@ export async function GET(req: NextRequest) {
         orderDate: po.orderDate.toISOString(),
         lines: po.lines.map((l) => ({
           id: l.id,
+          itemId: l.itemId,
           itemName: l.item.name,
           sku: l.item.sku,
           quantity: l.quantity,
@@ -77,7 +80,7 @@ export async function GET(req: NextRequest) {
       })),
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return safeDbErrorResponse(error);
   }
 }
 
@@ -151,22 +154,31 @@ export async function POST(req: NextRequest) {
       const lineTotalAtomic = unitPriceAtomic * BigInt(line.quantity);
       totalPoAtomic += lineTotalAtomic;
 
-      const cleanSku = `SKU-${org.id.slice(0, 4)}-${poNumber.replace(/[^A-Za-z0-9]/g, "")}-${i + 1}`;
+      let item = null;
+      if (line.itemId) {
+        item = await withDbTimeout(() =>
+          db.item.findFirst({
+            where: { id: line.itemId, orgId: org.id },
+          })
+        );
+      }
 
-      // Find or create item
-      const item = await withDbTimeout(() =>
-        db.item.upsert({
-          where: { sku: cleanSku },
-          update: { name: line.description, unitPriceUsdc: unitPriceAtomic },
-          create: {
-            orgId: org.id,
-            sku: cleanSku,
-            name: line.description,
-            unitPriceUsdc: unitPriceAtomic,
-            currentStock: 0,
-          },
-        })
-      );
+      if (!item) {
+        const cleanSku = `SKU-${org.id.slice(0, 4)}-${poNumber.replace(/[^A-Za-z0-9]/g, "")}-${i + 1}`;
+        item = await withDbTimeout(() =>
+          db.item.upsert({
+            where: { sku: cleanSku },
+            update: { name: line.description, unitPriceUsdc: unitPriceAtomic },
+            create: {
+              orgId: org.id,
+              sku: cleanSku,
+              name: line.description,
+              unitPriceUsdc: unitPriceAtomic,
+              currentStock: 0,
+            },
+          })
+        );
+      }
 
       poLinesToCreate.push({
         itemId: item.id,
@@ -207,9 +219,17 @@ export async function POST(req: NextRequest) {
         orderDate: po.orderDate.toISOString(),
         status: po.status,
         linesCount: po.lines.length,
+        lines: po.lines.map((l) => ({
+          id: l.id,
+          itemId: l.itemId,
+          itemName: l.item.name,
+          quantity: l.quantity,
+          unitPriceUsdc: formatUsdc(usdcAtomic(l.unitPriceUsdc)),
+          totalUsdc: formatUsdc(usdcAtomic(l.totalUsdc)),
+        })),
       },
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return safeDbErrorResponse(error);
   }
 }

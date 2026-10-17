@@ -7,6 +7,7 @@ import { getSessionFromRequest, getSessionOrg } from "@/lib/auth/session";
 import { evaluatePolicy, PolicyContext } from "@/lib/policy/engine";
 import { getNetworkConfig } from "@/lib/networks";
 import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
+import { safeDbErrorResponse } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -195,6 +196,6 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to create payment intent" }, { status: 500 });
+    return safeDbErrorResponse(error);
   }
 }

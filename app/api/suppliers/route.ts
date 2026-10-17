@@ -7,6 +7,7 @@ import { parseUsdc, formatUsdc, usdcAtomic } from "@/lib/money";
 import { getSessionFromRequest, getSessionOrg } from "@/lib/auth/session";
 import { isBlocklistedWallet } from "@/lib/security/walletBlocklist";
 import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
+import { safeDbErrorResponse } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -55,10 +56,7 @@ export async function GET(req: NextRequest) {
       })),
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || "Failed to load suppliers" },
-      { status: 500 }
-    );
+    return safeDbErrorResponse(error);
   }
 }
 
@@ -140,9 +138,6 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || "Failed to create supplier" },
-      { status: 500 }
-    );
+    return safeDbErrorResponse(error);
   }
 }
