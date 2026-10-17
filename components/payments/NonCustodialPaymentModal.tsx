@@ -14,6 +14,7 @@ import {
   Anchor,
   FileCheck,
   Droplets,
+  RefreshCw,
 } from "lucide-react";
 import { createPublicClient, createWalletClient, custom, http, erc20Abi, formatUnits } from "viem";
 import { useWallet } from "@/components/auth/WalletContext";
@@ -22,6 +23,12 @@ import { sha256Bytes32 } from "@/lib/crypto";
 import { apiFetch } from "@/lib/apiFetch";
 import { ARC_DOCS_URLS, ARC_GAS_CONFIG } from "@/lib/networks";
 import { bigintMax } from "@/lib/bigint";
+import {
+  readWalletBalance,
+  checkGasAndBalanceSufficiency,
+  WalletBalanceResult,
+  GasSufficiencyResult,
+} from "@/lib/payments/balanceCheck";
 
 interface NonCustodialPaymentModalProps {
   isOpen: boolean;
@@ -59,6 +66,10 @@ export function NonCustodialPaymentModal({
   const [anchorTxHash, setAnchorTxHash] = useState<string | null>(null);
   const [usdcBalance, setUsdcBalance] = useState<string | null>(null);
   const [hasSufficientBalance, setHasSufficientBalance] = useState<boolean>(true);
+  const [balanceLoading, setBalanceLoading] = useState<boolean>(false);
+  const [balanceReadFailed, setBalanceReadFailed] = useState<boolean>(false);
+  const [balanceResult, setBalanceResult] = useState<WalletBalanceResult | null>(null);
+  const [sufficiencyResult, setSufficiencyResult] = useState<GasSufficiencyResult | null>(null);
   const [confirmedPayment, setConfirmedPayment] = useState<any>(null);
   const [isPaymentConfirmed, setIsPaymentConfirmed] = useState<boolean>(false);
 
@@ -72,9 +83,77 @@ export function NonCustodialPaymentModal({
     }
   }, [isOpen, onClose]);
 
+  const intentDataRef = React.useRef<any>(null);
+
+  const refreshBalance = React.useCallback(
+    async (intent?: any) => {
+      const targetIntent = intent || intentDataRef.current;
+      if (!targetIntent || !address || !activeNetwork) return;
+
+      setBalanceLoading(true);
+      setBalanceReadFailed(false);
+
+      try {
+        const tokenAddress = (targetIntent.tokenAddress || activeNetwork.usdcAddress) as `0x${string}`;
+        const result = await readWalletBalance({
+          address: address as `0x${string}`,
+          activeNetwork,
+          tokenAddress,
+          walletProvider,
+        });
+
+        if (!result.success) {
+          setBalanceReadFailed(true);
+          setBalanceLoading(false);
+          setBalanceResult(null);
+          setSufficiencyResult(null);
+          setHasSufficientBalance(false);
+          return;
+        }
+
+        setBalanceResult(result);
+        setUsdcBalance(result.effectiveBalFormatted);
+
+        // Dynamically estimate gas fees with Arc 20 Gwei floor
+        let maxFeePerGas = ARC_GAS_CONFIG.MIN_MAX_FEE_PER_GAS_WEI;
+        try {
+          if (walletProvider) {
+            const client = createPublicClient({ chain: activeNetwork.chain, transport: custom(walletProvider) });
+            const fees = await client.estimateFeesPerGas().catch(() => null);
+            if (fees?.maxFeePerGas) {
+              maxFeePerGas = bigintMax(fees.maxFeePerGas, ARC_GAS_CONFIG.MIN_MAX_FEE_PER_GAS_WEI);
+            }
+          }
+        } catch {}
+
+        const sufficiency = checkGasAndBalanceSufficiency({
+          effectiveBal18: result.effectiveBal18,
+          paymentAmountAtomic6: BigInt(targetIntent.amountAtomic),
+          maxFeePerGasWei: maxFeePerGas,
+        });
+
+        setSufficiencyResult(sufficiency);
+        setHasSufficientBalance(sufficiency.hasSufficientTotal);
+        setBalanceReadFailed(false);
+      } catch {
+        setBalanceReadFailed(true);
+        setHasSufficientBalance(false);
+      } finally {
+        setBalanceLoading(false);
+      }
+    },
+    [address, activeNetwork, walletProvider]
+  );
+
+  const refreshBalanceRef = React.useRef(refreshBalance);
+  refreshBalanceRef.current = refreshBalance;
+
   // Initialize and create intent when modal opens
   useEffect(() => {
-    if (!isOpen || !invoiceId) return;
+    if (!isOpen || !invoiceId) {
+      intentDataRef.current = null;
+      return;
+    }
 
     let isMounted = true;
     setStep("CREATING_INTENT");
@@ -84,6 +163,8 @@ export function NonCustodialPaymentModal({
     setAnchorTxHash(null);
     setConfirmedPayment(null);
     setIsPaymentConfirmed(false);
+    setBalanceReadFailed(false);
+    setSufficiencyResult(null);
 
     async function initIntent() {
       try {
@@ -103,49 +184,13 @@ export function NonCustodialPaymentModal({
           return;
         }
 
+        intentDataRef.current = data.intent;
         setIntentData(data.intent);
         setPolicyData(data.policy);
         setStep("READY");
 
-        // Check USDC Balance and Gas if wallet connected
-        if (address && walletProvider) {
-          try {
-            const publicClient = createPublicClient({
-              chain: activeNetwork.chain,
-              transport: custom(walletProvider),
-            });
-
-            const [bal, gasBal] = await Promise.all([
-              publicClient.readContract({
-                address: data.intent.tokenAddress as `0x${string}`,
-                abi: erc20Abi,
-                functionName: "balanceOf",
-                args: [address as `0x${string}`],
-              }).catch(() => 0n),
-              publicClient.getBalance({
-                address: address as `0x${string}`,
-              }).catch(() => 0n),
-            ]);
-
-            const formattedBal = formatUnits(bal as bigint, 6);
-            setUsdcBalance(formattedBal);
-
-            // Arc requires USDC for gas. Minimum viable gas: 20 Gwei floor * 100k gas = 0.002 USDC (18 decimals)
-            const minGasRequired = ARC_GAS_CONFIG.MIN_MAX_FEE_PER_GAS_WEI * 100_000n;
-            const hasGas = (gasBal as bigint) >= minGasRequired;
-            const hasUsdc = (bal as bigint) >= BigInt(data.intent.amountAtomic);
-
-            setHasSufficientBalance(hasUsdc && hasGas);
-
-            if (!hasGas && hasUsdc) {
-              setErrorMessage(
-                `Insufficient gas balance: Arc uses USDC as the native gas token with a 20 Gwei minimum fee floor. Your gas balance is ${formatUnits(gasBal as bigint, 18)} USDC. Please fund your wallet with USDC for gas.`
-              );
-            }
-          } catch {
-            // Balance read error ignored
-          }
-        }
+        // Refresh balance for connected wallet
+        refreshBalanceRef.current(data.intent);
       } catch (err: any) {
         if (!isMounted) return;
         setStep("ERROR");
@@ -158,7 +203,14 @@ export function NonCustodialPaymentModal({
     return () => {
       isMounted = false;
     };
-  }, [isOpen, invoiceId, address, activeNetwork, walletProvider]);
+  }, [isOpen, invoiceId]);
+
+  // Refresh balance whenever account, network, or provider changes while modal is READY
+  useEffect(() => {
+    if (isOpen && step === "READY" && intentDataRef.current && address) {
+      refreshBalance();
+    }
+  }, [isOpen, address, activeNetwork?.chainId, walletProvider, refreshBalance]);
 
   if (!isOpen) return null;
 
@@ -441,75 +493,150 @@ export function NonCustodialPaymentModal({
               </div>
 
               {/* Wallet & Balance Status */}
-              {!isConnected ? (
-                <div className="p-3 rounded-lg bg-warning-light border border-warning-border flex items-center justify-between text-xs">
-                  <div className="text-warning">Wallet not connected</div>
-                  <button
-                    onClick={connect}
-                    className="px-3 py-1 bg-navy text-white text-xs font-semibold rounded hover:bg-navy-light"
-                  >
-                    Connect Wallet
-                  </button>
-                </div>
-              ) : !isCorrectNetwork ? (
-                <div className="p-3 rounded-lg bg-warning-light border border-warning-border flex items-center justify-between text-xs">
-                  <div className="text-warning">Wallet on incorrect network</div>
-                  <button
-                    onClick={switchNetwork}
-                    className="px-3 py-1 bg-brand-teal text-white text-xs font-semibold rounded hover:bg-brand-hover"
-                  >
-                    Switch to {activeNetwork.name}
-                  </button>
-                </div>
-              ) : !hasSufficientBalance ? (
-                <div className="p-3.5 rounded-lg bg-danger-light border border-danger-border space-y-2 text-xs text-danger">
-                  <div className="font-bold flex items-center gap-1.5">
-                    <AlertTriangle className="w-4 h-4" /> Insufficient USDC Balance or Gas
-                  </div>
-                  <div>
-                    Your wallet holds {usdcBalance || "0"} USDC, but this settlement requires{" "}
-                    {intentData.amountFormatted} (plus a fraction of a cent for Arc gas).
-                  </div>
-
-                  {activeNetwork.mode === "testnet" ? (
-                    <div className="pt-1">
-                      <a
-                        href={activeNetwork.faucetUrl || "https://faucet.circle.com"}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition-colors shadow-2xs"
-                      >
-                        <Droplets className="w-3.5 h-3.5" />
-                        <span>Get free test USDC</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
+              <div className="space-y-2.5">
+                {/* Checking Address and Network Header */}
+                {address && (
+                  <div className="flex items-center justify-between text-[11px] text-ink-muted">
+                    <div className="flex items-center gap-1.5 font-mono">
+                      <Wallet className="w-3.5 h-3.5 text-navy shrink-0" />
+                      <span>
+                        Checking {address.slice(0, 6)}...{address.slice(-4)} on {activeNetwork.name}
+                      </span>
                     </div>
-                  ) : (
-                    <div className="pt-1 flex flex-wrap items-center gap-2 text-xs">
-                      <a
-                        href={ARC_DOCS_URLS.getUsdcMainnet}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-navy font-semibold hover:underline"
-                      >
-                        <span>You need USDC on Arc</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                      <span className="text-ink-muted">•</span>
+                    {balanceLoading && (
+                      <span className="flex items-center gap-1 text-brand-teal">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>Reading balance...</span>
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {!isConnected ? (
+                  <div className="p-3 rounded-lg bg-warning-light border border-warning-border flex items-center justify-between text-xs">
+                    <div className="text-warning">Wallet not connected</div>
+                    <button
+                      onClick={connect}
+                      className="px-3 py-1 bg-navy text-white text-xs font-semibold rounded hover:bg-navy-light"
+                    >
+                      Connect Wallet
+                    </button>
+                  </div>
+                ) : !isCorrectNetwork ? (
+                  <div className="p-3 rounded-lg bg-warning-light border border-warning-border flex items-center justify-between text-xs">
+                    <div className="text-warning">Wallet on incorrect network</div>
+                    <button
+                      onClick={switchNetwork}
+                      className="px-3 py-1 bg-brand-teal text-white text-xs font-semibold rounded hover:bg-brand-hover"
+                    >
+                      Switch to {activeNetwork.name}
+                    </button>
+                  </div>
+                ) : balanceReadFailed ? (
+                  <div className="p-3.5 rounded-lg bg-amber-50 border border-amber-300 text-xs space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-amber-900 font-bold">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>Could not read your balance. Retry</span>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => {
-                          onClose();
-                          switchNetwork();
-                        }}
-                        className="text-amber-800 font-semibold hover:underline cursor-pointer"
+                        onClick={() => refreshBalance()}
+                        disabled={balanceLoading}
+                        className="px-3 py-1 bg-navy hover:bg-navy-light text-white text-xs font-semibold rounded transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
                       >
-                        Try testnet first
+                        {balanceLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                        <span>Retry</span>
                       </button>
                     </div>
-                  )}
-                </div>
-              ) : null}
+                    <p className="text-amber-800 text-[11px] leading-relaxed">
+                      We could not read the USDC balance for {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "your wallet"} on {activeNetwork.name} via provider or public RPC. Check your connection and retry.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {/* Real numbers: Balance X USDC · Payment Y USDC · Estimated gas Z USDC */}
+                    {sufficiencyResult && (
+                      <div className="p-2.5 rounded-lg bg-surface border border-border flex items-center justify-between text-xs font-mono">
+                        <span className="text-ink font-medium">
+                          {sufficiencyResult.summaryLine}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => refreshBalance()}
+                          title="Refresh balance"
+                          disabled={balanceLoading}
+                          className="p-1 hover:bg-canvas rounded text-ink-muted hover:text-ink transition-colors cursor-pointer"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${balanceLoading ? "animate-spin text-brand-teal" : ""}`} />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Separate Error Messages: Balance too low for payment vs Not enough for gas */}
+                    {sufficiencyResult && !sufficiencyResult.hasSufficientTotal && (
+                      <div className="p-3.5 rounded-lg bg-danger-light border border-danger-border space-y-2 text-xs text-danger">
+                        <div className="font-bold flex items-center gap-1.5">
+                          <AlertTriangle className="w-4 h-4 shrink-0" />
+                          <span>
+                            {sufficiencyResult.errorType === "NOT_ENOUGH_FOR_GAS"
+                              ? "Insufficient USDC for Arc Gas"
+                              : "Insufficient USDC Balance"}
+                          </span>
+                        </div>
+                        <div className="text-[11px] leading-relaxed">
+                          {sufficiencyResult.errorMessage}
+                        </div>
+
+                        {activeNetwork.mode === "testnet" ? (
+                          <div className="pt-1">
+                            <a
+                              href={activeNetwork.faucetUrl || "https://faucet.circle.com"}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition-colors shadow-2xs"
+                            >
+                              <Droplets className="w-3.5 h-3.5" />
+                              <span>Get free test USDC</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        ) : (
+                          <div className="pt-1 flex flex-wrap items-center gap-2 text-xs">
+                            <a
+                              href={ARC_DOCS_URLS.getUsdcMainnet}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-navy font-semibold hover:underline"
+                            >
+                              <span>You need USDC on Arc</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                            <span className="text-ink-muted">•</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onClose();
+                                switchNetwork();
+                              }}
+                              className="text-amber-800 font-semibold hover:underline cursor-pointer"
+                            >
+                              Try testnet first
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {sufficiencyResult && sufficiencyResult.hasSufficientTotal && (
+                      <div className="p-2.5 rounded-lg bg-success-light border border-success-border flex items-center gap-2 text-xs text-success font-medium">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />
+                        <span>Sufficient USDC balance for payment and Arc gas.</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Explicit User Confirmation Step */}
               <div className="p-3 rounded-lg border border-border bg-canvas/40 space-y-2 text-xs">
@@ -543,7 +670,22 @@ export function NonCustodialPaymentModal({
                 </button>
                 <button
                   onClick={handleSignPayment}
-                  disabled={!isConnected || !isCorrectNetwork || !hasSufficientBalance || !isPaymentConfirmed}
+                  data-debug={JSON.stringify({
+                    isConnected,
+                    isCorrectNetwork,
+                    balanceLoading,
+                    balanceReadFailed,
+                    hasSufficientBalance,
+                    isPaymentConfirmed,
+                  })}
+                  disabled={
+                    !isConnected ||
+                    !isCorrectNetwork ||
+                    balanceLoading ||
+                    balanceReadFailed ||
+                    !hasSufficientBalance ||
+                    !isPaymentConfirmed
+                  }
                   className="px-4 py-2 rounded-md bg-navy text-white text-xs font-semibold hover:bg-navy-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs flex items-center gap-1.5"
                 >
                   <Wallet className="w-3.5 h-3.5 text-brand-teal" />
