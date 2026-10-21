@@ -37,6 +37,8 @@ export interface PayableInvoiceItem {
   isInjectionSuspect: boolean;
   policyDecision: "approve" | "review" | "block";
   policySummary: string;
+  deliveryProofMode?: string;
+  deliveryStatus?: string | null;
   paymentRecord?: {
     id: string;
     txHash?: string | null;
@@ -45,6 +47,8 @@ export interface PayableInvoiceItem {
     confirmedAt?: string | null;
   } | null;
 }
+
+import { DeliveryProofBadge } from "@/components/verification/DeliveryProofBadge";
 
 export function PaymentDeskClient({
   items,
@@ -237,20 +241,23 @@ export function PaymentDeskClient({
 
                   <div className="mt-1 text-xs text-ink-muted">{item.vendorName}</div>
 
-                  <div className="mt-2.5 flex items-center justify-between">
-                    {isPaid ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success bg-success-light border border-success-border px-2 py-0.5 rounded-full">
-                        <CheckCircle2 className="w-3 h-3" /> Settled on Arc
-                      </span>
-                    ) : item.policyDecision === "approve" ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-brand-teal bg-brand-light border border-brand-teal/30 px-2 py-0.5 rounded-full">
-                        <ShieldCheck className="w-3 h-3" /> Policy Approved
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-danger bg-danger-light border border-danger-border px-2 py-0.5 rounded-full">
-                        <AlertTriangle className="w-3 h-3" /> Policy Blocked
-                      </span>
-                    )}
+                  <div className="mt-2.5 flex items-center justify-between flex-wrap gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {isPaid ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success bg-success-light border border-success-border px-2 py-0.5 rounded-full">
+                          <CheckCircle2 className="w-3 h-3" /> Settled on Arc
+                        </span>
+                      ) : item.policyDecision === "approve" ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-brand-teal bg-brand-light border border-brand-teal/30 px-2 py-0.5 rounded-full">
+                          <ShieldCheck className="w-3 h-3" /> Policy Approved
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-danger bg-danger-light border border-danger-border px-2 py-0.5 rounded-full">
+                          <AlertTriangle className="w-3 h-3" /> Policy Blocked
+                        </span>
+                      )}
+                      <DeliveryProofBadge mode={item.deliveryProofMode} status={item.deliveryStatus} />
+                    </div>
 
                     <span className="text-[11px] font-mono text-ink-muted">
                       {truncateHash(item.vendorWallet)}
@@ -323,6 +330,19 @@ export function PaymentDeskClient({
                   <span>Policy Gate Evaluation: {selected.policyDecision.toUpperCase()}</span>
                 </div>
                 <p className="mt-1 text-ink-muted leading-relaxed">{selected.policySummary}</p>
+              </div>
+
+              {/* Delivery Proof Gate Status */}
+              <div className="p-3.5 rounded-lg border border-border bg-surface-muted/40 text-xs flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-ink">Field Delivery Verification</div>
+                  <div className="text-ink-muted text-[11px] mt-0.5">
+                    {selected.deliveryProofMode === "required"
+                      ? "Mandatory physical proof required before payout"
+                      : "Optional delivery proof verification"}
+                  </div>
+                </div>
+                <DeliveryProofBadge mode={selected.deliveryProofMode} status={selected.deliveryStatus} />
               </div>
 
               {/* Error Message if any */}

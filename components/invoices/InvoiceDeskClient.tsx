@@ -47,6 +47,12 @@ export interface SerializedInvoice {
   dueDate?: string | null;
   earlyPayDiscountPct?: number | null;
   earlyPayDays?: number | null;
+  deliveryProofMode?: string;
+  deliveryRequest?: {
+    id: string;
+    status: string;
+    challengeCode: string;
+  } | null;
   isDemo?: boolean;
   fileHash: string;
   rawContent?: string | null;
@@ -55,12 +61,18 @@ export interface SerializedInvoice {
 
 import { InvoiceUploadModal } from "./InvoiceUploadModal";
 import { useRouter } from "next/navigation";
+import { DeliveryProofBadge } from "@/components/verification/DeliveryProofBadge";
+import { RequestDeliveryProofModal } from "@/components/verification/RequestDeliveryProofModal";
+import { EvidenceReportModal } from "@/components/verification/EvidenceReportModal";
 
 export function InvoiceDeskClient({ invoices }: { invoices: SerializedInvoice[] }) {
   const router = useRouter();
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>(invoices[0]?.id || "");
   const [filter, setFilter] = useState<string>("all");
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isRequestProofOpen, setIsRequestProofOpen] = useState(false);
+  const [isEvidenceReportOpen, setIsEvidenceReportOpen] = useState(false);
+  const [activeDeliveryRequestId, setActiveDeliveryRequestId] = useState<string | null>(null);
 
   const filteredInvoices = invoices.filter((inv) => {
     if (filter === "verified") return inv.status === "verified";
@@ -208,6 +220,19 @@ export function InvoiceDeskClient({ invoices }: { invoices: SerializedInvoice[] 
                           {inv.earlyPayDiscountPct}% ({inv.earlyPayDays}d)
                         </span>
                       ) : null}
+                      <DeliveryProofBadge
+                        mode={inv.deliveryProofMode}
+                        status={inv.deliveryRequest?.status}
+                        onClick={() => {
+                          if (inv.deliveryRequest) {
+                            setActiveDeliveryRequestId(inv.deliveryRequest.id);
+                            setIsEvidenceReportOpen(true);
+                          } else {
+                            setSelectedInvoiceId(inv.id);
+                            setIsRequestProofOpen(true);
+                          }
+                        }}
+                      />
                     </div>
                     <span className="text-[11px] text-ink-muted font-mono">{inv.poNumber}</span>
                   </div>
@@ -238,6 +263,64 @@ export function InvoiceDeskClient({ invoices }: { invoices: SerializedInvoice[] 
                 isInjectionSuspect={selectedInvoice.isInjectionSuspect}
                 suspicionNotes={selectedInvoice.suspicionNotes}
               />
+
+              {/* Delivery Proof & Payment Conditions */}
+              <div className="rounded-xl border border-border bg-surface p-4 shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-border pb-2.5">
+                  <span className="text-xs font-semibold text-navy flex items-center gap-1.5">
+                    <FileCheck className="w-4 h-4 text-brand-teal" />
+                    <span>Delivery Proof & Payment Conditions</span>
+                  </span>
+                  <DeliveryProofBadge
+                    mode={selectedInvoice.deliveryProofMode}
+                    status={selectedInvoice.deliveryRequest?.status}
+                  />
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div>
+                    <span className="text-ink-muted">Condition Policy:</span>{" "}
+                    <span className="font-semibold text-ink uppercase">
+                      {selectedInvoice.deliveryProofMode === "required"
+                        ? "Mandatory Proof Before Settlement"
+                        : selectedInvoice.deliveryProofMode === "optional"
+                        ? "Optional Delivery Proof"
+                        : "Disabled (Standard 3-Way Matching)"}
+                    </span>
+                    {selectedInvoice.deliveryRequest && (
+                      <p className="text-[11px] text-ink-muted mt-0.5">
+                        Physical challenge code:{" "}
+                        <span className="font-mono font-bold text-emerald-600">
+                          {selectedInvoice.deliveryRequest.challengeCode}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {selectedInvoice.deliveryRequest ? (
+                      <button
+                        onClick={() => {
+                          setActiveDeliveryRequestId(selectedInvoice.deliveryRequest!.id);
+                          setIsEvidenceReportOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-navy text-white text-xs font-semibold hover:bg-navy-light transition shadow-xs flex items-center gap-1.5"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 text-brand-teal" />
+                        <span>Inspect Evidence & Report</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setIsRequestProofOpen(true)}
+                        className="px-3 py-1.5 rounded-lg border border-brand-teal text-brand-teal text-xs font-semibold hover:bg-brand-teal/10 transition shadow-xs flex items-center gap-1.5"
+                      >
+                        <FileCheck className="w-3.5 h-3.5" />
+                        <span>Request Delivery Proof</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
 
               {/* Payment Timing Intelligence */}
               {(selectedInvoice.dueDate || selectedInvoice.earlyPayDiscountPct) && (
@@ -356,6 +439,31 @@ export function InvoiceDeskClient({ invoices }: { invoices: SerializedInvoice[] 
         </div>
       </div>
       </>
+      )}
+
+      {selectedInvoice && (
+        <RequestDeliveryProofModal
+          isOpen={isRequestProofOpen}
+          onClose={() => setIsRequestProofOpen(false)}
+          invoiceId={selectedInvoice.id}
+          invoiceNumber={selectedInvoice.invoiceNumber}
+          onSuccess={() => {
+            setIsRequestProofOpen(false);
+            router.refresh();
+          }}
+        />
+      )}
+
+      {activeDeliveryRequestId && (
+        <EvidenceReportModal
+          isOpen={isEvidenceReportOpen}
+          onClose={() => {
+            setIsEvidenceReportOpen(false);
+            setActiveDeliveryRequestId(null);
+          }}
+          requestId={activeDeliveryRequestId}
+          onStatusChange={() => router.refresh()}
+        />
       )}
     </div>
   );

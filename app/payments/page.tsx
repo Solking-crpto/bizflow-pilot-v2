@@ -75,6 +75,7 @@ export default async function PaymentsPage() {
               vendor: true,
               payments: { orderBy: { initiatedAt: "desc" }, take: 1 },
               organization: { include: { settings: true } },
+              deliveryRequests: { orderBy: { createdAt: "desc" }, take: 1 },
             },
             orderBy: { createdAt: "desc" },
           })
@@ -153,6 +154,8 @@ export default async function PaymentsPage() {
       isInjectionSuspect: inv.isInjectionSuspect,
       policyDecision: evaluation.decision,
       policySummary: evaluation.summary,
+      deliveryProofMode: inv.deliveryProofMode || "off",
+      deliveryStatus: inv.deliveryRequests?.[0]?.status || null,
       paymentRecord: latestPayment
         ? {
             id: latestPayment.id,

@@ -74,6 +74,10 @@ export default async function InvoiceDeskPage() {
                   },
                 },
               },
+              deliveryRequests: {
+                orderBy: { createdAt: "desc" },
+                take: 1,
+              },
             },
             orderBy: { createdAt: "desc" },
           })
@@ -98,6 +102,7 @@ export default async function InvoiceDeskPage() {
     const poLine = po?.lines?.[0];
     const gr = po?.goodsReceipts?.[0];
     const grLine = gr?.lines?.[0];
+    const latestDelReq = inv.deliveryRequests?.[0] || null;
 
     const isDemo =
       inv.invoiceNumber?.includes("DEMO") ||
@@ -128,6 +133,14 @@ export default async function InvoiceDeskPage() {
       dueDate: inv.dueDate ? new Date(inv.dueDate).toISOString() : null,
       earlyPayDiscountPct: inv.earlyPayDiscountPct ?? null,
       earlyPayDays: inv.earlyPayDays ?? null,
+      deliveryProofMode: inv.deliveryProofMode || "off",
+      deliveryRequest: latestDelReq
+        ? {
+            id: latestDelReq.id,
+            status: latestDelReq.status,
+            challengeCode: latestDelReq.challengeCode,
+          }
+        : null,
       isDemo: Boolean(isDemo),
       fileHash: inv.fileHash,
       rawContent: inv.rawContent,

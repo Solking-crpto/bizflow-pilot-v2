@@ -36,12 +36,12 @@ Branch: `upgrade-1-verification`
   - [x] Implement daily rate limit budget (`LLM_DAILY_CALL_LIMIT`)
   - [x] Enforce "AI-assisted, may be wrong" disclaimer
 
-- [ ] **Phase 7: Owner UI & Management APIs**
-  - [ ] Implement `/api/delivery-proof/request` (create link, access code, challenge code, WhatsApp share links, email draft)
-  - [ ] Implement `/api/delivery-proof/[id]` and decision endpoints (approve, reject, request more evidence, revoke, regenerate)
-  - [ ] Build "Request delivery proof" modal on PO & Invoice pages
-  - [ ] Build Evidence & Report inspection view (PO vs Verifier vs AI side-by-side, signed preview URLs)
-  - [ ] Add payment readiness badge to Invoices and Payment Desk
+- [x] **Phase 7: Owner UI & Management APIs**
+  - [x] Implement `/api/delivery-proof/request` (create link, access code, challenge code, WhatsApp share links, email draft)
+  - [x] Implement `/api/delivery-proof/[id]` and decision endpoints (approve, reject, request more evidence, revoke, regenerate)
+  - [x] Build "Request delivery proof" modal on PO & Invoice pages
+  - [x] Build Evidence & Report inspection view (PO vs Verifier vs AI side-by-side, signed preview URLs)
+  - [x] Add payment readiness badge to Invoices and Payment Desk
 
 - [ ] **Phase 8: Mobile-First Verifier Portal (`/verify-delivery/[token]`)**
   - [ ] Build `/verify-delivery/[token]` page with 390px mobile responsiveness

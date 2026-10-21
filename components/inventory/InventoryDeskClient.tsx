@@ -13,10 +13,12 @@ import {
   Clock,
   Layers,
   ChevronRight,
+  FileCheck,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CreatePOModal } from "./CreatePOModal";
 import { CreateGRModal } from "./CreateGRModal";
+import { RequestDeliveryProofModal } from "@/components/verification/RequestDeliveryProofModal";
 
 export interface SerializedStockMovement {
   id: string;
@@ -93,6 +95,8 @@ export function InventoryDeskClient({ items, purchaseOrders }: InventoryDeskClie
   const [isPoModalOpen, setIsPoModalOpen] = useState(false);
   const [isGrModalOpen, setIsGrModalOpen] = useState(false);
   const [selectedPoForGr, setSelectedPoForGr] = useState<string | undefined>(undefined);
+  const [selectedPoForProof, setSelectedPoForProof] = useState<SerializedPO | null>(null);
+  const [isProofModalOpen, setIsProofModalOpen] = useState(false);
 
   const handleOpenGrForPo = (poId: string) => {
     setSelectedPoForGr(poId);
@@ -271,15 +275,29 @@ export function InventoryDeskClient({ items, purchaseOrders }: InventoryDeskClie
                           </div>
                         </div>
 
-                        {!isFullyReceived && (
+                        <div className="flex items-center gap-1.5">
                           <button
-                            onClick={() => handleOpenGrForPo(po.id)}
+                            onClick={() => {
+                              setSelectedPoForProof(po);
+                              setIsProofModalOpen(true);
+                            }}
                             className="px-2.5 py-1 text-xs font-semibold rounded bg-canvas border border-border text-navy hover:bg-white hover:text-brand-teal transition-colors flex items-center gap-1 shadow-xs"
+                            title="Generate secure mobile verification link for field receiver"
                           >
-                            <PackageCheck className="w-3.5 h-3.5" />
-                            <span>Log Receipt</span>
+                            <FileCheck className="w-3.5 h-3.5 text-brand-teal" />
+                            <span>Request Proof</span>
                           </button>
-                        )}
+
+                          {!isFullyReceived && (
+                            <button
+                              onClick={() => handleOpenGrForPo(po.id)}
+                              className="px-2.5 py-1 text-xs font-semibold rounded bg-canvas border border-border text-navy hover:bg-white hover:text-brand-teal transition-colors flex items-center gap-1 shadow-xs"
+                            >
+                              <PackageCheck className="w-3.5 h-3.5" />
+                              <span>Log Receipt</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -347,6 +365,23 @@ export function InventoryDeskClient({ items, purchaseOrders }: InventoryDeskClie
             </div>
           </div>
         </>
+      )}
+
+      {selectedPoForProof && (
+        <RequestDeliveryProofModal
+          isOpen={isProofModalOpen}
+          onClose={() => {
+            setIsProofModalOpen(false);
+            setSelectedPoForProof(null);
+          }}
+          purchaseOrderId={selectedPoForProof.id}
+          poNumber={selectedPoForProof.poNumber}
+          onSuccess={() => {
+            setIsProofModalOpen(false);
+            setSelectedPoForProof(null);
+            router.refresh();
+          }}
+        />
       )}
     </div>
   );
