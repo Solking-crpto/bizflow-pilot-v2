@@ -43,14 +43,14 @@ Branch: `upgrade-1-verification`
   - [x] Build Evidence & Report inspection view (PO vs Verifier vs AI side-by-side, signed preview URLs)
   - [x] Add payment readiness badge to Invoices and Payment Desk
 
-- [ ] **Phase 8: Mobile-First Verifier Portal (`/verify-delivery/[token]`)**
-  - [ ] Build `/verify-delivery/[token]` page with 390px mobile responsiveness
-  - [ ] Access code verification form with lockout protection
-  - [ ] Order summary (no confidential pricing or org secrets) & challenge code instruction
-  - [ ] Privacy consent notice (photos/contact only, no location, no ID docs)
-  - [ ] Direct-to-storage signed file upload with progress bar
-  - [ ] Client-side canvas video keyframe extractor
-  - [ ] Confirmation and single-submission handling
+- [x] **Phase 8: Mobile-First Verifier Portal (`/verify-delivery/[token]`)**
+  - [x] Build `/verify-delivery/[token]` page with 390px mobile responsiveness
+  - [x] Access code verification form with lockout protection
+  - [x] Order summary (no confidential pricing or org secrets) & challenge code instruction
+  - [x] Privacy consent notice (photos/contact only, no location, no ID docs)
+  - [x] Direct-to-storage signed file upload with progress bar
+  - [x] Client-side canvas video keyframe extractor
+  - [x] Confirmation and single-submission handling
 
 - [ ] **Phase 9: Payment Gating Policy & Audit Integration**
   - [ ] Add `RULE_DELIVERY_VERIFICATION` to Policy Engine (`lib/policy/engine.ts`)
