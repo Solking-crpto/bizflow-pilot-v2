@@ -97,7 +97,20 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-sm font-bold text-ink">5. Data Retention & Erasure</h2>
+          <h2 className="text-sm font-bold text-ink">5. Physical Delivery Evidence & Retention Policy</h2>
+          <p>
+            When field receivers verify delivery of physical inventory through the Mobile Verifier Portal, we strictly enforce privacy-by-design and minimal collection:
+          </p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li><strong>Minimal Collection:</strong> Only photos/videos of goods, packing slips, and verifier contact info are collected. We explicitly do <em>not</em> collect GPS location coordinates, identity cards, or biometric data.</li>
+            <li><strong>90-Day Evidence Retention:</strong> Uploaded evidence files (photos, videos, PDFs) are retained in private cloud storage for a maximum of 90 days (default <code className="bg-canvas px-1 py-0.5 rounded font-mono">EVIDENCE_RETENTION_DAYS</code>).</li>
+            <li><strong>Automated Pruning:</strong> An automated daily cleanup cron (<code className="bg-canvas px-1 py-0.5 rounded font-mono">/api/cron/cleanup</code>) permanently prunes all raw media files older than 90 days from physical storage.</li>
+            <li><strong>Permanent Audit Trails:</strong> Cryptographic SHA-256 file hashes, condition engine evaluations, and owner decisions are preserved permanently in the tamper-evident audit ledger to maintain complete historical accountability without retaining raw personal files.</li>
+          </ul>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-sm font-bold text-ink">6. Data Retention & Erasure</h2>
           <p>
             Off-chain business data stored in the database can be reviewed and managed within your settings portal.
             However, on-chain transaction records and audit anchor events published to the Arc blockchain cannot be altered or removed.

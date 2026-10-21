@@ -124,6 +124,10 @@ export class SupabaseStorageProvider implements StorageProvider {
     }
   }
 
+  async deleteObject(bucket: string, path: string): Promise<void> {
+    return this.deleteFile(bucket, path);
+  }
+
   validateFile(buffer: Buffer, expectedMime?: string): FileValidationResult {
     return validateFile(buffer, expectedMime);
   }

@@ -86,6 +86,10 @@ export class LocalStorageProvider implements StorageProvider {
     }
   }
 
+  async deleteObject(bucket: string, filePath: string): Promise<void> {
+    return this.deleteFile(bucket, filePath);
+  }
+
   validateFile(buffer: Buffer, expectedMime?: string): FileValidationResult {
     return validateFile(buffer, expectedMime);
   }

@@ -34,6 +34,7 @@ export interface StorageProvider {
   ): Promise<SignedDownloadUrlResult>;
 
   deleteFile(bucket: string, path: string): Promise<void>;
+  deleteObject(bucket: string, path: string): Promise<void>;
 
   validateFile(buffer: Buffer, expectedMime?: string): FileValidationResult;
 }

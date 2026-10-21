@@ -58,11 +58,11 @@ Branch: `upgrade-1-verification`
   - [x] Ensure `deliveryProofMode: "off"` invoices remain 100% unaffected (regression proof)
   - [x] Record all verification lifecycle events into SHA-256 hash-chained audit ledger
 
-- [ ] **Phase 10: In-App Notifications & Retention Cleanup**
-  - [ ] Build Notification model & top nav bell with unread count
-  - [ ] Build `/notifications` page
-  - [ ] Build `/api/cron/cleanup` daily retention cleanup route (`EVIDENCE_RETENTION_DAYS`, `CRON_SECRET`)
-  - [ ] Update Privacy page with retention and deletion terms
+- [x] **Phase 10: In-App Notifications & Retention Cleanup**
+  - [x] Build Notification model & top nav bell with unread count
+  - [x] Build `/notifications` page
+  - [x] Build `/api/cron/cleanup` daily retention cleanup route (`EVIDENCE_RETENTION_DAYS`, `CRON_SECRET`)
+  - [x] Update Privacy page with retention and deletion terms
 
 - [ ] **Phase 11: Testing, Verification & Final Report**
   - [ ] Run unit tests: `npm test`

@@ -11,6 +11,7 @@ import { useWallet } from "@/components/auth/WalletContext";
 import { NAV_ITEMS } from "./Sidebar";
 import { Logo } from "../ui/Logo";
 import { OrgSwitcher } from "./OrgSwitcher";
+import { NotificationBell } from "./NotificationBell";
 import packageJson from "@/package.json";
 
 interface TopNavProps {
@@ -116,6 +117,9 @@ export function TopNav({
               readOnly
             />
           </div>
+
+          {/* In-App Notifications Bell */}
+          <NotificationBell />
 
           {/* Wallet Connect / Account Session */}
           <div className="flex items-center pl-1 sm:pl-2 sm:border-l sm:border-border">
