@@ -415,30 +415,43 @@ export function PaymentDeskClient({
                     </button>
                   )}
 
-                  <button
-                    onClick={() => setIsNonCustodialModalOpen(true)}
-                    disabled={
-                      selected.policyDecision === "block" ||
-                      selected.status === "paid" ||
-                      !!selected.paymentRecord
-                    }
-                    className={`px-5 py-2.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-2 transition-all ${
-                      selected.status === "paid" || selected.paymentRecord
-                        ? "bg-canvas text-ink-muted cursor-not-allowed border border-border"
-                        : selected.policyDecision === "block"
-                        ? "bg-slate-200 text-slate-500 cursor-not-allowed"
-                        : "bg-navy text-white hover:bg-navy-light shadow-card"
-                    }`}
-                  >
-                    <CreditCard className="w-4 h-4 text-brand-teal" />
-                    <span>
-                      {selected.status === "paid" || selected.paymentRecord
-                        ? "Already Settled"
-                        : selected.policyDecision === "block"
-                        ? "Settlement Blocked"
-                        : `Pay ${selected.amountFormatted} with Wallet`}
-                    </span>
-                  </button>
+                  {(() => {
+                    const isBlockedByDelivery =
+                      selected.policyDecision === "block" &&
+                      selected.deliveryProofMode === "required" &&
+                      selected.deliveryStatus !== "approved";
+
+                    return (
+                      <button
+                        onClick={() => setIsNonCustodialModalOpen(true)}
+                        disabled={
+                          selected.status === "paid" ||
+                          !!selected.paymentRecord ||
+                          (selected.policyDecision === "block" && !isBlockedByDelivery)
+                        }
+                        className={`px-5 py-2.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-2 transition-all ${
+                          selected.status === "paid" || selected.paymentRecord
+                            ? "bg-canvas text-ink-muted cursor-not-allowed border border-border"
+                            : selected.policyDecision === "block" && !isBlockedByDelivery
+                            ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                            : isBlockedByDelivery
+                            ? "bg-amber-600 text-white hover:bg-amber-700 shadow-card"
+                            : "bg-navy text-white hover:bg-navy-light shadow-card"
+                        }`}
+                      >
+                        <CreditCard className="w-4 h-4 text-brand-teal" />
+                        <span>
+                          {selected.status === "paid" || selected.paymentRecord
+                            ? "Already Settled"
+                            : isBlockedByDelivery
+                            ? `Override Delivery & Pay`
+                            : selected.policyDecision === "block"
+                            ? "Settlement Blocked"
+                            : `Pay ${selected.amountFormatted} with Wallet`}
+                        </span>
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
 

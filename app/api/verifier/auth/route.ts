@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getDb, withDbTimeout } from "@/lib/db";
 import { getServerActiveNetwork } from "@/lib/networks";
 import { safeDbErrorResponse } from "@/lib/errors";
+import { recordAuditEvent } from "@/lib/audit/ledger";
 import {
   hashToken,
   verifyAccessCode,
@@ -103,6 +104,20 @@ export async function POST(req: NextRequest) {
       }
 
       const remaining = Math.max(0, 5 - lockoutState.newFailedAttempts);
+
+      await recordAuditEvent({
+        orgId: deliveryRequest.orgId,
+        eventType: "access_code_entered",
+        referenceId: deliveryRequest.id,
+        eventData: {
+          requestId: deliveryRequest.id,
+          success: false,
+          remainingAttempts: remaining,
+          locked: lockoutState.isLocked,
+        },
+        network: resolved?.network,
+      });
+
       return NextResponse.json(
         {
           error: lockoutState.isLocked
@@ -126,6 +141,18 @@ export async function POST(req: NextRequest) {
         },
       })
     );
+
+    // Record Audit Event: successful access_code_entered
+    await recordAuditEvent({
+      orgId: deliveryRequest.orgId,
+      eventType: "access_code_entered",
+      referenceId: deliveryRequest.id,
+      eventData: {
+        requestId: deliveryRequest.id,
+        success: true,
+      },
+      network: resolved?.network,
+    });
 
     // Create session token and set cookie
     const sessionToken = createVerifierSessionToken(tokenHash, 86400); // 24 hours

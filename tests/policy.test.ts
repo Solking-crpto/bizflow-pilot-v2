@@ -170,4 +170,88 @@ describe("lib/policy/engine - 10 Deterministic Policy Rules", () => {
     const r10 = res.results.find((r) => r.ruleCode === "RULE_IDEMPOTENCY");
     expect(r10?.passed).toBe(false);
   });
+
+  describe("RULE_DELIVERY_VERIFICATION & Regression Invariants", () => {
+    it("Regression: when deliveryProofMode is 'off', payment behaviour is 100% identical to before", () => {
+      const offCtx = {
+        ...baseContext,
+        invoice: { ...baseContext.invoice, deliveryProofMode: "off" },
+      };
+      const res = evaluatePolicy(offCtx);
+      expect(res.decision).toBe("approve");
+      const rDelivery = res.results.find((r) => r.ruleCode === "RULE_DELIVERY_VERIFICATION");
+      expect(rDelivery?.passed).toBe(true);
+      expect(rDelivery?.reason).toContain("Delivery proof mode is off");
+    });
+
+    it("Blocks payment when deliveryProofMode is 'required' and no delivery request or proof is approved", () => {
+      const requiredCtx = {
+        ...baseContext,
+        invoice: {
+          ...baseContext.invoice,
+          deliveryProofMode: "required",
+          deliveryStatus: "pending",
+          deliveryRequestId: "req-123",
+          deliveryConditionsMet: false,
+        },
+      };
+      const res = evaluatePolicy(requiredCtx);
+      expect(res.decision).toBe("block");
+      const rDelivery = res.results.find((r) => r.ruleCode === "RULE_DELIVERY_VERIFICATION");
+      expect(rDelivery?.passed).toBe(false);
+      expect(rDelivery?.reason).toBe("Delivery proof required but not verified; request #req-123");
+    });
+
+    it("Approves payment when deliveryProofMode is 'required' and delivery is approved", () => {
+      const approvedCtx = {
+        ...baseContext,
+        invoice: {
+          ...baseContext.invoice,
+          deliveryProofMode: "required",
+          deliveryStatus: "approved",
+          deliveryRequestId: "req-123",
+          deliveryConditionsMet: true,
+        },
+      };
+      const res = evaluatePolicy(approvedCtx);
+      expect(res.decision).toBe("approve");
+      const rDelivery = res.results.find((r) => r.ruleCode === "RULE_DELIVERY_VERIFICATION");
+      expect(rDelivery?.passed).toBe(true);
+      expect(rDelivery?.reason).toContain("Delivery proof verified and approved");
+    });
+
+    it("Allows owner override when deliveryProofMode is 'required' with logged reason", () => {
+      const overrideCtx = {
+        ...baseContext,
+        invoice: {
+          ...baseContext.invoice,
+          deliveryProofMode: "required",
+          deliveryStatus: "pending",
+          deliveryRequestId: "req-123",
+          deliveryConditionsMet: false,
+          ownerOverrideReason: "Owner override: Emergency goods needed on site immediately",
+        },
+      };
+      const res = evaluatePolicy(overrideCtx);
+      expect(res.decision).toBe("approve");
+      const rDelivery = res.results.find((r) => r.ruleCode === "RULE_DELIVERY_VERIFICATION");
+      expect(rDelivery?.passed).toBe(true);
+      expect(rDelivery?.reason).toContain("Owner override: Emergency goods needed on site immediately");
+    });
+
+    it("Passes when deliveryProofMode is 'optional'", () => {
+      const optionalCtx = {
+        ...baseContext,
+        invoice: {
+          ...baseContext.invoice,
+          deliveryProofMode: "optional",
+        },
+      };
+      const res = evaluatePolicy(optionalCtx);
+      expect(res.decision).toBe("approve");
+      const rDelivery = res.results.find((r) => r.ruleCode === "RULE_DELIVERY_VERIFICATION");
+      expect(rDelivery?.passed).toBe(true);
+      expect(rDelivery?.reason).toContain("Delivery proof is optional");
+    });
+  });
 });

@@ -16,6 +16,7 @@ export interface ExecutePaymentParams {
   isAutonomous?: boolean;
   dryRun?: boolean;
   network?: NetworkMode;
+  ownerOverrideReason?: string;
 }
 
 export interface ExecutePaymentResult {
@@ -60,6 +61,18 @@ export async function executePaymentTransaction(
       vendor: true,
       organization: { include: { settings: true } },
       payments: true,
+      deliveryRequests: {
+        include: { reports: true },
+        orderBy: { createdAt: "desc" },
+      },
+      purchaseOrder: {
+        include: {
+          deliveryRequests: {
+            include: { reports: true },
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      },
     },
   });
 
@@ -134,6 +147,13 @@ export async function executePaymentTransaction(
     hasOwnerConfirmation = isWithinAutoLimit && isWithinDailyAutonomousCap;
   }
 
+  // Resolve Delivery Proof status
+  const latestDeliveryReq =
+    invoice.deliveryRequests?.[0] || invoice.purchaseOrder?.deliveryRequests?.[0];
+  const deliveryStatus = latestDeliveryReq?.status || "none";
+  const deliveryConditionsMet =
+    deliveryStatus === "approved" || latestDeliveryReq?.reports?.[0]?.overall === "ready";
+
   // 5. Strict Server-Side Policy Re-Evaluation at Execution Time
   const policyContext: PolicyContext = {
     network: networkMode,
@@ -165,6 +185,11 @@ export async function executePaymentTransaction(
       isInjectionSuspect: invoice.isInjectionSuspect,
       hasExistingPaymentForNetwork: false,
       isHumanApproved: hasOwnerConfirmation,
+      deliveryProofMode: invoice.deliveryProofMode || "off",
+      deliveryStatus,
+      deliveryConditionsMet,
+      deliveryRequestId: latestDeliveryReq?.id,
+      ownerOverrideReason: params.ownerOverrideReason,
     },
   };
 
@@ -199,6 +224,22 @@ export async function executePaymentTransaction(
     };
   }
 
+  // If owner override was supplied, record delivery_overridden audit event
+  if (params.ownerOverrideReason) {
+    await recordAuditEvent({
+      orgId: org.id,
+      eventType: "delivery_overridden",
+      referenceId: invoice.id,
+      eventData: {
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        reason: params.ownerOverrideReason,
+        actor,
+      },
+      network: networkMode,
+    });
+  }
+
   // 6. Create Initial Payment Record
   const provider = getPaymentProvider();
   const payment = existingPayment || await db.payment.create({
@@ -212,6 +253,8 @@ export async function executePaymentTransaction(
       amountAtomic: invoice.totalUsdc,
       destination: invoice.vendor.walletAddress,
       status: "initiated",
+      isOverridden: !!params.ownerOverrideReason,
+      overrideReason: params.ownerOverrideReason || null,
     },
   });
 

@@ -4,6 +4,7 @@ import { withDbTimeout } from "@/lib/db";
 import { validateApiNetwork } from "@/lib/api-guard";
 import { getSessionFromRequest, getSessionOrg } from "@/lib/auth/session";
 import { safeDbErrorResponse } from "@/lib/errors";
+import { recordAuditEvent } from "@/lib/audit/ledger";
 import {
   generateToken,
   generateAccessCode,
@@ -102,6 +103,22 @@ export async function POST(req: NextRequest) {
         },
       })
     );
+
+    // Record Audit Event: delivery_request_created with token sha256 hash
+    await recordAuditEvent({
+      orgId: org.id,
+      eventType: "delivery_request_created",
+      referenceId: deliveryRequest.id,
+      eventData: {
+        requestId: deliveryRequest.id,
+        purchaseOrderId: purchaseOrderId || null,
+        invoiceId: invoiceId || null,
+        tokenHash,
+        challengeCode,
+        expiresAt: expiresAt.toISOString(),
+      },
+      network,
+    });
 
     const host =
       req.headers.get("x-forwarded-host") ||

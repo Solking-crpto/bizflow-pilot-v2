@@ -5,6 +5,7 @@ import path from "path";
 import { getDb, withDbTimeout } from "@/lib/db";
 import { getServerActiveNetwork } from "@/lib/networks";
 import { safeDbErrorResponse } from "@/lib/errors";
+import { recordAuditEvent } from "@/lib/audit/ledger";
 import {
   hashToken,
   verifyVerifierSessionToken,
@@ -133,6 +134,22 @@ export async function POST(req: NextRequest) {
         },
       })
     );
+
+    // Record Audit Event: evidence_uploaded with SHA-256 hash
+    await recordAuditEvent({
+      orgId: deliveryRequest.orgId,
+      eventType: "evidence_uploaded",
+      referenceId: evidenceFile.id,
+      eventData: {
+        requestId: deliveryRequest.id,
+        fileId: evidenceFile.id,
+        kind,
+        sha256: fileSha,
+        mime: mimeType,
+        size: sizeBytes,
+      },
+      network: network as any,
+    });
 
     return NextResponse.json({
       success: true,

@@ -241,6 +241,8 @@ model Payment {
   txHash          String?      // Arc blockchain transaction hash
   receiptJson     String?      // Raw tx receipt & transfer event verification
   anchorTxHash    String?      // AuditAnchor.sol transaction hash
+  isOverridden    Boolean      @default(false)
+  overrideReason  String?
   initiatedAt     DateTime     @default(now())
   confirmedAt     DateTime?
   anchoredAt      DateTime?
@@ -350,6 +352,8 @@ model PaymentIntent {
   expiresAt        DateTime
   status           String       @default("pending") // pending, completed, expired, cancelled
   txHash           String?
+  isOverridden     Boolean      @default(false)
+  overrideReason   String?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 

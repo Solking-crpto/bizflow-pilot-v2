@@ -40,6 +40,11 @@ export interface PolicyContext {
     isInjectionSuspect: boolean;
     hasExistingPaymentForNetwork?: boolean;
     isHumanApproved?: boolean;
+    deliveryProofMode?: "off" | "optional" | "required" | string;
+    deliveryStatus?: "approved" | "pending" | "rejected" | "none" | string;
+    deliveryConditionsMet?: boolean;
+    deliveryRequestId?: string;
+    ownerOverrideReason?: string;
   };
 }
 
@@ -232,6 +237,57 @@ export function evaluatePolicy(context: PolicyContext): PolicyEvaluationOutput {
       ? "Idempotency violation: This invoice has already been settled on this network."
       : "Single-settlement constraint satisfied.",
   });
+
+  // RULE_DELIVERY_VERIFICATION: Physical Delivery Proof & Payment Conditions Guard
+  const proofMode = context.invoice.deliveryProofMode || "off";
+  const isProofRequired = proofMode === "required";
+  const isDeliveryApproved =
+    context.invoice.deliveryStatus === "approved" ||
+    context.invoice.deliveryConditionsMet === true;
+  const rawOverride = context.invoice.ownerOverrideReason?.trim();
+  const hasOwnerOverride = !!rawOverride && rawOverride.length > 0;
+
+  if (isProofRequired) {
+    if (isDeliveryApproved) {
+      results.push({
+        ruleCode: "RULE_DELIVERY_VERIFICATION",
+        ruleName: "Delivery Proof Verification Guard",
+        passed: true,
+        severity: "block",
+        reason: `Delivery proof verified and approved (request #${context.invoice.deliveryRequestId || context.invoice.id}).`,
+      });
+    } else if (hasOwnerOverride) {
+      const formattedOverride = rawOverride.startsWith("Owner override:")
+        ? rawOverride
+        : `Owner override: ${rawOverride}`;
+      results.push({
+        ruleCode: "RULE_DELIVERY_VERIFICATION",
+        ruleName: "Delivery Proof Verification Guard",
+        passed: true,
+        severity: "block",
+        reason: `${formattedOverride} (request #${context.invoice.deliveryRequestId || "unassigned"}).`,
+      });
+    } else {
+      results.push({
+        ruleCode: "RULE_DELIVERY_VERIFICATION",
+        ruleName: "Delivery Proof Verification Guard",
+        passed: false,
+        severity: "block",
+        reason: `Delivery proof required but not verified; request #${context.invoice.deliveryRequestId || "none"}`,
+      });
+    }
+  } else {
+    results.push({
+      ruleCode: "RULE_DELIVERY_VERIFICATION",
+      ruleName: "Delivery Proof Verification Guard",
+      passed: true,
+      severity: "block",
+      reason:
+        proofMode === "optional"
+          ? "Delivery proof is optional for this invoice; payment permitted."
+          : "Delivery proof mode is off; standard payment rules apply.",
+    });
+  }
 
   // Synthesize final decision
   const hasBlock = results.some((r) => !r.passed && r.severity === "block");

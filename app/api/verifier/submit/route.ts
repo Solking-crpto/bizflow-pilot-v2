@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { getDb, withDbTimeout } from "@/lib/db";
 import { getServerActiveNetwork } from "@/lib/networks";
 import { safeDbErrorResponse } from "@/lib/errors";
+import { recordAuditEvent } from "@/lib/audit/ledger";
 import {
   hashToken,
   verifyVerifierSessionToken,
@@ -210,6 +211,21 @@ export async function POST(req: NextRequest) {
         },
       })
     );
+
+    // Record Audit Event: assessment_generated with report sha256 hash
+    await recordAuditEvent({
+      orgId: deliveryRequest.orgId,
+      eventType: "assessment_generated",
+      referenceId: report.id,
+      eventData: {
+        requestId: deliveryRequest.id,
+        reportId: report.id,
+        reportHash,
+        overall: evaluation.overall,
+        aiUsed: true,
+      },
+      network: (resolved?.network as any) || "testnet",
+    });
 
     // 7. Create in-app Notification for organization owner
     await withDbTimeout(() =>

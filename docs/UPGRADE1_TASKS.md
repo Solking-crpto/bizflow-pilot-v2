@@ -52,11 +52,11 @@ Branch: `upgrade-1-verification`
   - [x] Client-side canvas video keyframe extractor
   - [x] Confirmation and single-submission handling
 
-- [ ] **Phase 9: Payment Gating Policy & Audit Integration**
-  - [ ] Add `RULE_DELIVERY_VERIFICATION` to Policy Engine (`lib/policy/engine.ts`)
-  - [ ] Add owner override with logged reason
-  - [ ] Ensure `deliveryProofMode: "off"` invoices remain 100% unaffected (regression proof)
-  - [ ] Record all verification lifecycle events into SHA-256 hash-chained audit ledger
+- [x] **Phase 9: Payment Gating Policy & Audit Integration**
+  - [x] Add `RULE_DELIVERY_VERIFICATION` to Policy Engine (`lib/policy/engine.ts`)
+  - [x] Add owner override with logged reason
+  - [x] Ensure `deliveryProofMode: "off"` invoices remain 100% unaffected (regression proof)
+  - [x] Record all verification lifecycle events into SHA-256 hash-chained audit ledger
 
 - [ ] **Phase 10: In-App Notifications & Retention Cleanup**
   - [ ] Build Notification model & top nav bell with unread count

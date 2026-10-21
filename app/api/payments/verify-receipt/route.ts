@@ -202,12 +202,16 @@ export async function POST(req: NextRequest) {
             destination: intent.recipientAddress,
             status: "confirmed",
             txHash: normalizedTxHash,
+            isOverridden: intent.isOverridden,
+            overrideReason: intent.overrideReason,
             receiptJson: JSON.stringify({
               blockNumber,
               gasUsed: receipt.gasUsed?.toString(),
               effectiveGasPrice: receipt.effectiveGasPrice?.toString(),
               from: receipt.from,
               to: receipt.to,
+              isOverridden: intent.isOverridden,
+              overrideReason: intent.overrideReason,
             }),
             confirmedAt: new Date(),
           },
@@ -226,6 +230,22 @@ export async function POST(req: NextRequest) {
       ])
     );
 
+    // If intent had an owner override, record delivery_overridden in audit chain
+    if (intent.isOverridden) {
+      await recordAuditEvent({
+        orgId: org.id,
+        eventType: "delivery_overridden",
+        referenceId: intent.invoiceId,
+        eventData: {
+          invoiceId: intent.invoiceId,
+          intentId: intent.id,
+          reason: intent.overrideReason,
+          actor: "owner",
+        },
+        network,
+      });
+    }
+
     // 8. Cryptographic hash-chained audit event recording
     await recordAuditEvent({
       orgId: org.id,
@@ -242,6 +262,7 @@ export async function POST(req: NextRequest) {
         blockNumber,
         network,
         intentId: intent.id,
+        isOverridden: intent.isOverridden,
       },
       network,
     });

@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 
 const CreateIntentSchema = z.object({
   invoiceId: z.string().min(1, "Invoice ID is required"),
+  ownerOverrideReason: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -44,25 +45,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid payload", details: parsed.error }, { status: 400 });
     }
 
-    const { invoiceId } = parsed.data;
+    const { invoiceId, ownerOverrideReason } = parsed.data;
 
     // 1. Fetch invoice and verify organization ownership (IDOR check)
-    const invoice = await withDbTimeout(() =>
-      db.invoice.findUnique({
-        where: { id: invoiceId },
-        include: {
-          vendor: true,
-          purchaseOrder: {
-            include: {
-              lines: { include: { item: true } },
-              goodsReceipts: { include: { lines: { include: { item: true } } } },
+    const invoice = await withDbTimeout(
+      () =>
+        db.invoice.findUnique({
+          where: { id: invoiceId },
+          include: {
+            vendor: true,
+            deliveryRequests: {
+              include: { reports: true },
+              orderBy: { createdAt: "desc" },
+            },
+            purchaseOrder: {
+              include: {
+                deliveryRequests: {
+                  include: { reports: true },
+                  orderBy: { createdAt: "desc" },
+                },
+              },
+            },
+            organization: {
+              include: { settings: true },
             },
           },
-          organization: {
-            include: { settings: true },
-          },
-        },
-      })
+        }),
+      30000
     );
 
     if (!invoice || invoice.orgId !== org.id) {
@@ -106,7 +115,13 @@ export async function POST(req: NextRequest) {
         ? process.env.APP_MAX_PAYMENT_USDC || "25"
         : process.env.APP_MAX_PAYMENT_USDC_TESTNET || "100";
 
-    // 3. Re-evaluate corporate deterministic 10-rule policy at intent creation
+    const latestDeliveryReq =
+      invoice.deliveryRequests?.[0] || invoice.purchaseOrder?.deliveryRequests?.[0];
+    const deliveryStatus = latestDeliveryReq?.status || "none";
+    const deliveryConditionsMet =
+      deliveryStatus === "approved" || latestDeliveryReq?.reports?.[0]?.overall === "ready";
+
+    // 3. Re-evaluate corporate deterministic policy at intent creation
     const policyContext: PolicyContext = {
       network,
       killSwitchActive: settings.killSwitchActive,
@@ -134,6 +149,11 @@ export async function POST(req: NextRequest) {
         duplicateScore: invoice.duplicateScore,
         isInjectionSuspect: invoice.isInjectionSuspect,
         isHumanApproved: true,
+        deliveryProofMode: invoice.deliveryProofMode || "off",
+        deliveryStatus,
+        deliveryConditionsMet,
+        deliveryRequestId: latestDeliveryReq?.id,
+        ownerOverrideReason,
       },
     };
 
@@ -168,6 +188,8 @@ export async function POST(req: NextRequest) {
           chainId: networkConfig.chainId,
           expiresAt,
           status: "pending",
+          isOverridden: !!ownerOverrideReason,
+          overrideReason: ownerOverrideReason || null,
         },
       })
     );

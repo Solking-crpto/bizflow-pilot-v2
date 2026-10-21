@@ -72,6 +72,8 @@ export function NonCustodialPaymentModal({
   const [sufficiencyResult, setSufficiencyResult] = useState<GasSufficiencyResult | null>(null);
   const [confirmedPayment, setConfirmedPayment] = useState<any>(null);
   const [isPaymentConfirmed, setIsPaymentConfirmed] = useState<boolean>(false);
+  const [overrideInput, setOverrideInput] = useState<string>("");
+  const [isOverriding, setIsOverriding] = useState<boolean>(false);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -211,6 +213,40 @@ export function NonCustodialPaymentModal({
       refreshBalance();
     }
   }, [isOpen, address, activeNetwork?.chainId, walletProvider, refreshBalance]);
+
+  const initIntentWithOverride = async (reason: string) => {
+    if (!reason.trim()) return;
+    setIsOverriding(true);
+    setStep("CREATING_INTENT");
+    setErrorMessage(null);
+    try {
+      const res = await apiFetch("/api/payments/intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceId,
+          ownerOverrideReason: reason.startsWith("Owner override:") ? reason : `Owner override: ${reason}`,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.allowed) {
+        setStep("ERROR");
+        setErrorMessage(data.error || "Policy engine rejected this payment");
+        setPolicyReasons(data.reasons || []);
+        return;
+      }
+      intentDataRef.current = data.intent;
+      setIntentData(data.intent);
+      setPolicyData(data.policy);
+      setStep("READY");
+      refreshBalanceRef.current(data.intent);
+    } catch (err: any) {
+      setStep("ERROR");
+      setErrorMessage(err.message || "Failed to initialize payment intent with override");
+    } finally {
+      setIsOverriding(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -441,6 +477,41 @@ export function NonCustodialPaymentModal({
                       <li key={i}>{r}</li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {/* Owner Policy Override for Delivery Verification */}
+              {(policyReasons.some((r) => r.toLowerCase().includes("delivery")) ||
+                (errorMessage && errorMessage.toLowerCase().includes("delivery"))) && (
+                <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/30 space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-amber-600" />
+                    <span className="text-xs font-bold text-amber-900">Owner Policy Override</span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                    As an authorized officer, you may bypass delivery proof requirements to authorize settlement immediately. A logged reason will be immutably recorded in the SHA-256 hash-chained audit ledger.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter override rationale (e.g. Urgent on-site material release)..."
+                      value={overrideInput}
+                      onChange={(e) => setOverrideInput(e.target.value)}
+                      className="flex-1 text-xs px-3 py-2 border border-border rounded-lg bg-white text-ink placeholder:text-ink-muted focus:outline-none focus:ring-1 focus:ring-brand-teal"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => initIntentWithOverride(overrideInput)}
+                      disabled={!overrideInput.trim() || isOverriding}
+                      className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-navy text-white hover:bg-navy-light disabled:opacity-50 transition-all shrink-0 flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      {isOverriding ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <span>Authorize Override</span>
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
 

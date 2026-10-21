@@ -4,6 +4,7 @@ import { withDbTimeout } from "@/lib/db";
 import { validateApiNetwork } from "@/lib/api-guard";
 import { getSessionFromRequest, getSessionOrg } from "@/lib/auth/session";
 import { safeDbErrorResponse } from "@/lib/errors";
+import { recordAuditEvent } from "@/lib/audit/ledger";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +78,39 @@ export async function POST(
           data: { status: "verified" },
         });
       }
+    }
+
+    // Record Audit Event: delivery_approved or delivery_rejected
+    if (action === "approve") {
+      await recordAuditEvent({
+        orgId: org.id,
+        eventType: "delivery_approved",
+        referenceId: updated.id,
+        eventData: {
+          requestId: updated.id,
+          invoiceId: deliveryRequest.invoiceId || null,
+          purchaseOrderId: deliveryRequest.purchaseOrderId || null,
+          decisionBy: session.address,
+          notes: notes || null,
+          status: updated.status,
+        },
+        network,
+      });
+    } else if (action === "reject") {
+      await recordAuditEvent({
+        orgId: org.id,
+        eventType: "delivery_rejected",
+        referenceId: updated.id,
+        eventData: {
+          requestId: updated.id,
+          invoiceId: deliveryRequest.invoiceId || null,
+          purchaseOrderId: deliveryRequest.purchaseOrderId || null,
+          decisionBy: session.address,
+          notes: notes || null,
+          status: updated.status,
+        },
+        network,
+      });
     }
 
     return NextResponse.json({

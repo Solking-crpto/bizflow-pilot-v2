@@ -13,6 +13,7 @@ const ExecutePaymentSchema = z.object({
   invoiceId: z.string(),
   hasOwnerConfirmation: z.boolean().optional(),
   passcode: z.string().optional(),
+  ownerOverrideReason: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid request payload", details: parsed.error }, { status: 400 });
     }
 
-    const { invoiceId, hasOwnerConfirmation, passcode } = parsed.data;
+    const { invoiceId, hasOwnerConfirmation, passcode, ownerOverrideReason } = parsed.data;
 
     // Strict Non-Custodial Guard:
     // Public organizations must NEVER use the server treasury private key.
@@ -85,6 +86,7 @@ export async function POST(req: NextRequest) {
       actor: "human",
       hasOwnerConfirmation: hasOwnerConfirmation ?? true,
       network: "mainnet",
+      ownerOverrideReason,
     });
 
     if (!result.success) {
