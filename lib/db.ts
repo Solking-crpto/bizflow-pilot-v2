@@ -134,7 +134,8 @@ function optimizeDatasourceUrl(rawUrl: string): string {
   if (!url.includes("connection_limit=")) {
     const separator = url.includes("?") ? "&" : "?";
     const timeoutSec = Math.max(30, Math.floor(getDbTimeoutMs() / 1000));
-    url = `${url}${separator}connection_limit=1&pool_timeout=30&connect_timeout=${timeoutSec}`;
+    const connLimit = process.env.DB_CONNECTION_LIMIT || "10";
+    url = `${url}${separator}connection_limit=${connLimit}&pool_timeout=30&connect_timeout=${timeoutSec}`;
   }
   return url;
 }
@@ -240,8 +241,22 @@ export async function withDbTimeout<T>(
     const result = await Promise.race([queryFn(), timeoutPromise]);
     if (timer) clearTimeout(timer);
     return result;
-  } catch (err) {
+  } catch (err: any) {
     if (timer) clearTimeout(timer);
+    const msg = String(err?.message || "");
+    if (
+      msg.includes("closed the connection") ||
+      msg.includes("ConnectionReset") ||
+      msg.includes("10054") ||
+      msg.includes("forcibly closed")
+    ) {
+      try {
+        return await queryFn();
+      } catch (retryErr) {
+        if (fallbackVal !== undefined && !isMainnet) return fallbackVal;
+        throw retryErr;
+      }
+    }
     // On mainnet mode, NEVER use fallbackVal!
     if (fallbackVal !== undefined && !isMainnet) {
       return fallbackVal;

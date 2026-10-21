@@ -20,10 +20,31 @@ export async function GET(req: NextRequest) {
         where: {
           status: "confirmed",
         },
-        include: {
-          vendor: true,
-          invoice: true,
-          anchor: true,
+        select: {
+          id: true,
+          status: true,
+          txHash: true,
+          anchorTxHash: true,
+          destination: true,
+          amountAtomic: true,
+          confirmedAt: true,
+          initiatedAt: true,
+          vendor: {
+            select: {
+              name: true,
+              walletAddress: true,
+            },
+          },
+          invoice: {
+            select: {
+              invoiceNumber: true,
+            },
+          },
+          anchor: {
+            select: {
+              anchorTxHash: true,
+            },
+          },
         },
         orderBy: {
           confirmedAt: "desc",

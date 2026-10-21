@@ -20,6 +20,7 @@ import {
   Info,
 } from "lucide-react";
 import { useNetwork } from "@/components/network/NetworkContext";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface EvidenceReportModalProps {
   isOpen: boolean;
@@ -51,7 +52,7 @@ export function EvidenceReportModal({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/delivery-proof/${requestId}`, {
+      const res = await apiFetch(`/api/delivery-proof/${requestId}`, {
         headers: { "X-Bizflow-Network": network },
       });
       const json = await res.json();
@@ -67,7 +68,7 @@ export function EvidenceReportModal({
   async function handleDecision(action: "approve" | "reject" | "request_more_evidence") {
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/delivery-proof/${requestId}/decision`, {
+      const res = await apiFetch(`/api/delivery-proof/${requestId}/decision`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -90,7 +91,7 @@ export function EvidenceReportModal({
     if (!confirm("Are you sure you want to revoke this delivery verification link? It will be immediately invalidated.")) return;
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/delivery-proof/${requestId}/revoke`, {
+      const res = await apiFetch(`/api/delivery-proof/${requestId}/revoke`, {
         method: "POST",
         headers: { "X-Bizflow-Network": network },
       });
@@ -108,7 +109,7 @@ export function EvidenceReportModal({
   async function handleRegenerateCode() {
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/delivery-proof/${requestId}/regenerate-code`, {
+      const res = await apiFetch(`/api/delivery-proof/${requestId}/regenerate-code`, {
         method: "POST",
         headers: { "X-Bizflow-Network": network },
       });

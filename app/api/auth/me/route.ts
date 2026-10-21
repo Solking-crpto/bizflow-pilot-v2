@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest, getSessionOrg, isAdminWallet } from "@/lib/auth/session";
+import { getServerActiveNetwork } from "@/lib/networks";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,8 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const org = await getSessionOrg(session);
+    const network = getServerActiveNetwork(req.cookies.get("bizflow_network")?.value || session.network);
+    const org = await getSessionOrg(session, network);
     const isAdmin = isAdminWallet(session.address);
 
     return NextResponse.json({

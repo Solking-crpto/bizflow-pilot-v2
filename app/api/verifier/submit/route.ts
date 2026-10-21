@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
     const po = deliveryRequest.purchaseOrder;
     const poItems =
       po?.lines?.map((line) => ({
-        description: line.item?.name || line.description || "Order Item",
+        description: line.item?.name || "Order Item",
         quantity: line.quantity,
       })) || [];
 

@@ -204,11 +204,12 @@ export async function getServerSession(): Promise<SessionData | null> {
  */
 export async function getSessionOrg(
   session: SessionData | null,
-  network: NetworkMode = DEFAULT_NETWORK
+  network?: NetworkMode
 ) {
   if (!session?.address) return null;
 
-  const db = getDb(network);
+  const targetNetwork = network || session.network || DEFAULT_NETWORK;
+  const db = getDb(targetNetwork);
   return db.organization.findFirst({
     where: {
       OR: [

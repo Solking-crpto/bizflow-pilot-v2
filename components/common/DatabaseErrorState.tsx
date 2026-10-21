@@ -11,13 +11,13 @@ export function DatabaseErrorState({
   title?: string;
   message?: string;
 }) {
-  const router = useRouter();
   const [retrying, setRetrying] = useState(false);
 
   const handleRetry = () => {
     setRetrying(true);
-    router.refresh();
-    setTimeout(() => setRetrying(false), 2000);
+    if (typeof window !== "undefined") {
+      window.location.reload();
+    }
   };
 
   return (

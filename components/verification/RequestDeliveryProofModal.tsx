@@ -15,6 +15,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useNetwork } from "@/components/network/NetworkContext";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface RequestDeliveryProofModalProps {
   isOpen: boolean;
@@ -68,7 +69,7 @@ export function RequestDeliveryProofModal({
     setError(null);
 
     try {
-      const res = await fetch("/api/delivery-proof/request", {
+      const res = await apiFetch("/api/delivery-proof/request", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

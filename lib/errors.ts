@@ -119,10 +119,15 @@ export function sanitizeErrorMessage(message: string): string {
   return message;
 }
 
-/**
- * Helper to return a standardized, safe JSON error response for API routes.
- */
-export function safeDbErrorResponse(error: any, fallbackStatus = 500): NextResponse {
+export function safeDbErrorResponse(
+  error: any,
+  fallbackStatusOrContext: number | string = 500
+): NextResponse {
+  const fallbackStatus =
+    typeof fallbackStatusOrContext === "number" ? fallbackStatusOrContext : 500;
+  if (typeof fallbackStatusOrContext === "string" && process.env.NODE_ENV !== "test") {
+    console.error(`[DATABASE_ERROR] ${fallbackStatusOrContext}:`, error);
+  }
   const { message, statusCode } = formatDatabaseError(error);
   return NextResponse.json(
     { error: message },

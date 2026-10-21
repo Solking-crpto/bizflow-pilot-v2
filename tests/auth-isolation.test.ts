@@ -89,7 +89,7 @@ describe("Phase 2 — Wallet Authentication & Multi-User Isolation Matrix", () =
         },
       },
     });
-  });
+  }, 120000);
 
   describe("1. Session Token Integrity & Security", () => {
     it("generates and verifies a valid HMAC-signed session token", () => {

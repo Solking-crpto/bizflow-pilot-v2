@@ -115,7 +115,7 @@ export async function GET(req: NextRequest) {
     const items =
       po?.lines?.map((line) => ({
         id: line.id,
-        description: line.item?.name || line.description || "Order Item",
+        description: line.item?.name || "Order Item",
         quantity: line.quantity,
       })) || [];
 

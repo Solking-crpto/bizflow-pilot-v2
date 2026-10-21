@@ -18,6 +18,7 @@ import {
   Calendar,
   Package,
 } from "lucide-react";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface OrderItem {
   id: string;
@@ -102,7 +103,7 @@ export default function MobileVerifierPortalPage() {
 
   async function checkPortalStatus() {
     try {
-      const res = await fetch(`/api/verifier/portal?token=${encodeURIComponent(rawToken)}`);
+      const res = await apiFetch(`/api/verifier/portal?token=${encodeURIComponent(rawToken)}`);
       const data = await res.json();
 
       if (!res.ok) {
@@ -160,7 +161,7 @@ export default function MobileVerifierPortalPage() {
     }
 
     try {
-      const res = await fetch("/api/verifier/auth", {
+      const res = await apiFetch("/api/verifier/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: rawToken, accessCode: cleanCode }),
@@ -254,7 +255,7 @@ export default function MobileVerifierPortalPage() {
 
       try {
         // 1. Get signed upload URL
-        const urlRes = await fetch("/api/verifier/upload-url", {
+        const urlRes = await apiFetch("/api/verifier/upload-url", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -308,7 +309,7 @@ export default function MobileVerifierPortalPage() {
           const keyframes = await extractVideoKeyframes(file);
           for (let k = 0; k < keyframes.length; k++) {
             const kBlob = keyframes[k];
-            const kRes = await fetch("/api/verifier/upload-url", {
+            const kRes = await apiFetch("/api/verifier/upload-url", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -370,7 +371,7 @@ export default function MobileVerifierPortalPage() {
     setSubmitError(null);
 
     try {
-      const res = await fetch("/api/verifier/submit", {
+      const res = await apiFetch("/api/verifier/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

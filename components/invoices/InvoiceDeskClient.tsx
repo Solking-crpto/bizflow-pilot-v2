@@ -444,11 +444,13 @@ export function InvoiceDeskClient({ invoices }: { invoices: SerializedInvoice[] 
       {selectedInvoice && (
         <RequestDeliveryProofModal
           isOpen={isRequestProofOpen}
-          onClose={() => setIsRequestProofOpen(false)}
+          onClose={() => {
+            setIsRequestProofOpen(false);
+            router.refresh();
+          }}
           invoiceId={selectedInvoice.id}
           invoiceNumber={selectedInvoice.invoiceNumber}
           onSuccess={() => {
-            setIsRequestProofOpen(false);
             router.refresh();
           }}
         />
