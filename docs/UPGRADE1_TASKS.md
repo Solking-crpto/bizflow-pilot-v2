@@ -26,10 +26,10 @@ Branch: `upgrade-1-verification`
   - [x] Implement rate limiting and lockout state (5 failed attempts -> 30m lock)
   - [x] Integrate session cookie for validated verifier sessions
 
-- [ ] **Phase 5: Conditions Engine**
-  - [ ] Implement `lib/verification/conditions.ts` (pure functional evaluator: `evaluate(inputs, rules)`)
-  - [ ] Implement all 10 rule evaluators (`min_files`, `required_kinds`, `quantities_match`, `delivery_window`, `verifier_identified`, `challenge_code_visible`, `no_duplicate_evidence`, `ai_matches_po`, `invoice_matches_po`, `owner_approval_above_amount`)
-  - [ ] Write exhaustive truth table unit tests in `tests/conditions.test.ts`
+- [x] **Phase 5: Conditions Engine**
+  - [x] Implement `lib/verification/conditions.ts` (pure functional evaluator: `evaluate(inputs, rules)`)
+  - [x] Implement all 10 rule evaluators (`min_files`, `required_kinds`, `quantities_match`, `delivery_window`, `verifier_identified`, `challenge_code_visible`, `no_duplicate_evidence`, `ai_matches_po`, `invoice_matches_po`, `owner_approval_above_amount`)
+  - [x] Write exhaustive truth table unit tests in `tests/conditions.test.ts`
 
 - [ ] **Phase 6: AI Evidence Assessment**
   - [ ] Implement `lib/verification/ai.ts` (Zod structured output, provider-agnostic, prompt isolation)
