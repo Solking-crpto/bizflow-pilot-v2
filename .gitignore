@@ -55,3 +55,13 @@ video/assets/generated/
 video-out/
 
 .env*
+
+*.mp4
+*.mov
+*.mkv
+*.mp3
+*.wav
+video/raw/
+video/audio/
+video/cache/
+video-out/

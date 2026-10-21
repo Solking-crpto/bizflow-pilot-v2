@@ -23,6 +23,7 @@ model Organization {
   xUrl           String?
   linkedinUrl    String?
   publicConsent  Boolean      @default(false)
+  deliveryProofMode String     @default("off") // off, optional, required
 
   members        Member[]
   vendors        Vendor[]
@@ -35,6 +36,9 @@ model Organization {
   settings       Setting[]
   agentDecisions AgentDecision[]
   paymentIntents PaymentIntent[]
+  deliveryRequests DeliveryRequest[]
+  conditionTemplates ConditionTemplate[]
+  notifications  Notification[]
 }
 
 model Member {
@@ -65,6 +69,7 @@ model Vendor {
   invoices       Invoice[]
   payments       Payment[]
   paymentIntents PaymentIntent[]
+  conditionTemplates ConditionTemplate[]
 }
 
 model Item {
@@ -112,6 +117,7 @@ model PurchaseOrder {
   lines         POLine[]
   goodsReceipts GoodsReceipt[]
   invoices      Invoice[]
+  deliveryRequests DeliveryRequest[]
 }
 
 model POLine {
@@ -170,8 +176,9 @@ model Invoice {
   dueDate          DateTime?
   earlyPayDiscountPct Float?
   earlyPayDays        Int?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  deliveryProofMode   String       @default("off") // off, optional, required
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 
   organization     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   vendor           Vendor       @relation(fields: [vendorId], references: [id])
@@ -181,6 +188,7 @@ model Invoice {
   payments         Payment[]
   agentDecisions   AgentDecision[]
   paymentIntents   PaymentIntent[]
+  deliveryRequests DeliveryRequest[]
 }
 
 model AgentRun {
@@ -352,5 +360,115 @@ model PaymentIntent {
   @@index([orgId, status])
   @@index([invoiceId])
 }
+
+model DeliveryRequest {
+  id                 String       @id @default(cuid())
+  orgId              String
+  purchaseOrderId    String?
+  invoiceId          String?
+  status             String       @default("pending") // pending, submitted, under_review, approved, rejected, expired, revoked
+  tokenHash          String       @unique
+  accessCodeHash     String
+  failedCodeAttempts Int          @default(0)
+  lockedUntil        DateTime?
+  challengeCode      String
+  expiresAt          DateTime
+  revokedAt          DateTime?
+  createdBy          String?
+  createdAt          DateTime     @default(now())
+  verifierName       String?
+  verifierContact    String?
+
+  organization       Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  purchaseOrder      PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  invoice            Invoice?       @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  evidenceFiles      EvidenceFile[]
+  submission         VerificationSubmission?
+  reports            VerificationReport[]
+
+  @@index([orgId, status])
+  @@index([tokenHash])
+  @@index([purchaseOrderId])
+  @@index([invoiceId])
+}
+
+model EvidenceFile {
+  id                 String       @id @default(cuid())
+  requestId          String
+  kind               String       // photo, video, document, pdf, signature, keyframe
+  storagePath        String
+  sha256             String
+  perceptualHash     String?
+  mime               String
+  size               Int
+  uploadedByRole     String       @default("verifier") // verifier, owner
+  exifJson           String?
+  aiExtractionJson   String?
+  status             String       @default("uploaded") // uploaded, verified, rejected, deleted
+  deleteAfter        DateTime
+  createdAt          DateTime     @default(now())
+
+  request            DeliveryRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@index([sha256])
+}
+
+model VerificationSubmission {
+  id                     String       @id @default(cuid())
+  requestId              String       @unique
+  receivedQuantitiesJson String
+  note                   String?
+  consentGiven           Boolean      @default(false)
+  submittedAt            DateTime     @default(now())
+
+  request                DeliveryRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+model ConditionTemplate {
+  id                 String       @id @default(cuid())
+  orgId              String
+  vendorId           String?
+  name               String
+  rulesJson          String
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  organization       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  vendor             Vendor?      @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  @@index([orgId])
+  @@index([vendorId])
+}
+
+model VerificationReport {
+  id                   String       @id @default(cuid())
+  requestId            String
+  templateSnapshotJson String
+  resultsJson          String
+  overall              String       // ready, needs_review, failed
+  aiUsed               Boolean      @default(false)
+  reportHash           String
+  createdAt            DateTime     @default(now())
+
+  request              DeliveryRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+}
+
+model Notification {
+  id          String       @id @default(cuid())
+  orgId       String
+  type        String       // delivery_proof_submitted, link_locked, etc.
+  payloadJson String
+  readAt      DateTime?
+  createdAt   DateTime     @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, readAt])
+}
+
 
 
