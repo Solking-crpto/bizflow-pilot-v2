@@ -14,12 +14,12 @@ Branch: `upgrade-1-verification`
   - [x] Add `tests/rls.test.ts` (read-only assertion that RLS is enabled for all tables in `v2_testnet`)
   - [x] Update `scripts/scan-client-bundle.ts` to scan for `sb_secret_` and `service_role`
 
-- [ ] **Phase 3: Storage Provider & File Verification**
-  - [ ] Install `@supabase/supabase-js` and verify version accepts `sb_secret_`
-  - [ ] Implement `lib/storage/types.ts` (`StorageProvider` interface)
-  - [ ] Implement `lib/storage/supabase.ts` (private bucket check, signed upload/download URLs, network isolation)
-  - [ ] Implement `lib/storage/local.ts` (dev-only fallback, forbidden in production)
-  - [ ] Implement `lib/storage/validator.ts` (magic bytes, size limits, SHA-256 calculation, executable rejection)
+- [x] **Phase 3: Storage Provider & File Verification**
+  - [x] Install `@supabase/supabase-js` and verify version accepts `sb_secret_`
+  - [x] Implement `lib/storage/types.ts` (`StorageProvider` interface)
+  - [x] Implement `lib/storage/supabase.ts` (private bucket check, signed upload/download URLs, network isolation)
+  - [x] Implement `lib/storage/local.ts` (dev-only fallback, forbidden in production)
+  - [x] Implement `lib/storage/validator.ts` (magic bytes, size limits, SHA-256 calculation, executable rejection)
 
 - [ ] **Phase 4: Token Security, Access Codes & Link Management**
   - [ ] Implement `lib/verification/security.ts` (32-byte token SHA-256 hash, 6-char access code hash, lockout logic, constant-time compare)
