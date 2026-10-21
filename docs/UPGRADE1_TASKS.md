@@ -21,10 +21,10 @@ Branch: `upgrade-1-verification`
   - [x] Implement `lib/storage/local.ts` (dev-only fallback, forbidden in production)
   - [x] Implement `lib/storage/validator.ts` (magic bytes, size limits, SHA-256 calculation, executable rejection)
 
-- [ ] **Phase 4: Token Security, Access Codes & Link Management**
-  - [ ] Implement `lib/verification/security.ts` (32-byte token SHA-256 hash, 6-char access code hash, lockout logic, constant-time compare)
-  - [ ] Implement rate limiting and lockout state (5 failed attempts -> 30m lock)
-  - [ ] Integrate session cookie for validated verifier sessions
+- [x] **Phase 4: Token Security, Access Codes & Link Management**
+  - [x] Implement `lib/verification/security.ts` (32-byte token SHA-256 hash, 6-char access code hash, lockout logic, constant-time compare)
+  - [x] Implement rate limiting and lockout state (5 failed attempts -> 30m lock)
+  - [x] Integrate session cookie for validated verifier sessions
 
 - [ ] **Phase 5: Conditions Engine**
   - [ ] Implement `lib/verification/conditions.ts` (pure functional evaluator: `evaluate(inputs, rules)`)
