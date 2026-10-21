@@ -127,9 +127,14 @@ export function assertTestDatabaseSafety(overrideUrl?: string): void {
 
 function optimizeDatasourceUrl(rawUrl: string): string {
   let url = rawUrl;
+  if (!url.includes("sslmode=")) {
+    const sep = url.includes("?") ? "&" : "?";
+    url = `${url}${sep}sslmode=require`;
+  }
   if (!url.includes("connection_limit=")) {
     const separator = url.includes("?") ? "&" : "?";
-    url = `${url}${separator}connection_limit=1&pool_timeout=20&connect_timeout=15`;
+    const timeoutSec = Math.max(30, Math.floor(getDbTimeoutMs() / 1000));
+    url = `${url}${separator}connection_limit=1&pool_timeout=30&connect_timeout=${timeoutSec}`;
   }
   return url;
 }

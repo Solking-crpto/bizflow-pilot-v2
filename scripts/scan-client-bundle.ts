@@ -88,6 +88,9 @@ export function scanClientBundle(targetDir?: string): { clean: boolean; leaks: {
     { name: "Infura API key in URL", regex: /infura\.io\/v3\/[a-fA-F0-9]{32}/i },
     { name: "Explicit OWNER_PASSCODE", regex: /OWNER_PASSCODE\s*[:=]\s*["'][^"']+["']/i },
     { name: "Explicit CRON_SECRET", regex: /CRON_SECRET\s*[:=]\s*["'][^"']+["']/i },
+    { name: "Explicit SUPABASE_SERVICE_ROLE_KEY", regex: /SUPABASE_SERVICE_ROLE_KEY\s*[:=]\s*["'][^"']+["']/i },
+    { name: "Supabase service_role secret key (sb_secret_*)", regex: /sb_secret_[a-zA-Z0-9_\-\.]{16,}/i },
+    { name: "Supabase service_role token/string", regex: /(?:service_role|supabase_service_role)\s*[:=]\s*["'][^"']+["']/i },
   ];
 
   for (const file of jsFiles) {

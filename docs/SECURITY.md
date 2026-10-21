@@ -146,5 +146,24 @@ BizFlow Pilot V2 provides a single unified deployment supporting runtime switchi
    - All state-changing endpoints (`POST`, `PUT`, `PATCH`, `DELETE`) require the `X-Bizflow-Network` header matching the active `bizflow_network` cookie.
    - If a user changes networks in Tab A while Tab B is still open, any submission from Tab B results in an immediate **HTTP 409 Conflict**, preventing cross-network data corruption or misdirected payments.
 3. **Client Bundle Secret Leak Scanner**:
-   - Post-build bundle scanner (`npm run scan:bundle` via `scripts/scan-client-bundle.ts`) statically audits all client `.next/static` chunks for database credentials (`postgres://`), private keys, Alchemy/Infura credentials, and internal administrative passcodes.
+   - Post-build bundle scanner (`npm run scan:bundle` via `scripts/scan-client-bundle.ts`) statically audits all client `.next/static` chunks for database credentials (`postgres://`), private keys, Alchemy/Infura credentials, Supabase service keys (`sb_secret_*`, `service_role`), and internal administrative passcodes.
    - Verified clean with zero leaked secrets.
+
+---
+
+## 8. Database Security & Row Level Security (RLS) Hardening
+
+To protect multi-tenant business data and prevent unauthorized direct database access:
+
+1. **Row Level Security (RLS) Enforcement**:
+   - Every application table in both `v2_testnet` and `v2_mainnet` schemas has PostgreSQL Row Level Security (`ENABLE ROW LEVEL SECURITY`) activated via idempotent migrations (`scripts/secure-schemas.sql`).
+   - All permissions (`SELECT`, `INSERT`, `UPDATE`, `DELETE`, `ALL`) are explicitly revoked from public PostgREST roles (`anon`, `authenticated`) across all tables, views, sequences, and routines.
+   - Direct access to PostgREST endpoints is completely blocked; all data interactions must pass through the authenticated BizFlow Node.js backend running Prisma ORM.
+
+2. **Automated RLS Invariant Verification**:
+   - `tests/rls.test.ts` executes a dynamic PostgreSQL system catalog query (`pg_tables` joined with `pg_class.relrowsecurity`) on testnet to continuously assert that 100% of tables have `rowsecurity = true`. Any new migration that adds a table without RLS causes CI tests to fail immediately.
+
+3. **Supabase Service Key Isolation**:
+   - The Supabase service role key (`sb_secret_*` / `SUPABASE_SERVICE_ROLE_KEY`) is strictly confined to server-side code for administrative storage provisioning.
+   - The client bundle scanner explicitly scans all built chunks for `sb_secret_` prefixes and `service_role` assignments to guarantee zero accidental client-side leaks.
+

@@ -8,11 +8,11 @@ Branch: `upgrade-1-verification`
   - [x] Run `scripts/db-push-network.ps1 -Network testnet` (Applied to `v2_testnet` schema)
   - [x] Verify Prisma Client generation (`npx prisma generate`)
 
-- [ ] **Phase 2: Database Security Hardening (RLS)**
-  - [ ] Create `scripts/secure-schemas.sql` (enables RLS on all tables in `v2_testnet` and `v2_mainnet`, revokes anon/authenticated)
-  - [ ] Create `scripts/secure-schemas.ps1` (safe PowerShell runner for testnet schema)
-  - [ ] Add `tests/rls.test.ts` (read-only assertion that RLS is enabled for all tables in `v2_testnet`)
-  - [ ] Update `scripts/scan-client-bundle.ts` to scan for `sb_secret_` and `service_role`
+- [x] **Phase 2: Database Security Hardening (RLS)**
+  - [x] Create `scripts/secure-schemas.sql` (enables RLS on all tables in `v2_testnet` and `v2_mainnet`, revokes anon/authenticated)
+  - [x] Create `scripts/secure-schemas.ps1` (safe PowerShell runner for testnet schema)
+  - [x] Add `tests/rls.test.ts` (read-only assertion that RLS is enabled for all tables in `v2_testnet`)
+  - [x] Update `scripts/scan-client-bundle.ts` to scan for `sb_secret_` and `service_role`
 
 - [ ] **Phase 3: Storage Provider & File Verification**
   - [ ] Install `@supabase/supabase-js` and verify version accepts `sb_secret_`

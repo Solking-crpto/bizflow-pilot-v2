@@ -40,6 +40,8 @@ describe("Client Bundle Safety Verification & Negative Test", () => {
     const fakeDbUrl = "postgresql://postgres:mysecretpassword123@ep-sample.aws.neon.tech/bizflow?schema=v2_testnet";
     // 3. Sensitive secret declaration
     const fakeCronSecret = 'const CRON_SECRET = "fake-secret-token-xyz-12345";';
+    // 4. Supabase service role secret key
+    const fakeSupabaseKey = 'const SUPABASE_SERVICE_ROLE_KEY = "sb_secret_fake_service_role_key_9876543210";';
 
     const taintedContent = `
       ${baseChunk}
@@ -47,6 +49,7 @@ describe("Client Bundle Safety Verification & Negative Test", () => {
       const treasuryKey = "${fakePrivateKey}";
       const connectionString = "${fakeDbUrl}";
       ${fakeCronSecret}
+      ${fakeSupabaseKey}
     `;
 
     const taintedFile = path.join(tempDir, "tainted-chunk.js");
@@ -55,12 +58,13 @@ describe("Client Bundle Safety Verification & Negative Test", () => {
     // 1. Verify via scanClientBundle function
     const scanResult = scanClientBundle(tempDir);
     expect(scanResult.clean).toBe(false);
-    expect(scanResult.leaks.length).toBeGreaterThanOrEqual(3);
+    expect(scanResult.leaks.length).toBeGreaterThanOrEqual(4);
 
     const patterns = scanResult.leaks.map((l) => l.pattern);
     expect(patterns.some((p) => p.includes("Treasury Private Key"))).toBe(true);
     expect(patterns.some((p) => p.includes("PostgreSQL Database URL credentials"))).toBe(true);
     expect(patterns.some((p) => p.includes("Explicit CRON_SECRET"))).toBe(true);
+    expect(patterns.some((p) => p.includes("Supabase service_role"))).toBe(true);
 
     // 2. Verify via CLI execution (npx tsx scripts/scan-client-bundle.ts) that process exits with code 1
     let cliExitedWithCode1 = false;
