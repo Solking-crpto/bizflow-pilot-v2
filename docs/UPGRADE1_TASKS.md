@@ -31,10 +31,10 @@ Branch: `upgrade-1-verification`
   - [x] Implement all 10 rule evaluators (`min_files`, `required_kinds`, `quantities_match`, `delivery_window`, `verifier_identified`, `challenge_code_visible`, `no_duplicate_evidence`, `ai_matches_po`, `invoice_matches_po`, `owner_approval_above_amount`)
   - [x] Write exhaustive truth table unit tests in `tests/conditions.test.ts`
 
-- [ ] **Phase 6: AI Evidence Assessment**
-  - [ ] Implement `lib/verification/ai.ts` (Zod structured output, provider-agnostic, prompt isolation)
-  - [ ] Implement daily rate limit budget (`LLM_DAILY_CALL_LIMIT`)
-  - [ ] Enforce "AI-assisted, may be wrong" disclaimer
+- [x] **Phase 6: AI Evidence Assessment**
+  - [x] Implement `lib/verification/ai.ts` (Zod structured output, provider-agnostic, prompt isolation)
+  - [x] Implement daily rate limit budget (`LLM_DAILY_CALL_LIMIT`)
+  - [x] Enforce "AI-assisted, may be wrong" disclaimer
 
 - [ ] **Phase 7: Owner UI & Management APIs**
   - [ ] Implement `/api/delivery-proof/request` (create link, access code, challenge code, WhatsApp share links, email draft)
