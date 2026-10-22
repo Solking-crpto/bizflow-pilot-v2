@@ -20,16 +20,17 @@ test.describe("Phase 11: End-to-End Delivery Proof & Payment Verification Journe
     test.setTimeout(240000);
 
     const prisma = getDb("testnet");
+    const runQuery = <T>(fn: () => Promise<T>) => withDbTimeout(fn, 60000);
 
     // 1. Find or prepare seeded organization and invoice
-    let org = await withDbTimeout(() =>
+    let org = await runQuery(() =>
       prisma.organization.findFirst({
         include: { vendors: true },
       })
     );
 
     if (!org) {
-      org = await withDbTimeout(() =>
+      org = await runQuery(() =>
         prisma.organization.create({
           data: {
             name: "Apex Logistics Corp",
@@ -43,7 +44,7 @@ test.describe("Phase 11: End-to-End Delivery Proof & Payment Verification Journe
 
     let vendor = org.vendors[0];
     if (!vendor) {
-      vendor = await withDbTimeout(() =>
+      vendor = await runQuery(() =>
         prisma.vendor.create({
           data: {
             orgId: org.id,
@@ -55,9 +56,9 @@ test.describe("Phase 11: End-to-End Delivery Proof & Payment Verification Journe
     }
 
     // Create / ensure an Item
-    let item = await withDbTimeout(() => prisma.item.findFirst({ where: { orgId: org.id } }));
+    let item = await runQuery(() => prisma.item.findFirst({ where: { orgId: org.id } }));
     if (!item) {
-      item = await withDbTimeout(() =>
+      item = await runQuery(() =>
         prisma.item.create({
           data: {
             orgId: org.id,
@@ -73,7 +74,7 @@ test.describe("Phase 11: End-to-End Delivery Proof & Payment Verification Journe
 
     // Clean any prior test delivery requests for this test PO
     const testPoNumber = "PO-PROOF-QA-001";
-    let po = await withDbTimeout(() =>
+    let po = await runQuery(() =>
       prisma.purchaseOrder.findFirst({
         where: { orgId: org.id, poNumber: testPoNumber },
         include: { lines: true, deliveryRequests: true },
@@ -81,7 +82,7 @@ test.describe("Phase 11: End-to-End Delivery Proof & Payment Verification Journe
     );
 
     if (!po) {
-      po = await withDbTimeout(() =>
+      po = await runQuery(() =>
         prisma.purchaseOrder.create({
           data: {
             orgId: org.id,
@@ -104,13 +105,13 @@ test.describe("Phase 11: End-to-End Delivery Proof & Payment Verification Journe
         })
       );
     } else {
-      await withDbTimeout(() =>
+      await runQuery(() =>
         prisma.pOLine.updateMany({
           where: { purchaseOrderId: po.id },
           data: { quantity: 1, unitPriceUsdc: 10_000_000n, totalUsdc: 10_000_000n },
         })
       );
-      await withDbTimeout(() =>
+      await runQuery(() =>
         prisma.purchaseOrder.update({
           where: { id: po.id },
           data: { totalUsdc: 10_000_000n },
@@ -119,7 +120,7 @@ test.describe("Phase 11: End-to-End Delivery Proof & Payment Verification Journe
     }
 
     const testInvNumber = "INV-PROOF-QA-001";
-    let invoice = await withDbTimeout(() =>
+    let invoice = await runQuery(() =>
       prisma.invoice.findFirst({
         where: { orgId: org.id, invoiceNumber: testInvNumber },
         include: { deliveryRequests: true },
@@ -127,7 +128,7 @@ test.describe("Phase 11: End-to-End Delivery Proof & Payment Verification Journe
     );
 
     if (!invoice) {
-      invoice = await withDbTimeout(() =>
+      invoice = await runQuery(() =>
         prisma.invoice.create({
           data: {
             orgId: org.id,
@@ -150,12 +151,12 @@ test.describe("Phase 11: End-to-End Delivery Proof & Payment Verification Journe
       );
     } else {
       // Reset invoice to required and block for this run
-      await withDbTimeout(() =>
+      await runQuery(() =>
         prisma.deliveryRequest.deleteMany({
           where: { invoiceId: invoice.id },
         })
       );
-      invoice = await withDbTimeout(() =>
+      invoice = await runQuery(() =>
         prisma.invoice.update({
           where: { id: invoice.id },
           data: {
@@ -182,6 +183,7 @@ test.describe("Phase 11: End-to-End Delivery Proof & Payment Verification Journe
     await page.addInitScript(() => {
       try {
         localStorage.setItem("bizflow_first_visit_choice_dismissed", "true");
+        localStorage.setItem("bizflow_active_network", "testnet");
         localStorage.setItem("bizflow_network", "testnet");
       } catch {}
     });
@@ -194,28 +196,27 @@ test.describe("Phase 11: End-to-End Delivery Proof & Payment Verification Journe
 
     await page.setViewportSize({ width: 1280, height: 800 });
 
-    // Open Invoices Desk
-    await page.goto("http://localhost:3002/invoices", { waitUntil: "domcontentloaded", timeout: 30000 });
-    const retryBtn = page.getByRole("button", { name: /Retry Connection/i });
-    if (await retryBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await retryBtn.click();
-      await page.waitForTimeout(1000);
-    }
+    // Open Invoices Desk on testnet
+    await page.goto("http://localhost:3002/invoices?network=testnet", { waitUntil: "domcontentloaded", timeout: 30000 });
+
     await expect(page.locator("h1", { hasText: "Invoice Desk" })).toBeVisible({ timeout: 25000 });
+    // Wait for React hydration so onClick handlers are attached
+    await page.waitForTimeout(2000);
 
     // Select our QA test invoice in the list
     const invoiceRow = page.locator(`text=${testInvNumber}`).first();
     await expect(invoiceRow).toBeVisible({ timeout: 15000 });
     await invoiceRow.click();
+    await page.waitForTimeout(500);
 
     // Click "Request Delivery Proof" button
     const requestProofBtn = page.getByRole("button", { name: /Request Delivery Proof/i });
-    await expect(requestProofBtn).toBeVisible({ timeout: 10000 });
+    await expect(requestProofBtn).toBeVisible({ timeout: 15000 });
     await requestProofBtn.click();
 
-    // Modal opens: fill verifier details
+    // Fill verifier details
     const verifierNameInput = page.locator("form input").first();
-    await expect(verifierNameInput).toBeVisible({ timeout: 10000 });
+    await expect(verifierNameInput).toBeVisible({ timeout: 15000 });
     await verifierNameInput.fill("Chief Inspector Michael Vance");
 
     const verifierContactInput = page.locator("form input").nth(1);
@@ -261,6 +262,7 @@ test.describe("Phase 11: End-to-End Delivery Proof & Payment Verification Journe
     await mobileContext.addInitScript(() => {
       try {
         localStorage.setItem("bizflow_first_visit_choice_dismissed", "true");
+        localStorage.setItem("bizflow_active_network", "testnet");
         localStorage.setItem("bizflow_network", "testnet");
       } catch {}
     });
@@ -321,15 +323,14 @@ test.describe("Phase 11: End-to-End Delivery Proof & Payment Verification Journe
     const consentCheckbox = mobilePage.locator("input[type='checkbox']").first();
     await consentCheckbox.check();
 
-    // Fill verifier name & contact if empty
+    // Assert and fill verifier name & contact inputs
     const mobileNameInput = mobilePage.locator("input[placeholder*='Your Full Name']");
-    if (await mobileNameInput.isVisible()) {
-      await mobileNameInput.fill("Chief Inspector Michael Vance");
-    }
+    await expect(mobileNameInput).toBeVisible({ timeout: 10000 });
+    await mobileNameInput.fill("Chief Inspector Michael Vance");
+
     const mobileContactInput = mobilePage.locator("input[placeholder*='Phone']").or(mobilePage.locator("input[placeholder*='WhatsApp']")).first();
-    if (await mobileContactInput.isVisible()) {
-      await mobileContactInput.fill("+234 803 555 0192");
-    }
+    await expect(mobileContactInput).toBeVisible({ timeout: 10000 });
+    await mobileContactInput.fill("+234 803 555 0192");
 
     // Submit proof
     const submitProofBtn = mobilePage.getByRole("button", { name: /Submit Delivery Proof/i });
@@ -343,7 +344,7 @@ test.describe("Phase 11: End-to-End Delivery Proof & Payment Verification Journe
     await mobileContext.close();
 
     // 4. Back to Desktop Owner Browser: Inspect Report
-    await page.goto("http://localhost:3002/invoices", { waitUntil: "domcontentloaded" });
+    await page.goto("http://localhost:3002/invoices?network=testnet", { waitUntil: "domcontentloaded" });
     const invoiceRowAfterSubmit = page.locator(`text=${testInvNumber}`).first();
     await expect(invoiceRowAfterSubmit).toBeVisible({ timeout: 15000 });
     await invoiceRowAfterSubmit.click();
@@ -375,12 +376,11 @@ test.describe("Phase 11: End-to-End Delivery Proof & Payment Verification Journe
 
     // Close modal
     const closeInspectionBtn = page.locator("button:has(svg.lucide-x)").first();
-    if (await closeInspectionBtn.isVisible()) {
-      await closeInspectionBtn.click();
-    }
+    await expect(closeInspectionBtn).toBeVisible({ timeout: 10000 });
+    await closeInspectionBtn.click();
 
     // 5. Navigate to Payment Desk
-    await page.goto("http://localhost:3002/payments", { waitUntil: "domcontentloaded", timeout: 30000 });
+    await page.goto("http://localhost:3002/payments?network=testnet", { waitUntil: "domcontentloaded", timeout: 30000 });
     await expect(page.locator("h1", { hasText: "Payment Desk" })).toBeVisible({ timeout: 25000 });
 
     // Select our QA invoice in Payment Desk

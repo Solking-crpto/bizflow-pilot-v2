@@ -17,19 +17,38 @@ export function hashToken(rawToken: string): string {
   return crypto.createHash("sha256").update(rawToken.trim().toLowerCase()).digest("hex");
 }
 
-export function generateAccessCode(length: number = 6): { rawCode: string; codeHash: string } {
+export function getAccessCodePepper(): string {
+  const pepper = process.env.ACCESS_CODE_PEPPER;
+  if (!pepper) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "CRITICAL SECURITY CONFIGURATION ERROR: ACCESS_CODE_PEPPER is strictly required in production with zero fallback default. Refusing to hash access codes."
+      );
+    }
+    return process.env.SESSION_SECRET || "bizflow-v2-test-pepper-do-not-use-in-production-min32!";
+  }
+  if (process.env.NODE_ENV === "production" && pepper.length < 32) {
+    throw new Error(
+      "CRITICAL SECURITY CONFIGURATION ERROR: ACCESS_CODE_PEPPER must be at least 32 characters in production."
+    );
+  }
+  return pepper;
+}
+
+export function generateAccessCode(length: number = 6, pepper?: string): { rawCode: string; codeHash: string } {
   let rawCode = "";
   for (let i = 0; i < length; i++) {
     const idx = crypto.randomInt(0, UNAMBIGUOUS_CHARS.length);
     rawCode += UNAMBIGUOUS_CHARS[idx];
   }
-  const codeHash = hashAccessCode(rawCode);
+  const codeHash = hashAccessCode(rawCode, pepper);
   return { rawCode, codeHash };
 }
 
-export function hashAccessCode(rawCode: string): string {
+export function hashAccessCode(rawCode: string, pepper?: string): string {
+  const secret = pepper || getAccessCodePepper();
   const normalized = rawCode.trim().toUpperCase().replace(/[\s-]/g, "");
-  return crypto.createHash("sha256").update(normalized).digest("hex");
+  return crypto.createHmac("sha256", secret).update(normalized).digest("hex");
 }
 
 export function generateChallengeCode(length: number = 4): string {
@@ -41,9 +60,9 @@ export function generateChallengeCode(length: number = 4): string {
   return challenge;
 }
 
-export function verifyAccessCode(submittedCode: string, storedHash: string): boolean {
+export function verifyAccessCode(submittedCode: string, storedHash: string, pepper?: string): boolean {
   if (!submittedCode || !storedHash) return false;
-  const submittedHash = hashAccessCode(submittedCode);
+  const submittedHash = hashAccessCode(submittedCode, pepper);
 
   try {
     const bufA = Buffer.from(submittedHash, "hex");

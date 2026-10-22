@@ -100,6 +100,37 @@ async function runTestnetPreflight(): Promise<void> {
     details: dbDetails,
   });
 
+  // Check 4: Supabase Private Evidence Storage Bucket (Read-Only)
+  let storagePassed = false;
+  let storageDetails = "";
+  try {
+    const bucketName = process.env.EVIDENCE_BUCKET_TESTNET || "delivery-evidence-testnet";
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+      storageDetails = "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing in environment.";
+    } else {
+      const { createClient } = await import("@supabase/supabase-js");
+      const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+      const { data, error } = await client.storage.getBucket(bucketName);
+      if (error) {
+        storageDetails = `Bucket '${bucketName}' missing or error: ${error.message}`;
+      } else if (data.public) {
+        storageDetails = `SECURITY VIOLATION: Bucket '${bucketName}' is public. Must be private.`;
+      } else {
+        storagePassed = true;
+        storageDetails = `Bucket '${bucketName}' verified present and private (public=false).`;
+      }
+    }
+  } catch (err: any) {
+    storageDetails = `Storage check error: ${err.message}`;
+  }
+  results.push({
+    title: "Supabase Evidence Bucket (Read-Only)",
+    passed: storagePassed,
+    details: storageDetails,
+  });
+
   // Summary Table
   console.log("----------------------------------------------------------------");
   let allPassed = true;

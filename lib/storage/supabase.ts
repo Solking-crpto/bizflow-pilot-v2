@@ -49,28 +49,47 @@ export class SupabaseStorageProvider implements StorageProvider {
     });
   }
 
-  private async assertBucketIsPrivate(bucket: string): Promise<void> {
-    if (this.verifiedBuckets.has(bucket)) return;
-
+  async checkBucketStatusReadOnly(bucket: string): Promise<{
+    exists: boolean;
+    isPrivate: boolean;
+    error?: string;
+  }> {
     const { data, error } = await this.client.storage.getBucket(bucket);
     if (error) {
-      // If bucket does not exist, attempt to create it as a private bucket
       if (error.message?.toLowerCase().includes("not found")) {
-        const createRes = await this.client.storage.createBucket(bucket, {
-          public: false,
-          fileSizeLimit: 50 * 1024 * 1024,
-        });
-        if (createRes.error) {
-          throw new Error(`Failed to initialize private storage bucket '${bucket}': ${createRes.error.message}`);
-        }
-        this.verifiedBuckets.add(bucket);
-        return;
+        return {
+          exists: false,
+          isPrivate: false,
+          error: `Storage bucket '${bucket}' is missing. Please create it as a private bucket in Supabase.`,
+        };
       }
-      throw new Error(`Failed to verify storage bucket '${bucket}': ${error.message}`);
+      return {
+        exists: false,
+        isPrivate: false,
+        error: `Failed to query storage bucket '${bucket}': ${error.message}`,
+      };
     }
 
     if (data.public) {
-      throw new Error(`Storage security violation: Evidence bucket '${bucket}' is public. Must be private.`);
+      return {
+        exists: true,
+        isPrivate: false,
+        error: `Storage security violation: Evidence bucket '${bucket}' is public. It must be private.`,
+      };
+    }
+
+    return { exists: true, isPrivate: true };
+  }
+
+  private async assertBucketIsPrivate(bucket: string): Promise<void> {
+    if (this.verifiedBuckets.has(bucket)) return;
+
+    const status = await this.checkBucketStatusReadOnly(bucket);
+    if (!status.exists) {
+      throw new Error(`Storage configuration error: ${status.error}`);
+    }
+    if (!status.isPrivate) {
+      throw new Error(`Storage security violation: ${status.error}`);
     }
 
     this.verifiedBuckets.add(bucket);
@@ -131,4 +150,19 @@ export class SupabaseStorageProvider implements StorageProvider {
   validateFile(buffer: Buffer, expectedMime?: string): FileValidationResult {
     return validateFile(buffer, expectedMime);
   }
+}
+
+export async function verifyEvidenceBucketReadOnly(network: "testnet" | "mainnet"): Promise<{
+  bucket: string;
+  exists: boolean;
+  isPrivate: boolean;
+  error?: string;
+}> {
+  const bucket = getEvidenceBucket(network);
+  const provider = new SupabaseStorageProvider();
+  const status = await provider.checkBucketStatusReadOnly(bucket);
+  return {
+    bucket,
+    ...status,
+  };
 }

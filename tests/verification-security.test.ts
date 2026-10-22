@@ -49,6 +49,38 @@ describe("Phase 4: Token Security, Access Codes & Link Management", () => {
       expect(ambiguous.test(challenge)).toBe(false);
     });
 
+    it("hashes access code using HMAC-SHA256 with server pepper", () => {
+      const code = "ABC789";
+      const pepper1 = "pepper-server-secret-instance-alpha-32chars";
+      const pepper2 = "pepper-server-secret-instance-beta-32chars!";
+
+      const hash1 = hashAccessCode(code, pepper1);
+      const hash2 = hashAccessCode(code, pepper2);
+
+      expect(hash1).toHaveLength(64);
+      expect(hash2).toHaveLength(64);
+      // Different server peppers produce completely different hashes
+      expect(hash1).not.toBe(hash2);
+
+      // Verify constant-time comparison matches with the same pepper
+      expect(verifyAccessCode(code, hash1, pepper1)).toBe(true);
+      expect(verifyAccessCode(code, hash1, pepper2)).toBe(false);
+    });
+
+    it("strictly requires ACCESS_CODE_PEPPER in production with zero fallback default", () => {
+      const oldEnv = process.env.NODE_ENV;
+      const oldPepper = process.env.ACCESS_CODE_PEPPER;
+      try {
+        process.env.NODE_ENV = "production";
+        delete process.env.ACCESS_CODE_PEPPER;
+
+        expect(() => hashAccessCode("ABC123")).toThrow(/ACCESS_CODE_PEPPER is strictly required in production/);
+      } finally {
+        process.env.NODE_ENV = oldEnv;
+        if (oldPepper) process.env.ACCESS_CODE_PEPPER = oldPepper;
+      }
+    });
+
     it("verifies matching access code with timing-safe comparison", () => {
       const { rawCode, codeHash } = generateAccessCode();
       expect(verifyAccessCode(rawCode, codeHash)).toBe(true);

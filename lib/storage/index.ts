@@ -1,11 +1,22 @@
 import "server-only";
 import { StorageProvider } from "./types";
-import { SupabaseStorageProvider, getEvidenceBucket, buildEvidencePath } from "./supabase";
+import {
+  SupabaseStorageProvider,
+  getEvidenceBucket,
+  buildEvidencePath,
+  verifyEvidenceBucketReadOnly,
+} from "./supabase";
 import { LocalStorageProvider } from "./local";
 
 export * from "./types";
 export * from "./validator";
-export { getEvidenceBucket, buildEvidencePath, SupabaseStorageProvider, LocalStorageProvider };
+export {
+  getEvidenceBucket,
+  buildEvidencePath,
+  SupabaseStorageProvider,
+  LocalStorageProvider,
+  verifyEvidenceBucketReadOnly,
+};
 
 let cachedProvider: StorageProvider | null = null;
 
