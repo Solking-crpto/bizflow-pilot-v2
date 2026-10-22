@@ -210,9 +210,12 @@ npm run dev
 ```
 Visit [http://localhost:3002](http://localhost:3002) in your browser.
 
+> [!NOTE]
+> **Dev Server & Build Cache:** After running `npm run build`, delete the `.next` folder before running `npm run dev` (or use `powershell -File scripts/dev-clean.ps1`) to avoid production chunk manifest conflicts in dev mode.
+
 ### 4. Running Test Suites & Bundle Verification
 ```powershell
-# Run all 167 unit, integration, and security tests across 33 test suites
+# Run all unit, integration, and security tests across test suites
 npm test
 
 # Run preflight verification for Arc Testnet / Mainnet

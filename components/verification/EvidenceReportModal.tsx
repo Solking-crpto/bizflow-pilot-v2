@@ -232,10 +232,17 @@ export function EvidenceReportModal({
                           const desc = line.item?.description || line.description;
                           const expected = line.quantity;
                           const reported = receivedQtys[desc] ?? "-";
-                          const aiItem = aiResults?.itemsObserved?.find(
-                            (i: any) => i.description.toLowerCase().includes(desc.toLowerCase()) || desc.toLowerCase().includes(i.description.toLowerCase())
-                          );
-                          const aiQty = aiItem ? aiItem.estimatedQuantity : "-";
+                          const isAiAssessed = Boolean(report?.aiUsed && aiResults);
+                          const aiItem = isAiAssessed
+                            ? aiResults?.itemsObserved?.find(
+                                (i: any) =>
+                                  i.description.toLowerCase().includes(desc.toLowerCase()) ||
+                                  desc.toLowerCase().includes(i.description.toLowerCase())
+                              )
+                            : null;
+                          const aiQty = isAiAssessed
+                            ? (aiItem ? aiItem.estimatedQuantity : "-")
+                            : "not evaluated";
                           const isMatch = reported !== "-" && Number(reported) >= Number(expected);
 
                           return (
@@ -245,8 +252,12 @@ export function EvidenceReportModal({
                               <td className="p-3 text-right font-mono font-semibold text-brand-primary">
                                 {reported}
                               </td>
-                              <td className="p-3 text-right font-mono text-emerald-400">
-                                {aiQty}
+                              <td className="p-3 text-right font-mono">
+                                {isAiAssessed ? (
+                                  <span className="text-emerald-400">{aiQty}</span>
+                                ) : (
+                                  <span className="text-ink-muted italic text-[11px]">not evaluated</span>
+                                )}
                               </td>
                               <td className="p-3 text-center">
                                 {isMatch ? (
@@ -318,45 +329,77 @@ export function EvidenceReportModal({
               )}
 
               {/* AI Visual Assessment Card */}
-              {aiResults && (
-                <div className="border border-border rounded-xl p-4 bg-surface-muted/30 space-y-2.5">
+              <div className="border border-border rounded-xl p-4 bg-surface-muted/30 space-y-2.5">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-bold text-ink uppercase tracking-wider">
                     <Sparkles className="w-4 h-4 text-purple-400" />
                     AI Evidence Assessment (Advisory Only)
                   </div>
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="p-3 bg-surface-elevated rounded-lg border border-border">
-                      <div className="text-ink-muted">Extracted Challenge Code</div>
-                      <div className="font-mono font-bold text-ink text-sm mt-0.5">
-                        {aiResults.extractedChallengeCode || "None detected"}
-                      </div>
-                      <div className="text-[10px] text-ink-muted mt-1">
-                        Confidence: {(aiResults.challengeCodeConfidence * 100).toFixed(0)}%
-                      </div>
-                    </div>
-                    <div className="p-3 bg-surface-elevated rounded-lg border border-border">
-                      <div className="text-ink-muted">Overall Match Confidence</div>
-                      <div className="font-bold text-emerald-400 text-sm mt-0.5">
-                        {(aiResults.overallMatchConfidence * 100).toFixed(0)}%
-                      </div>
-                      <div className="text-[10px] text-ink-muted mt-1">
-                        Packaging: {aiResults.packagingNotes || "Standard"}
-                      </div>
-                    </div>
-                  </div>
-                  {/* Disclaimer banner */}
-                  <div className="p-2.5 rounded-lg bg-surface-muted border border-border text-[11px] text-ink-muted flex items-center gap-2">
-                    <Info className="w-4 h-4 shrink-0 text-amber-400" />
-                    <span>{aiResults.disclaimer}</span>
-                  </div>
+                  <span
+                    className={`text-[11px] font-mono px-2 py-0.5 rounded-full font-semibold border ${
+                      report?.aiUsed && aiResults
+                        ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                        : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                    }`}
+                  >
+                    {report?.aiUsed && aiResults ? "Assessed" : "AI not configured"}
+                  </span>
                 </div>
-              )}
+
+                {report?.aiUsed && aiResults ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="p-3 bg-surface-elevated rounded-lg border border-border">
+                        <div className="text-ink-muted">Extracted Challenge Code</div>
+                        <div className="font-mono font-bold text-ink text-sm mt-0.5">
+                          {aiResults.extractedChallengeCode || "None detected"}
+                        </div>
+                        <div className="text-[10px] text-ink-muted mt-1">
+                          Confidence: {(aiResults.challengeCodeConfidence * 100).toFixed(0)}%
+                        </div>
+                      </div>
+                      <div className="p-3 bg-surface-elevated rounded-lg border border-border">
+                        <div className="text-ink-muted">Overall Match Confidence</div>
+                        <div className="font-bold text-emerald-400 text-sm mt-0.5">
+                          {(aiResults.overallMatchConfidence * 100).toFixed(0)}%
+                        </div>
+                        <div className="text-[10px] text-ink-muted mt-1">
+                          Packaging: {aiResults.packagingNotes || "Standard"}
+                        </div>
+                      </div>
+                    </div>
+                    {/* Disclaimer banner */}
+                    <div className="p-2.5 rounded-lg bg-surface-muted border border-border text-[11px] text-ink-muted flex items-center gap-2">
+                      <Info className="w-4 h-4 shrink-0 text-amber-400" />
+                      <span>{aiResults.disclaimer}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="p-3.5 rounded-lg bg-surface-elevated border border-border/80 text-xs space-y-1.5">
+                    <div className="flex items-center gap-2 text-amber-400 font-medium">
+                      <AlertTriangle className="w-4 h-4 shrink-0" />
+                      <span>AI not configured</span>
+                    </div>
+                    <p className="text-ink-muted text-[11px] leading-relaxed">
+                      No vision LLM API key (<code className="text-ink font-mono text-[10px]">GOOGLE_API_KEY</code>, <code className="text-ink font-mono text-[10px]">GEMINI_API_KEY</code>, or <code className="text-ink font-mono text-[10px]">ANTHROPIC_API_KEY</code>) is configured in the environment. Visual match and physical challenge code detection were <span className="font-semibold text-ink">not evaluated</span> by AI.
+                    </p>
+                    <p className="text-ink-muted text-[11px] leading-relaxed">
+                      Please inspect the uploaded delivery evidence photos and documents manually in the gallery below.
+                    </p>
+                  </div>
+                )}
+              </div>
 
               {/* Evidence Files Gallery */}
               <div className="space-y-3">
-                <h3 className="text-xs font-bold text-ink uppercase tracking-wider">
-                  Evidence Files Gallery ({files.length} attached)
-                </h3>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                  <h3 className="text-xs font-bold text-ink uppercase tracking-wider">
+                    Evidence Files Gallery ({files.length} attached)
+                  </h3>
+                  <span className="text-[10px] text-ink-muted">
+                    SHA-256 exact-match check (catches exact byte duplicates only; does not detect modified/re-photographed images)
+                  </span>
+                </div>
                 {files.length === 0 ? (
                   <div className="p-6 text-center text-xs text-ink-muted border border-dashed border-border rounded-xl">
                     No evidence photos or documents submitted yet.

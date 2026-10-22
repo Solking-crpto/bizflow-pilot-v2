@@ -167,3 +167,35 @@ To protect multi-tenant business data and prevent unauthorized direct database a
    - The Supabase service role key (`sb_secret_*` / `SUPABASE_SERVICE_ROLE_KEY`) is strictly confined to server-side code for administrative storage provisioning.
    - The client bundle scanner explicitly scans all built chunks for `sb_secret_` prefixes and `service_role` assignments to guarantee zero accidental client-side leaks.
 
+---
+
+## 9. Delivery Proof & Verification Security Model
+
+BizFlow Pilot V2 provides an optional field delivery proof and payment conditions system. Its security and honesty invariants are architected as follows:
+
+### 9.1 Ephemeral Field Verifier Authentication & Rate Limiting
+- **Access Codes**: Field receivers authenticate to `/verify-delivery/[token]` using an ephemeral 6-character alphanumeric code.
+- **HMAC-SHA256 Hashing**: Access codes are never stored in plaintext. They are hashed using HMAC-SHA256 with a dedicated server secret (`ACCESS_CODE_PEPPER`, required in production with minimum 32 characters).
+- **Constant-Time Verification**: Comparison is executed using `crypto.timingSafeEqual` to prevent side-channel timing attacks.
+- **Lockout Protection**: Failed access code attempts are tracked in the database (`failedAttempts`). After 5 consecutive failed attempts, the link is locked for 30 minutes (`lockedUntil`).
+- **Session Isolation**: Successful entry sets an `httpOnly`, `Secure`, `SameSite=Lax` cookie (`bizflow_verifier_session`) containing an HMAC-SHA256 signed session token scoped to the specific request.
+
+### 9.2 Exact File Duplicate Detection (SHA-256 Byte Match Limit)
+- **Scope & Limit**: Duplicate detection only catches **exact copies of the same file (SHA-256 exact byte match)** against previously submitted evidence in the organization.
+- **Explicit Boundary**: Duplicate detection **does NOT detect modified, cropped, rotated, re-compressed, or re-photographed images** ("reused images" with different byte digests). It must never be referred to as "reused image detection" without this limitation explicitly stated.
+- **Evaluation**: Evaluated deterministically by `lib/verification/conditions.ts` under rule `no_duplicate_evidence`.
+
+### 9.3 Advisory AI Assessment & Zero-Simulation Runtime Invariant
+- **Advisory Role**: The AI vision assessment is strictly advisory and non-authoritative. It cannot sign transactions, move funds, or override owner decisions.
+- **Zero Simulation Invariant**: When no vision LLM API key (`GOOGLE_API_KEY`, `GEMINI_API_KEY`, or `ANTHROPIC_API_KEY`) is configured, the runtime returns **no extraction at all (`null` / "not evaluated")**. Rules requiring AI (`challenge_code_visible`, `ai_matches_po`) evaluate to `passed: false` with the explicit reason `"needs review: AI not configured"`, and the owner's report UI displays `"AI not configured"` instead of any extraction.
+- **Test-Only Isolation**: Mocked or deterministic responses exist **only inside tests** (`generateDeterministicAssessment`) and must never run in the production application runtime. Any made-up or rule-derived data labelled as AI is strictly prohibited.
+
+### 9.4 Hash-Chained Audit Ledger vs On-Chain Anchoring Boundary
+- **Delivery Proof Events**: All delivery proof lifecycle events (`delivery_request_created`, `assessment_generated`, `delivery_approved`, `delivery_rejected`) are recorded in the tamper-evident, SHA-256 hash-chained `AuditLog` in PostgreSQL.
+- **No On-Chain Delivery Anchoring**: Delivery proof evidence files and reports are **NOT anchored on-chain** to `AuditAnchor.sol`. On-chain smart contract anchoring is reserved exclusively for confirmed USDC payment settlements (`/api/payments/anchor-receipt`).
+
+### 9.5 Client-Side Link Sharing (No Outbound Email Server)
+- **No SMTP / Email Server**: The application does not run an outbound background email daemon, SMTP server, or external transactional email provider (SendGrid, Postmark, AWS SES).
+- **Client-Side Drafts**: Delivery verification links are shared with field verifiers via standard client-side `mailto:` URIs (which open the user's local email client) and WhatsApp share links.
+
+

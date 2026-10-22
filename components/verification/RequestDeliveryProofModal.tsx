@@ -273,9 +273,10 @@ export function RequestDeliveryProofModal({
                 <a
                   href={result.mailtoLink}
                   className="w-full py-2.5 px-4 rounded-xl text-sm font-semibold bg-surface-muted text-ink hover:bg-surface-elevated border border-border flex items-center justify-center gap-2 transition"
+                  title="Opens your local email client with a pre-filled draft. No emails are sent by the server."
                 >
                   <Mail className="w-4 h-4" />
-                  Send Email Draft
+                  Open Email Draft (Local Mail Client)
                 </a>
 
                 <button

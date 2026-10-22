@@ -152,6 +152,26 @@ export async function POST(req: NextRequest) {
     const historicalSha256s = historicalFiles.map((f) => f.sha256);
 
     // 5. Evaluate Conditions Engine
+    const aiConfigured = Boolean(aiResult.aiConfigured && aiResult.assessment);
+    const aiExtraction = aiResult.assessment
+      ? {
+          extractedChallengeCode: aiResult.assessment.extractedChallengeCode || undefined,
+          challengeCodeConfidence: aiResult.assessment.challengeCodeConfidence,
+          similarityScore: aiResult.assessment.overallMatchConfidence,
+          extractedItems: aiResult.assessment.itemsObserved.map((i) => ({
+            description: i.description,
+            quantity: i.estimatedQuantity,
+          })),
+          aiConfigured: true,
+        }
+      : {
+          extractedChallengeCode: undefined,
+          challengeCodeConfidence: 0,
+          similarityScore: undefined,
+          extractedItems: [],
+          aiConfigured: false,
+        };
+
     const evalInput: VerificationEvaluationInput = {
       files: deliveryRequest.evidenceFiles.map((f) => ({
         sha256: f.sha256,
@@ -179,15 +199,7 @@ export async function POST(req: NextRequest) {
           }
         : undefined,
       expectedChallengeCode: deliveryRequest.challengeCode,
-      aiExtraction: {
-        extractedChallengeCode: aiResult.assessment.extractedChallengeCode || undefined,
-        challengeCodeConfidence: aiResult.assessment.challengeCodeConfidence,
-        similarityScore: aiResult.assessment.overallMatchConfidence,
-        extractedItems: aiResult.assessment.itemsObserved.map((i) => ({
-          description: i.description,
-          quantity: i.estimatedQuantity,
-        })),
-      },
+      aiExtraction,
     };
 
     const conditionRules: ConditionRuleConfig[] = DEFAULT_CONDITION_RULES;
@@ -206,7 +218,7 @@ export async function POST(req: NextRequest) {
           templateSnapshotJson: JSON.stringify(conditionRules),
           resultsJson: JSON.stringify(evaluation.ruleResults),
           overall: evaluation.overall,
-          aiUsed: true,
+          aiUsed: aiConfigured,
           reportHash,
         },
       })
@@ -222,7 +234,7 @@ export async function POST(req: NextRequest) {
         reportId: report.id,
         reportHash,
         overall: evaluation.overall,
-        aiUsed: true,
+        aiUsed: aiConfigured,
       },
       network: (resolved?.network as any) || "testnet",
     });

@@ -90,7 +90,7 @@ export default function UserGuidePage() {
           </a>
           <a href="#step-6" className="p-2 rounded hover:bg-canvas text-ink hover:text-navy transition-colors flex items-center gap-1.5 font-medium">
             <span className="font-mono text-ink-muted font-bold">6.</span>
-            <span>Record order & delivery</span>
+            <span>Record order & verify delivery</span>
           </a>
           <a href="#step-7" className="p-2 rounded hover:bg-canvas text-ink hover:text-navy transition-colors flex items-center gap-1.5 font-medium">
             <span className="font-mono text-ink-muted font-bold">7.</span>
@@ -352,14 +352,31 @@ export default function UserGuidePage() {
             <div className="w-10 h-10 rounded-xl bg-canvas border border-border flex items-center justify-center text-navy font-mono font-bold shrink-0">
               6
             </div>
-            <div className="space-y-1.5 flex-1 min-w-0">
+            <div className="space-y-2 flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <PackageCheck className="w-4 h-4 text-brand-teal" />
-                <h3 className="text-sm font-bold text-ink">Record the order and delivery</h3>
+                <h3 className="text-sm font-bold text-ink">Record order & verify delivery</h3>
               </div>
               <p className="text-xs sm:text-sm text-ink-muted leading-relaxed">
-                Create a purchase order with line items, then log the goods or services you actually received.
+                Create purchase orders with line items, then log goods received or request field delivery proof via the Mobile Verifier Portal.
               </p>
+              <div className="p-3 rounded-lg bg-surface-muted border border-border/80 text-xs space-y-1.5 text-ink-muted">
+                <div className="font-semibold text-ink">Verify Delivery & Evidence Guidelines:</div>
+                <ul className="list-disc pl-4 space-y-1 text-[11px] leading-relaxed">
+                  <li>
+                    <strong>Field Verification Link:</strong> Generates a single-use portal with a 6-character access code and a physical 4-character challenge code. Share via WhatsApp or email draft (link sharing opens your mail client; no background server emails are sent).
+                  </li>
+                  <li>
+                    <strong>Exact Duplicate Screening:</strong> Duplicate detection only catches exact copies of the same file (SHA-256 exact byte match); it does not detect modified, cropped, rotated, or re-photographed images.
+                  </li>
+                  <li>
+                    <strong>AI Vision Assessment:</strong> Advisory only. If no vision LLM key is configured, visual matching is marked &quot;not evaluated&quot; and rules show &quot;needs review: AI not configured&quot; for owner manual review. No fake extractions are generated.
+                  </li>
+                  <li>
+                    <strong>Audit Logging:</strong> Delivery verification events are appended to the local SHA-256 hash-chained audit ledger (on-chain smart contract anchoring to AuditAnchor.sol is performed only for confirmed payment settlements).
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
 

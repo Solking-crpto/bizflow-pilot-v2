@@ -51,6 +51,7 @@ export interface VerificationEvaluationInput {
     challengeCodeConfidence?: number;
     extractedItems?: Array<{ description: string; quantity: number }>;
     similarityScore?: number; // 0 to 1
+    aiConfigured?: boolean;
   };
   expectedChallengeCode?: string;
   ownerApproved?: boolean;
@@ -272,9 +273,6 @@ function evaluateSingleRule(
 
     case "challenge_code_visible": {
       const expected = inputs.expectedChallengeCode?.trim().toUpperCase();
-      const extracted = inputs.aiExtraction?.extractedChallengeCode?.trim().toUpperCase();
-      const minConfidence = Number(rule.params?.minConfidence ?? 0.7);
-      const confidence = inputs.aiExtraction?.challengeCodeConfidence ?? 1.0;
 
       if (!expected) {
         return {
@@ -285,6 +283,21 @@ function evaluateSingleRule(
           reason: "No challenge code expected for this request",
         };
       }
+
+      // If AI is not configured or not evaluated, flag for manual review
+      if (!inputs.aiExtraction || inputs.aiExtraction.aiConfigured === false) {
+        return {
+          ruleId: rule.ruleId,
+          name: "Challenge Code Verification",
+          passed: false,
+          severity: rule.severity,
+          reason: "needs review: AI not configured",
+        };
+      }
+
+      const extracted = inputs.aiExtraction?.extractedChallengeCode?.trim().toUpperCase();
+      const minConfidence = Number(rule.params?.minConfidence ?? 0.7);
+      const confidence = inputs.aiExtraction?.challengeCodeConfidence ?? 1.0;
 
       const match = extracted === expected && confidence >= minConfidence;
       return {
@@ -316,16 +329,26 @@ function evaluateSingleRule(
       const passed = duplicates.length === 0;
       return {
         ruleId: rule.ruleId,
-        name: "Tamper & Duplicate Evidence Check",
+        name: "Tamper & Exact File Duplicate Check (SHA-256)",
         passed,
         severity: rule.severity,
         reason: passed
-          ? "All uploaded evidence files are unique"
-          : `Duplicate evidence detected: files [${duplicates.join(", ")}...] previously submitted in organization`,
+          ? "All uploaded evidence files are unique (SHA-256 exact byte match; catches exact byte duplicates only)"
+          : `Duplicate evidence detected: exact file SHA-256 [${duplicates.join(", ")}...] previously submitted in organization (catches exact byte copies only)`,
       };
     }
 
     case "ai_matches_po": {
+      if (!inputs.aiExtraction || inputs.aiExtraction.aiConfigured === false) {
+        return {
+          ruleId: rule.ruleId,
+          name: "AI Evidence to PO Matching",
+          passed: false,
+          severity: rule.severity,
+          reason: "needs review: AI not configured",
+        };
+      }
+
       const minSimilarity = Number(rule.params?.minSimilarity ?? 0.75);
       const score = inputs.aiExtraction?.similarityScore;
 
@@ -335,7 +358,7 @@ function evaluateSingleRule(
           name: "AI Evidence to PO Matching",
           passed: false,
           severity: rule.severity,
-          reason: "AI evidence extraction has not been performed or yielded no similarity score",
+          reason: "needs review: AI not configured",
         };
       }
 

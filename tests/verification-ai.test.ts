@@ -44,28 +44,46 @@ describe("Phase 6: AI Evidence Assessment (Advisory Only)", () => {
     expect(() => VerificationAiAssessmentSchema.parse(invalid)).toThrow();
   });
 
-  it("falls back gracefully when daily budget limit is reached", async () => {
-    const res = await assessEvidence({
-      expectedChallengeCode: "X4Y7",
-      forceBudgetExceededForTest: true,
-    });
+  it("enforces daily budget limit when AI is configured without fabricating data", async () => {
+    const origKey = process.env.GEMINI_API_KEY;
+    try {
+      process.env.GEMINI_API_KEY = "test_vision_api_key";
+      const res = await assessEvidence({
+        expectedChallengeCode: "X4Y7",
+        forceBudgetExceededForTest: true,
+      });
 
-    expect(res.budgetExceeded).toBe(true);
-    expect(res.assessment.anomalies).toContain(
-      "Daily AI assessment budget exceeded; manual review required"
-    );
-    expect(res.assessment.disclaimer).toBe(DISCLAIMER_TEXT);
+      expect(res.budgetExceeded).toBe(true);
+      expect(res.aiConfigured).toBe(true);
+      expect(res.assessment).toBeNull();
+    } finally {
+      if (origKey) process.env.GEMINI_API_KEY = origKey;
+      else delete process.env.GEMINI_API_KEY;
+    }
   });
 
-  it("works reliably in zero-API-key environment without errors", async () => {
-    const res = await assessEvidence({
-      expectedChallengeCode: "TEST",
-      purchaseOrderItems: [{ description: "Solar Inverter 5kW", quantity: 2 }],
-    });
+  it("works reliably in zero-API-key environment by returning null extraction and unconfigured state", async () => {
+    const origGoogle = process.env.GOOGLE_API_KEY;
+    const origGemini = process.env.GEMINI_API_KEY;
+    const origAnthropic = process.env.ANTHROPIC_API_KEY;
+    try {
+      delete process.env.GOOGLE_API_KEY;
+      delete process.env.GEMINI_API_KEY;
+      delete process.env.ANTHROPIC_API_KEY;
 
-    expect(res.budgetExceeded).toBe(false);
-    expect(res.assessment.extractedChallengeCode).toBe("TEST");
-    expect(res.assessment.overallMatchConfidence).toBeGreaterThanOrEqual(0.9);
-    expect(res.assessment.itemsObserved[0].description).toBe("Solar Inverter 5kW");
+      const res = await assessEvidence({
+        expectedChallengeCode: "TEST",
+        purchaseOrderItems: [{ description: "Solar Inverter 5kW", quantity: 2 }],
+      });
+
+      expect(res.budgetExceeded).toBe(false);
+      expect(res.aiConfigured).toBe(false);
+      expect(res.modelUsed).toBe("none");
+      expect(res.assessment).toBeNull();
+    } finally {
+      if (origGoogle) process.env.GOOGLE_API_KEY = origGoogle;
+      if (origGemini) process.env.GEMINI_API_KEY = origGemini;
+      if (origAnthropic) process.env.ANTHROPIC_API_KEY = origAnthropic;
+    }
   });
 });
